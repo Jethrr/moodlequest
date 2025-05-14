@@ -1,30 +1,43 @@
-# SoftENG2- MoodleQuest
+🎓 SoftENG2 – MoodleQuest
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+Gamifying Moodle for better learning engagement – A Software Engineering 2 project.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/derrick-binangbangs-projects/v0-soft-eng-2-moodle-quest)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/rN0QhYMOvsp)
+Deployed on Vercel
+📌 Overview
 
-## Overview
+MoodleQuest is a student-led project developed for Software Engineering 2 that aims to enhance the Moodle learning experience through interactive quests, rewards, and gamified tasks.
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+The app is built using v0.dev, an AI-powered UI development platform that allows developers to build and deploy web applications quickly using natural language prompts, integrated with React and TailwindCSS behind the scenes.
 
-## Deployment
+This repository is automatically synced with your deployed project on v0.dev, ensuring continuous integration and up-to-date versioning with every change.
+🚀 Live Deployment
 
-Your project is live at:
+👉 Production Site:
+🔗 https://vercel.com/derrick-binangbangs-projects/v0-soft-eng-2-moodle-quest
+🛠️ Build and Modify
 
-**[https://vercel.com/derrick-binangbangs-projects/v0-soft-eng-2-moodle-quest](https://vercel.com/derrick-binangbangs-projects/v0-soft-eng-2-moodle-quest)**
+You can continue to develop and customize the app via the v0.dev editor:
 
-## Build your app
+🔧 Project Editor:
+https://v0.dev/chat/projects/rN0QhYMOvsp
+⚙️ How It Works
 
-Continue building your app on:
+    Create and customize your app using v0.dev, which uses AI to convert prompts into production-ready React code.
 
-**[https://v0.dev/chat/projects/rN0QhYMOvsp](https://v0.dev/chat/projects/rN0QhYMOvsp)**
+    Deploy your application directly through the v0.dev interface.
 
-## How It Works
+    This repository automatically receives updates from v0.dev after each deployment.
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+    Vercel detects changes in the repository and publishes the latest version live.
+
+📂 Tech Stack
+
+    🧠 v0.dev – AI-assisted UI generation using React + Tailwind
+
+    ☁️ Vercel – Deployment and hosting
+
+    📝 Markdown & GitHub – Version control and documentation
+
+🙌 Credits
+
+This project was developed by students as part of the course requirements for Software Engineering 2.
