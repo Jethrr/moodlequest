@@ -1,14 +1,13 @@
 import Link from "next/link"
 
-export function DashboardSidebar() {
-  return (
-    <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-      <div className="flex flex-col gap-2 p-4">
+export function DashboardSidebar() {  return (    <aside className="hidden md:flex w-64 flex-col border-r border-purple-100 bg-white shadow-sm bg-gradient-to-b from-purple-100/60 via-purple-50/40 to-white">
+      <div className="flex flex-col gap-4 p-6">
+        
+        
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <svg
+          className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors text-purple-700 hover:bg-purple-100/60 hover:text-purple-900"
+        >          <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
             height="24"
@@ -18,7 +17,7 @@ export function DashboardSidebar() {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-4 w-4"
+            className="h-4 w-4 text-purple-500"
           >
             <rect width="7" height="9" x="3" y="3" rx="1" />
             <rect width="7" height="5" x="14" y="3" rx="1" />
@@ -29,9 +28,8 @@ export function DashboardSidebar() {
         </Link>
         <Link
           href="/dashboard/quests"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <svg
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors text-gray-600 hover:bg-purple-100/60 hover:text-purple-900"
+        >          <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
             height="24"
@@ -49,9 +47,8 @@ export function DashboardSidebar() {
         </Link>
         <Link
           href="/dashboard/achievements"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <svg
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors text-gray-600 hover:bg-purple-100/60 hover:text-purple-900"
+        >          <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
             height="24"
@@ -70,9 +67,8 @@ export function DashboardSidebar() {
         </Link>
         <Link
           href="/dashboard/leaderboard"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <svg
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors text-gray-600 hover:bg-purple-100/60 hover:text-purple-900"
+        >          <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
             height="24"
@@ -95,9 +91,8 @@ export function DashboardSidebar() {
         </Link>
         <Link
           href="/dashboard/progress"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <svg
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors text-gray-600 hover:bg-purple-100/60 hover:text-purple-900"
+        >          <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
             height="24"
@@ -113,6 +108,8 @@ export function DashboardSidebar() {
           </svg>
           Progress
         </Link>
+        
+        
       </div>
     </aside>
   )

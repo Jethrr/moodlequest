@@ -24,27 +24,24 @@ export function DashboardHeader() {
     await signOut()
     router.push("/")
   }
-
-  return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+  return (    <header className="sticky top-0 z-50 w-full border-b border-purple-200 bg-white shadow-sm bg-gradient-to-r from-purple-50/30 to-white">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden text-purple-600 hover:bg-purple-50"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </Button>
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="text-xl font-bold">MoodleQuest</span>
+            <span className="text-xl font-bold text-purple-700">MoodleQuest</span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
+        <div className="flex items-center gap-4">          <div className="flex items-center gap-3 bg-gradient-to-r from-purple-50 to-white px-4 py-2 rounded-full shadow-sm border border-purple-100">
+            <div className="flex items-center gap-1.5">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -55,14 +52,14 @@ export function DashboardHeader() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-4 w-4 text-yellow-500"
+                className="h-4 w-4 text-[#F88379]"
               >
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
-              <span className="text-sm font-medium">250 XP</span>
+              <span className="text-sm font-medium text-purple-800">250 XP</span>
             </div>
-            <div className="h-4 w-px bg-gray-300 dark:bg-gray-700" />
-            <div className="flex items-center gap-1">
+            <div className="h-5 w-px bg-purple-200" />
+            <div className="flex items-center gap-1.5">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -79,21 +76,19 @@ export function DashboardHeader() {
                 <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
                 <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
               </svg>
-              <span className="text-sm font-medium">Level 5</span>
+              <span className="text-sm font-medium text-purple-800">Level 5</span>
             </div>
-          </div>
-
-          <Button variant="ghost" size="icon" className="relative">
+          </div>          <Button variant="ghost" size="icon" className="relative text-purple-600 hover:bg-purple-50">
             <Bell className="h-5 w-5" />
-            <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-red-500" />
+            <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-[#F88379]" />
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-8 w-8 border-2 border-purple-200">
                   <AvatarImage src="/placeholder.svg?height=32&width=32" alt="@user" />
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-[#F88379] text-white">U</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -116,16 +111,14 @@ export function DashboardHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
-
-      {/* Mobile Sidebar */}
+      </div>      {/* Mobile Sidebar */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t">
-          <div className="container py-4">
+        <div className="md:hidden border-t border-purple-100 bg-gradient-to-b from-purple-50/50 to-white">
+          <div className="container py-6">
             <nav className="flex flex-col gap-4">
               <Link
                 href="/dashboard"
-                className="flex items-center gap-2 text-sm font-medium"
+                className="flex items-center gap-2.5 text-sm font-medium text-purple-700 hover:text-purple-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <svg
@@ -138,7 +131,7 @@ export function DashboardHeader() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="h-4 w-4"
+                  className="h-4 w-4 text-purple-500"
                 >
                   <rect width="7" height="9" x="3" y="3" rx="1" />
                   <rect width="7" height="5" x="14" y="3" rx="1" />
@@ -146,10 +139,9 @@ export function DashboardHeader() {
                   <rect width="7" height="5" x="3" y="16" rx="1" />
                 </svg>
                 Dashboard
-              </Link>
-              <Link
+              </Link>              <Link
                 href="/dashboard/quests"
-                className="flex items-center gap-2 text-sm font-medium"
+                className="flex items-center gap-2 text-sm font-medium text-purple-700 hover:text-purple-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <svg
@@ -162,7 +154,7 @@ export function DashboardHeader() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="h-4 w-4"
+                  className="h-4 w-4 text-purple-500"
                 >
                   <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                 </svg>
@@ -170,7 +162,7 @@ export function DashboardHeader() {
               </Link>
               <Link
                 href="/dashboard/achievements"
-                className="flex items-center gap-2 text-sm font-medium"
+                className="flex items-center gap-2 text-sm font-medium text-purple-700 hover:text-purple-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <svg
@@ -183,7 +175,7 @@ export function DashboardHeader() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="h-4 w-4"
+                  className="h-4 w-4 text-purple-500"
                 >
                   <path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.11" />
                   <path d="M15 7a3 3 0 1 0-6 0c0 1.66.5 3 2 5h2c1.5-2 2-3.34 2-5Z" />
@@ -192,7 +184,7 @@ export function DashboardHeader() {
               </Link>
               <Link
                 href="/dashboard/leaderboard"
-                className="flex items-center gap-2 text-sm font-medium"
+                className="flex items-center gap-2 text-sm font-medium text-purple-700 hover:text-purple-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <svg
@@ -205,7 +197,7 @@ export function DashboardHeader() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="h-4 w-4"
+                  className="h-4 w-4 text-purple-500"
                 >
                   <rect width="18" height="18" x="3" y="3" rx="2" />
                   <path d="M15 8h.01" />
@@ -218,7 +210,7 @@ export function DashboardHeader() {
               </Link>
               <Link
                 href="/dashboard/progress"
-                className="flex items-center gap-2 text-sm font-medium"
+                className="flex items-center gap-2 text-sm font-medium text-purple-700 hover:text-purple-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <svg
@@ -231,7 +223,7 @@ export function DashboardHeader() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="h-4 w-4"
+                  className="h-4 w-4 text-purple-500"
                 >
                   <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                 </svg>
