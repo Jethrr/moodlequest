@@ -93,3 +93,13 @@ export interface UserProgress {
     }
   }
 }
+
+export interface LeaderboardUser {
+  id: number
+  name: string
+  avatar: string
+  xp: number
+  level: number
+  badges: number
+  rank: number
+}
