@@ -60,6 +60,15 @@ export interface PetAccessory {
   description: string
   slot: "head" | "body" | "feet" | "background"
   iconUrl: string
+  position?: {
+    top?: string
+    left?: string
+    right?: string
+    bottom?: string
+    transform?: string
+    opacity?: string
+    zIndex?: string
+  }
   stats?: {
     happinessBoost?: number
     energyBoost?: number

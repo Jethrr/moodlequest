@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import type { VirtualPet as VirtualPetType, PetAccessory } from "@/types/gamification"
 import { Heart, Zap, Clock, Plus } from "lucide-react"
+import Image from "next/image"
 import {
   Dialog,
   DialogContent,
@@ -21,20 +22,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 const availableAccessories: PetAccessory[] = [
   {
     id: "acc1",
-    name: "Wizard Hat",
+    name: "Dean's Hat",
     description: "A magical hat that boosts XP gain",
     slot: "head",
     iconUrl: "🧙‍♂️",
+    position: {
+      top: '-1.5rem', // Custom position - higher than default
+      left: '60%', // Custom position - shifted to the right
+    },
     stats: {
       xpBoost: 5,
     },
   },
   {
     id: "acc2",
-    name: "Scholar Robe",
+    name: "Busico's Robe",
     description: "A scholarly robe that increases energy",
     slot: "body",
     iconUrl: "👘",
+    position: {
+      top: '40%', // Custom position - slightly higher than center
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      opacity: '0.8', // Custom opacity
+    },
     stats: {
       energyBoost: 10,
     },
@@ -45,6 +56,12 @@ const availableAccessories: PetAccessory[] = [
     description: "Boots that increase happiness",
     slot: "feet",
     iconUrl: "👢",
+    position: {
+      bottom: '-0.75rem', // Custom position - lower than default
+      left: '40%', // Custom position - shifted to the left
+      transform: 'translateX(-50%)',
+      fontSize: '1rem', // Custom size - larger than default
+    },
     stats: {
       happinessBoost: 15,
     },
@@ -55,13 +72,17 @@ const availableAccessories: PetAccessory[] = [
     description: "A cozy library setting for your pet",
     slot: "background",
     iconUrl: "📚",
+    position: {
+      opacity: '0.15', // Custom opacity - less transparent than default
+      fontSize: '3rem', // Custom size - larger than default
+    },
   },
 ]
 
 // Mock pet data
 const mockPet: VirtualPetType = {
   id: "pet1",
-  name: "Einstein",
+  name: "Derrick",
   species: "Owl",
   level: 3,
   happiness: 70,
@@ -69,7 +90,7 @@ const mockPet: VirtualPetType = {
   lastFed: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
   lastPlayed: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
   accessories: [availableAccessories[0]],
-  iconUrl: "🦉",
+  iconUrl: "/pets/pet-cat.png",
 }
 
 export function VirtualPet() {
@@ -150,34 +171,99 @@ export function VirtualPet() {
           <div className="relative mb-4">
             {/* Background accessory */}
             {pet.accessories.find((acc) => acc.slot === "background") && (
-              <div className="absolute inset-0 flex items-center justify-center text-4xl opacity-20">
-                {pet.accessories.find((acc) => acc.slot === "background")?.iconUrl}
-              </div>
+              (() => {
+                const accessory = pet.accessories.find((acc) => acc.slot === "background");
+                const defaultStyle = {
+                  position: 'absolute',
+                  inset: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '2.25rem',
+                  opacity: '0.2'
+                };
+                const customStyle = accessory?.position || {};
+
+                return (
+                  <div style={{...defaultStyle, ...customStyle}}>
+                    {accessory?.iconUrl}
+                  </div>
+                );
+              })()
             )}
 
             {/* Pet with accessories */}
-            <div className="relative text-6xl">
-              {pet.iconUrl}
+            <div className="relative" style={{ width: '96px', height: '96px' }}>
+              <Image 
+                src={pet.iconUrl} 
+                alt={`${pet.name} the ${pet.species}`}
+                width={96}
+                height={96}
+                priority
+              />
 
               {/* Head accessory */}
               {pet.accessories.find((acc) => acc.slot === "head") && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 text-xl">
-                  {pet.accessories.find((acc) => acc.slot === "head")?.iconUrl}
-                </div>
+                (() => {
+                  const accessory = pet.accessories.find((acc) => acc.slot === "head");
+                  const defaultStyle = {
+                    position: 'absolute',
+                    top: '-1rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '1.25rem'
+                  };
+                  const customStyle = accessory?.position || {};
+
+                  return (
+                    <div style={{...defaultStyle, ...customStyle}}>
+                      {accessory?.iconUrl}
+                    </div>
+                  );
+                })()
               )}
 
               {/* Body accessory */}
               {pet.accessories.find((acc) => acc.slot === "body") && (
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xl opacity-70">
-                  {pet.accessories.find((acc) => acc.slot === "body")?.iconUrl}
-                </div>
+                (() => {
+                  const accessory = pet.accessories.find((acc) => acc.slot === "body");
+                  const defaultStyle = {
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: '1.25rem',
+                    opacity: '0.7'
+                  };
+                  const customStyle = accessory?.position || {};
+
+                  return (
+                    <div style={{...defaultStyle, ...customStyle}}>
+                      {accessory?.iconUrl}
+                    </div>
+                  );
+                })()
               )}
 
               {/* Feet accessory */}
               {pet.accessories.find((acc) => acc.slot === "feet") && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-sm">
-                  {pet.accessories.find((acc) => acc.slot === "feet")?.iconUrl}
-                </div>
+                (() => {
+                  const accessory = pet.accessories.find((acc) => acc.slot === "feet");
+                  const defaultStyle = {
+                    position: 'absolute',
+                    bottom: '-0.5rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '0.875rem'
+                  };
+                  const customStyle = accessory?.position || {};
+
+                  return (
+                    <div style={{...defaultStyle, ...customStyle}}>
+                      {accessory?.iconUrl}
+                    </div>
+                  );
+                })()
               )}
             </div>
           </div>
