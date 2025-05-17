@@ -50,7 +50,9 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
+# Exclude Python lib but not frontend lib
+/lib/
+/backend/lib/
 lib64/
 parts/
 sdist/
