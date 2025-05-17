@@ -1,0 +1,53 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Flag Pole -->
+  <rect x="195" y="100" width="10" height="300" fill="#6B7280" />
+  
+  <!-- Flag Base -->
+  <circle cx="200" cy="370" r="20" fill="#6B7280" opacity="0.7" />
+  
+  <!-- Flag -->
+  <path d="M205 100C205 100 235 120 285 120C335 120 355 100 355 100V200C355 200 335 220 285 220C235 220 205 200 205 200V100Z" fill="url(#paint0_linear)" />
+  
+  <!-- Flag Highlights -->
+  <path d="M225 110C225 110 245 125 275 125C305 125 315 110 315 110V180C315 180 295 195 275 195C245 195 225 180 225 180V110Z" fill="url(#paint1_linear)" opacity="0.7" />
+  
+  <!-- Flag Shadow -->
+  <path d="M205 100C205 100 235 120 285 120C335 120 355 100 355 100V200C355 200 335 220 285 220C235 220 205 200 205 200V100Z" fill="url(#paint2_radial)" fill-opacity="0.2" />
+  
+  <!-- Flag Small Details -->
+  <circle cx="330" cy="120" r="8" fill="#FFFFFF" fill-opacity="0.6" />
+  <circle cx="240" cy="150" r="5" fill="#FFFFFF" fill-opacity="0.6" />
+  <circle cx="280" cy="180" r="6" fill="#FFFFFF" fill-opacity="0.6" />
+  
+  <!-- Flag Glow -->
+  <g filter="url(#filter0_f)">
+    <path d="M205 100C205 100 235 120 285 120C335 120 355 100 355 100V200C355 200 335 220 285 220C235 220 205 200 205 200V100Z" fill="#FFCC00" fill-opacity="0.2" />
+  </g>
+  
+  <!-- Star -->
+  <path d="M285 75L291.047 87.9463H304.962L293.957 95.8574L300.005 108.804L285 100.893L269.995 108.804L276.043 95.8574L265.038 87.9463H278.953L285 75Z" fill="#FFCC00" />
+  
+  <!-- Defs for Gradients & Filters -->
+  <defs>
+    <linearGradient id="paint0_linear" x1="205" y1="100" x2="355" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFCC00" />
+      <stop offset="1" stop-color="#FF9900" />
+    </linearGradient>
+    
+    <linearGradient id="paint1_linear" x1="225" y1="110" x2="315" y2="195" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.7" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.1" />
+    </linearGradient>
+    
+    <radialGradient id="paint2_radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(280 160) rotate(-90) scale(100 150)">
+      <stop stop-color="#000000" stop-opacity="0" />
+      <stop offset="1" stop-color="#000000" stop-opacity="0.3" />
+    </radialGradient>
+    
+    <filter id="filter0_f" x="185" y="80" x2="375" y2="240" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix" />
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+      <feGaussianBlur stdDeviation="10" result="effect1_foregroundBlur" />
+    </filter>
+  </defs>
+</svg> 
