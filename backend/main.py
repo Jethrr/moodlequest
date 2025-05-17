@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.routes import quests
+from app.routes import quests, auth
 from app.database.connection import engine, Base, SessionLocal
 from app.database.seed import seed_initial_data
 
@@ -28,7 +28,8 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
-app.include_router(quests.router)
+app.include_router(quests.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 
 @app.get("/")
 async def root():

@@ -1,127 +1,130 @@
-// Define the base API URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+/**
+ * API client for interacting with the FastAPI backend
+ */
 
-// Type for Quest
-export interface Quest {
-  quest_id: number;
-  title: string;
-  description: string | null;
-  course_id: number | null;
-  creator_id: number;
-  exp_reward: number;
-  quest_type: string;
-  validation_method: string;
-  validation_criteria: Record<string, any> | null;
-  start_date: string | null;
-  end_date: string | null;
-  is_active: boolean;
-  difficulty_level: number;
-  created_at: string;
-  last_updated: string;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002/api';
+
+export interface ApiErrorResponse {
+  success: false;
+  error: string;
+  status?: number;
 }
 
-// Type for creating a quest
-export interface QuestCreate {
-  title: string;
-  description?: string;
-  course_id?: number;
-  exp_reward: number;
-  quest_type: string;
-  validation_method: string;
-  validation_criteria?: Record<string, any>;
-  start_date?: string;
-  end_date?: string;
-  is_active?: boolean;
-  difficulty_level?: number;
+export interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
 }
 
-// Helper to handle API responses with improved error handling
-async function fetchWithErrorHandling<T>(url: string, options?: RequestInit): Promise<T> {
-  try {
-    const response = await fetch(url, options);
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+
+export interface MoodleLoginParams {
+  username: string;
+  password: string;
+  service?: string;
+}
+
+export interface MoodleLoginResult {
+  success: boolean;
+  token?: string;
+  user?: {
+    id: number;
+    username: string;
+    email?: string;
+    role: string;
+    first_name?: string;
+    last_name?: string;
+    is_active: boolean;
+    created_at: string;
+  };
+  error?: string;
+}
+
+export interface JwtToken {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token?: string;
+  user: {
+    id: number;
+    username: string;
+    email?: string;
+    role: string;
+  };
+}
+
+export class ApiClient {
+  private baseUrl: string;
+  private token: string | null;
+
+  constructor(baseUrl = API_BASE_URL) {
+    this.baseUrl = baseUrl;
+    this.token = null;
+  }
+
+  setToken(token: string) {
+    this.token = token;
+  }
+
+  async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const url = `${this.baseUrl}${endpoint}`;
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.detail || `API error: ${response.status} ${response.statusText}`);
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {})
+    };
+
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
     }
-    
-    return response.json();
-  } catch (error) {
-    console.error(`API request failed: ${url}`, error);
-    throw error;
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          error: errorData.detail || errorData.error || response.statusText,
+          status: response.status,
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  // Authentication methods
+  async moodleLogin(params: MoodleLoginParams): Promise<ApiResponse<MoodleLoginResult>> {
+    return this.request<MoodleLoginResult>('/auth/moodle/login', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async getUserInfo(): Promise<ApiResponse<any>> {
+    return this.request<any>('/auth/me');
+  }
+
+  async logout(): Promise<ApiResponse<any>> {
+    return this.request<any>('/auth/logout', { method: 'POST' });
   }
 }
 
-// API functions
-export const apiClient = {
-  // Fetch all quests
-  async getQuests(filters?: { course_id?: number; is_active?: boolean }): Promise<Quest[]> {
-    const queryParams = new URLSearchParams();
-    
-    if (filters?.course_id) {
-      queryParams.append('course_id', filters.course_id.toString());
-    }
-    
-    if (filters?.is_active !== undefined) {
-      queryParams.append('is_active', filters.is_active.toString());
-    }
-    
-    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    
-    return fetchWithErrorHandling<Quest[]>(`${API_BASE_URL}/quests${queryString}`);
-  },
-  
-  // Fetch a single quest by ID
-  async getQuest(questId: number): Promise<Quest> {
-    return fetchWithErrorHandling<Quest>(`${API_BASE_URL}/quests/${questId}`);
-  },
-  
-  // Create a new quest
-  async createQuest(quest: QuestCreate, creatorId: number): Promise<Quest> {
-    return fetchWithErrorHandling<Quest>(`${API_BASE_URL}/quests?creator_id=${creatorId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(quest),
-    });
-  },
-  
-  // Update an existing quest
-  async updateQuest(questId: number, quest: Partial<QuestCreate>): Promise<Quest> {
-    return fetchWithErrorHandling<Quest>(`${API_BASE_URL}/quests/${questId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(quest),
-    });
-  },
-  
-  // Delete a quest
-  async deleteQuest(questId: number): Promise<void> {
-    await fetchWithErrorHandling<void>(`${API_BASE_URL}/quests/${questId}`, {
-      method: 'DELETE',
-    });
-  },
-  
-  // Create dummy data for testing
-  async createDummyData(): Promise<{ message: string; data: { quests: number; courses: number; users: number } }> {
-    return fetchWithErrorHandling(`${API_BASE_URL}/quests/dummy-data`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-  },
-  
-  // Create a single dummy quest
-  async createSingleDummy(): Promise<{ message: string; quest_id: number }> {
-    return fetchWithErrorHandling(`${API_BASE_URL}/quests/single-dummy`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-  },
-}; 
+// Create singleton instance
+export const apiClient = new ApiClient();
+
+export default apiClient; 
+
+

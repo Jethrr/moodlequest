@@ -13,8 +13,12 @@ import {
   Star, 
   Medal,
   Flag,
-  Sparkles
+  Sparkles,
+  LogIn
 } from "lucide-react"
+import { SimplifiedMoodleForm } from "@/components/auth/simplified-moodle-form"
+import { useAuth } from "@/lib/auth-context"
+import { cn } from "@/lib/utils"
 
 // Pet animation states and variants
 const pets = [
@@ -41,7 +45,91 @@ const pets = [
   }
 ]
 
+function BottomSignIn() {
+  const { isAuthenticated, isLoading } = useAuth()
+  const [isOpen, setIsOpen] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  if (isAuthenticated || isLoading) return null
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-6 z-50 pointer-events-none">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="pointer-events-auto relative"
+      >
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: -10 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-16 bg-background/95 backdrop-blur-sm p-4 rounded-lg border shadow-lg"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span>Moodle Sign In</span>
+              </h2>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0 rounded-full"
+                onClick={() => setIsOpen(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="w-72">
+              <SimplifiedMoodleForm />
+            </div>
+          </motion.div>
+        )}
+
+        <div className={cn(
+          "flex items-center gap-2 bg-background/95 backdrop-blur-lg rounded-full p-2 shadow-xl border",
+          "transition-all duration-300 ease-in-out",
+          isExpanded ? "pr-6" : "hover:pr-6"
+        )}>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-2 hover:bg-accent rounded-full transition"
+            aria-label={isExpanded ? "Collapse navigation" : "Expand navigation"}
+          >
+            <LogIn className="h-5 w-5" />
+          </button>
+
+          <Button
+            onClick={() => setIsOpen(!isOpen)}
+            variant="ghost"
+            className={cn(
+              "relative px-3 py-2 rounded-full transition-all duration-300",
+              "hover:bg-accent group flex items-center gap-2",
+              isOpen && "bg-accent"
+            )}
+          >
+            <BookOpen className="h-5 w-5 text-primary" />
+            
+            {isExpanded && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                className="text-sm font-medium text-foreground"
+              >
+                Sign In
+              </motion.span>
+            )}
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function LandingPage() {
+  const { isAuthenticated, isLoading } = useAuth()
   const [activePet, setActivePet] = useState(0)
   const [showPetMessage, setShowPetMessage] = useState(false)
   const [petMessage, setPetMessage] = useState("")
@@ -185,6 +273,9 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/95 overflow-hidden relative">
+      {/* Bottom Sign-in button */}
+      <BottomSignIn />
+      
       {/* Animated particles - Only render client-side */}
       {mounted && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -316,6 +407,26 @@ export default function LandingPage() {
                   Learn More <ChevronRight className="h-4 w-4" />
                 </Button>
               </motion.div>
+              
+              {!isAuthenticated && !isLoading && (
+                <motion.div 
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <Link href="/signin">
+                    <Button 
+                      size="lg" 
+                      variant="secondary"
+                      className="rounded-full gap-2 text-sm md:text-base px-4 md:px-6 border border-primary/20"
+                    >
+                      <LogIn className="h-4 w-4" /> Sign In
+                    </Button>
+                  </Link>
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
           

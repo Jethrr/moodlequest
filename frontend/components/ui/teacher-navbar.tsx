@@ -6,54 +6,58 @@ import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import {
-  GraduationCap,
-  Trophy,
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  PlusCircle,
+  Award,
   UserCircle,
   Menu,
-  ChevronRight,
-  LineChart,
-  LayoutDashboard
+  ChevronRight
 } from "lucide-react"
-import { LogoutButton } from "@/components/logout-button"
-import { useAuth } from "@/lib/auth-context"
 
-const routes = [
+const teacherRoutes = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    href: "/dashboard",
+    href: "/teacher/dashboard",
     color: "text-purple-500"
   },
   {
-    label: "Quests",
-    icon: GraduationCap,
-    href: "/student/quests",
-    color: "text-violet-500"
+    label: "Students",
+    icon: Users,
+    href: "/teacher/students",
+    color: "text-blue-500"
   },
   {
-    label: "Progress",
-    icon: LineChart,
-    href: "/dashboard/progress",
+    label: "Courses",
+    icon: BookOpen,
+    href: "/teacher/courses",
     color: "text-emerald-500"
   },
   {
-    label: "Leaderboard",
-    icon: Trophy,
-    href: "/dashboard/leaderboard",
+    label: "Create Quest",
+    icon: PlusCircle,
+    href: "/teacher/quests/create",
     color: "text-orange-500"
+  },
+  {
+    label: "Achievements",
+    icon: Award,
+    href: "/teacher/achievements",
+    color: "text-amber-500"
   },
   {
     label: "Profile",
     icon: UserCircle,
-    href: "/dashboard/profile",
-    color: "text-blue-500"
+    href: "/teacher/profile",
+    color: "text-sky-500"
   }
 ]
 
-export function Navbar() {
+export function TeacherNavbar() {
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(true)
-  const { user } = useAuth()
 
   // For smaller screens, automatically collapse the navbar to save space
   useEffect(() => {
@@ -97,7 +101,7 @@ export function Navbar() {
           </button>
 
           <nav className="flex items-center gap-1">
-            {routes.map((route) => {
+            {teacherRoutes.map((route) => {
               const isActive = pathname === route.href
               
               return (
@@ -145,21 +149,6 @@ export function Navbar() {
                 </Link>
               )
             })}
-
-            {user && (
-              <div className="ml-2 pl-2 border-l border-muted">
-                <LogoutButton 
-                  variant="ghost" 
-                  size="sm" 
-                  showIcon={isExpanded} 
-                  className={cn(
-                    "rounded-full transition-all duration-300",
-                    "hover:bg-accent group flex items-center",
-                    !isExpanded && "px-2 py-2"
-                  )}
-                />
-              </div>
-            )}
           </nav>
 
           {isExpanded && (
