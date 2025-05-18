@@ -27,9 +27,28 @@ export function SimplifiedMoodleForm() {
       const result = await login(username, password)
 
       if (result.success) {
-        // The auth context will handle storing the user and token
-        // Just redirect to the dashboard or appropriate page based on user role
-        router.push("/dashboard")
+        // After successful login, get the updated user from localStorage
+        // Small timeout to ensure the auth context has had time to update localStorage
+        setTimeout(() => {
+          try {
+            const storedUser = localStorage.getItem("moodlequest_user")
+            if (storedUser) {
+              const userData = JSON.parse(storedUser)
+              // Redirect based on role
+              if (userData.role === "teacher" || userData.role === "admin") {
+                router.push("/teacher/dashboard")
+              } else {
+                router.push("/dashboard")
+              }
+            } else {
+              // Default fallback if user data isn't available
+              router.push("/dashboard")
+            }
+          } catch (e) {
+            console.error("Error reading user data for redirect:", e)
+            router.push("/dashboard") // Fallback
+          }
+        }, 100)
       } else {
         setError(result.error || "Authentication failed")
       }

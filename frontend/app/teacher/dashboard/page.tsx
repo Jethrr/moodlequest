@@ -9,6 +9,7 @@ import { useQuests } from "@/hooks/use-quests"
 import QuestForm from "@/components/quests/quest-form"
 import QuestsList from "@/components/quests/quests-list"
 import { motion, AnimatePresence } from "framer-motion"
+import { useTeacherProtection } from "@/hooks/use-role-protection"
 import { 
   PlusCircle, 
   BarChart, 
@@ -27,6 +28,9 @@ import {
 } from "lucide-react"
 
 export default function TeacherDashboard() {
+  // Protect this route for teachers - students will be redirected to /dashboard
+  useTeacherProtection("/dashboard");
+  
   const [isCreating, setIsCreating] = useState(false)
   const { data: quests, isLoading, error } = useQuests()
   const [mounted, setMounted] = useState(false)

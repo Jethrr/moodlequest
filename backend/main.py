@@ -1,28 +1,82 @@
 import os
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from app.routes import quests, auth
 from app.database.connection import engine, Base, SessionLocal
 from app.database.seed import seed_initial_data
+from app.models.auth import MoodleConfig
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+logger = logging.getLogger(__name__)
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
 
+# Get Moodle URL from environment
+moodle_url = os.getenv("MOODLE_URL")
+if moodle_url:
+    logger.info(f"Using Moodle URL from environment: {moodle_url}")
+else:
+    logger.warning("MOODLE_URL environment variable not set, using default")
+
 # Seed initial data
 with SessionLocal() as db:
     seed_initial_data(db)
+    
+    # Display current Moodle configuration
+    moodle_config = db.query(MoodleConfig).first()
+    if moodle_config:
+        logger.info(f"Current Moodle configuration: URL={moodle_config.base_url}, Service={moodle_config.service_name}")
+    else:
+        logger.warning("No Moodle configuration found in database")
 
 app = FastAPI(title="MoodleQuest API")
 
-# Configure CORS
+# List of allowed origins
+origins = [
+    "http://localhost:3000",  # Next.js default
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5173",  # Vite default
+    "http://127.0.0.1:5173",
+]
+
+# Configure CORS with specific origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins in development
+    allow_origins=origins,
+    allow_origin_regex="https://.*\.vercel\.app",  # Allow Vercel deployments
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+    expose_headers=["Content-Length"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
+
+# Error handling middleware
+@app.middleware("http")
+async def errors_handling(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        logger.error(f"Request error: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(exc)},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            }
+        )
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -37,4 +91,5 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info(f"Starting MoodleQuest API server")
     uvicorn.run(app, host="0.0.0.0", port=8002) 

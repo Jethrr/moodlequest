@@ -46,11 +46,11 @@ const pets = [
 ]
 
 function BottomSignIn() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   
-  if (isAuthenticated || isLoading) return null
+  if (user || isLoading) return null
 
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-6 z-50 pointer-events-none">
@@ -128,14 +128,54 @@ function BottomSignIn() {
   )
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" }
+  }
+}
+
+const slideInRight = {
+  hidden: { opacity: 0, x: 100 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.7, ease: "easeOut" }
+  }
+}
+
+const pulseAnimation = {
+  initial: { scale: 1 },
+  animate: {
+    scale: [1, 1.03, 1],
+    transition: { 
+      duration: 3, 
+      repeat: Infinity, 
+      repeatType: "reverse" 
+    }
+  }
+}
+
 export default function LandingPage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const [activePet, setActivePet] = useState(0)
   const [showPetMessage, setShowPetMessage] = useState(false)
   const [petMessage, setPetMessage] = useState("")
   const controls = useAnimation()
   const [mounted, setMounted] = useState(false)
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   
   // Handle client-side mounting
   useEffect(() => {
@@ -158,19 +198,21 @@ export default function LandingPage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
   
-  // Change pet message periodically
+  // Pet message animation logic - Only run after mounting
   useEffect(() => {
     if (!mounted) return
     
     const messageInterval = setInterval(() => {
-      const randomPhraseIndex = Math.floor(Math.random() * pets[activePet].phrases.length)
-      setPetMessage(pets[activePet].phrases[randomPhraseIndex])
-      setShowPetMessage(true)
-      
-      // Hide message after 3 seconds
-      setTimeout(() => {
-        setShowPetMessage(false)
-      }, 3000)
+      if (pets[activePet]?.phrases) {
+        const randomPhraseIndex = Math.floor(Math.random() * pets[activePet].phrases.length)
+        setPetMessage(pets[activePet].phrases[randomPhraseIndex])
+        setShowPetMessage(true)
+        
+        // Hide message after 3 seconds
+        setTimeout(() => {
+          setShowPetMessage(false)
+        }, 3000)
+      }
     }, 5000)
     
     return () => clearInterval(messageInterval)
@@ -198,7 +240,7 @@ export default function LandingPage() {
       isActive = false
     }
   }, [controls, mounted])
-  
+
   // Change active pet periodically
   useEffect(() => {
     if (!mounted) return
@@ -211,29 +253,6 @@ export default function LandingPage() {
   }, [mounted])
 
   // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { 
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0, 
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100
-      }
-    }
-  }
-
   const slideInRight = {
     hidden: { x: 100, opacity: 0 },
     visible: { 
@@ -408,7 +427,7 @@ export default function LandingPage() {
                 </Button>
               </motion.div>
               
-              {!isAuthenticated && !isLoading && (
+              {!user && !isLoading && (
                 <motion.div 
                   whileHover={{ scale: 1.05 }} 
                   whileTap={{ scale: 0.95 }}

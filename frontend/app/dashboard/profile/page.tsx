@@ -6,6 +6,9 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useAuth } from "@/lib/auth-context"
+import { useState, useEffect } from "react"
+import { apiClient } from "@/lib/api-client"
 import { 
   BookOpen, 
   Trophy, 
@@ -20,60 +23,133 @@ import {
   GraduationCap
 } from "lucide-react"
 
+// Define types for our profile data
+interface Badge {
+  id: number | string;
+  name: string;
+  icon: string;
+  color: string;
+  locked?: boolean;
+}
+
+interface Certificate {
+  id: number | string;
+  title: string;
+  score: number;
+  date: string;
+}
+
+interface ProfileStats {
+  finished_skills: number;
+  watched_workflows: number;
+  viewed_time: string;
+  courses_completed: number;
+  quests_completed: number;
+  exp_points: number;
+}
+
+interface RankingInfo {
+  position: number;
+  total_students: number;
+}
+
+interface ProfileData {
+  id: string;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  profile_image_url?: string;
+  role?: string;
+  level?: number;
+  learning_score?: number;
+  joined_date?: string;
+  school?: string;
+  department?: string;
+  badges_collected: Badge[];
+  stats?: ProfileStats;
+  certificates: Certificate[];
+  ranking?: RankingInfo;
+}
+
 export default function ProfilePage() {
-  // Mock user data - would come from API in real implementation
-  const user = {
-    id: 1,
-    username: "anna.aminoff",
-    first_name: "Anna",
-    last_name: "Aminoff",
-    email: "anna.aminoff@example.com",
-    profile_image_url: "/avatars/anna.jpg",
-    role: "student",
-    level: 2,
-    learning_score: 3.75,
-    joined_date: "April 22, 2022",
-    school: "Brisbane Secondary College",
-    department: "Computer Science",
-    badges_collected: [
-      { id: 1, name: "Quick Learner", icon: "🚀", color: "bg-pink-500" },
-      { id: 2, name: "Champion", icon: "⭐", color: "bg-amber-500" },
-      { id: 3, name: "Dedicated", icon: "🔥", color: "bg-purple-500", locked: true },
-      { id: 4, name: "Team Player", icon: "👥", color: "bg-blue-500", locked: true },
-      { id: 5, name: "Problem Solver", icon: "🧩", color: "bg-emerald-500", locked: true }
-    ],
-    stats: {
-      finished_skills: 4,
-      watched_workflows: 12,
-      viewed_time: "1h 32min",
-      courses_completed: 3,
-      quests_completed: 15,
-      exp_points: 2450
-    },
-    certificates: [
-      {
-        id: 1,
-        title: "Introduction to Computer Science",
-        score: 8.25,
-        date: "Aug 14, 2023"
-      },
-      {
-        id: 2,
-        title: "Web Development Fundamentals",
-        score: 9.0,
-        date: "Jul 22, 2023"
+  const { user } = useAuth();
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Fetch user profile data from the backend
+    const fetchProfileData = async () => {
+      if (!user) return;
+      
+      try {
+        // Attempt to fetch extended user profile data
+        const profileResult = await apiClient.request<any>(`/users/${user.id}/profile`);
+        
+        if (profileResult.success) {
+          setProfileData({
+            ...profileResult.data,
+            // Add session data
+            id: user.id,
+            username: user.username,
+            role: user.role,
+          });
+        } else {
+          // If no extended profile exists yet, create basic profile from session
+          setProfileData({
+            id: user.id,
+            username: user.username,
+            first_name: user.username.split('.')[0] || '',
+            last_name: user.username.split('.')[1] || '',
+            email: `${user.username}@example.com`, // Placeholder until backend provides it
+            profile_image_url: "/avatars/placeholder.jpg",
+            role: user.role,
+            level: 1,
+            learning_score: 3,
+            joined_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            // Default values for missing data
+            school: "Unknown School",
+            department: "General Studies",
+            badges_collected: [],
+            stats: {
+              finished_skills: 0,
+              watched_workflows: 0,
+              viewed_time: "0min",
+              courses_completed: 0,
+              quests_completed: 0,
+              exp_points: 0
+            },
+            certificates: [],
+            ranking: {
+              position: 0,
+              total_students: 0
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      } finally {
+        setLoading(false);
       }
-    ],
-    ranking: {
-      position: 3,
-      total_students: 120
-    }
+    };
+    
+    fetchProfileData();
+  }, [user]);
+
+  // Show loading state if profile data is not yet loaded
+  if (loading || !profileData) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   // Calculate level progress
-  const currentLevelExp = 2000
-  const nextLevelExp = 3000
-  const progressToNextLevel = ((user.stats.exp_points - currentLevelExp) / (nextLevelExp - currentLevelExp)) * 100
+  const currentLevelExp = profileData.stats?.exp_points ? Math.floor(profileData.stats.exp_points / 1000) * 1000 : 0;
+  const nextLevelExp = currentLevelExp + 1000;
+  const progressToNextLevel = profileData.stats?.exp_points ?
+    ((profileData.stats.exp_points - currentLevelExp) / (nextLevelExp - currentLevelExp)) * 100 : 0;
   
   // Animation variants
   const containerVariants = {
@@ -130,18 +206,24 @@ export default function ProfilePage() {
             className="relative"
           >
             <Avatar className="h-24 w-24 border-4 border-primary/20">
-              <AvatarImage src={user.profile_image_url} />
+              <AvatarImage src={profileData.profile_image_url} />
               <AvatarFallback className="bg-primary/10 text-3xl">
-                {user.first_name[0]}{user.last_name[0]}
+                {profileData.first_name?.[0] || ''}
+                {profileData.last_name?.[0] || ''}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 -right-1 bg-primary text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center">
-              {user.level}
+              {profileData.level || 1}
             </div>
           </motion.div>
           <div className="text-center md:text-left">
-            <h1 className="text-2xl font-bold">{user.first_name} {user.last_name}</h1>
-            <p className="text-muted-foreground">@{user.username}</p>
+            <h1 className="text-2xl font-bold">{profileData.first_name} {profileData.last_name}</h1>
+            <p className="text-muted-foreground">@{profileData.username}</p>
+            <div className="mt-1">
+              <Badge variant="secondary" className="font-medium capitalize">
+                {profileData.role || 'student'}
+              </Badge>
+            </div>
           </div>
           <motion.button 
             whileHover={{ scale: 1.05 }}
@@ -182,7 +264,7 @@ export default function ProfilePage() {
                   strokeLinecap="round"
                   strokeDasharray="283"
                   initial={{ strokeDashoffset: 283 }}
-                  animate={{ strokeDashoffset: 283 - (283 * user.learning_score / 5) }}
+                  animate={{ strokeDashoffset: 283 - (283 * (profileData.learning_score || 0) / 5) }}
                   transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
                   className="text-primary"
                   transform="rotate(-90 50 50)"
@@ -195,7 +277,7 @@ export default function ProfilePage() {
                   textAnchor="middle" 
                   fontWeight="bold"
                 >
-                  {user.learning_score}
+                  {profileData.learning_score || 0}
                 </text>
               </svg>
             </motion.div>
@@ -217,7 +299,7 @@ export default function ProfilePage() {
               <div className="rounded-full bg-blue-100 p-2 mb-2">
                 <GraduationCap className="h-5 w-5 text-blue-500" />
               </div>
-              <div className="text-xl font-bold">{user.stats.finished_skills}</div>
+              <div className="text-xl font-bold">{profileData.stats?.finished_skills || 0}</div>
               <div className="text-xs text-muted-foreground text-center">Finished skills</div>
             </motion.div>
 
@@ -228,7 +310,7 @@ export default function ProfilePage() {
               <div className="rounded-full bg-amber-100 p-2 mb-2">
                 <Video className="h-5 w-5 text-amber-500" />
               </div>
-              <div className="text-xl font-bold">{user.stats.watched_workflows}</div>
+              <div className="text-xl font-bold">{profileData.stats?.watched_workflows || 0}</div>
               <div className="text-xs text-muted-foreground text-center">Watched workflows</div>
             </motion.div>
 
@@ -239,7 +321,7 @@ export default function ProfilePage() {
               <div className="rounded-full bg-emerald-100 p-2 mb-2">
                 <Clock className="h-5 w-5 text-emerald-500" />
               </div>
-              <div className="text-xl font-bold">{user.stats.viewed_time}</div>
+              <div className="text-xl font-bold">{profileData.stats?.viewed_time || '0min'}</div>
               <div className="text-xs text-muted-foreground text-center">Viewed time</div>
             </motion.div>
 
@@ -250,7 +332,7 @@ export default function ProfilePage() {
               <div className="rounded-full bg-violet-100 p-2 mb-2">
                 <BookOpen className="h-5 w-5 text-violet-500" />
               </div>
-              <div className="text-xl font-bold">{user.stats.courses_completed}</div>
+              <div className="text-xl font-bold">{profileData.stats?.courses_completed || 0}</div>
               <div className="text-xs text-muted-foreground text-center">Courses completed</div>
             </motion.div>
 
@@ -261,7 +343,7 @@ export default function ProfilePage() {
               <div className="rounded-full bg-red-100 p-2 mb-2">
                 <Star className="h-5 w-5 text-red-500" />
               </div>
-              <div className="text-xl font-bold">{user.stats.quests_completed}</div>
+              <div className="text-xl font-bold">{profileData.stats?.quests_completed || 0}</div>
               <div className="text-xs text-muted-foreground text-center">Quests completed</div>
             </motion.div>
 
@@ -272,7 +354,7 @@ export default function ProfilePage() {
               <div className="rounded-full bg-orange-100 p-2 mb-2">
                 <Trophy className="h-5 w-5 text-orange-500" />
               </div>
-              <div className="text-xl font-bold">{user.stats.exp_points}</div>
+              <div className="text-xl font-bold">{profileData.stats?.exp_points || 0}</div>
               <div className="text-xs text-muted-foreground text-center">Total XP</div>
             </motion.div>
           </motion.div>
@@ -283,7 +365,7 @@ export default function ProfilePage() {
         {/* Left Column */}
         <motion.div variants={itemVariants} className="space-y-6">
           {/* User Info */}
-                       <motion.div 
+          <motion.div 
             whileHover="hover"
             variants={cardHoverVariants}
             className="bg-background/95 backdrop-blur-lg rounded-xl border overflow-hidden"
@@ -296,21 +378,21 @@ export default function ProfilePage() {
                 <Briefcase className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <div className="text-sm text-muted-foreground">Department</div>
-                  <div>{user.department}</div>
+                  <div>{profileData.department || 'General Studies'}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <div className="text-sm text-muted-foreground">School</div>
-                  <div>{user.school}</div>
+                  <div>{profileData.school || 'Unknown School'}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <div className="text-sm text-muted-foreground">Student since</div>
-                  <div>{user.joined_date}</div>
+                  <div>{profileData.joined_date || 'Unknown'}</div>
                 </div>
               </div>
             </div>
@@ -327,7 +409,7 @@ export default function ProfilePage() {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-5 gap-4">
-                {user.badges_collected.map((badge) => (
+                {profileData.badges_collected.map((badge: Badge) => (
                   <motion.div 
                     key={badge.id}
                     whileHover={{ scale: 1.1 }}
@@ -359,7 +441,7 @@ export default function ProfilePage() {
               <h2 className="text-xl font-semibold">Certificates</h2>
             </div>
             <div className="divide-y">
-              {user.certificates.map((cert) => (
+              {profileData.certificates.map((cert: Certificate) => (
                 <motion.div 
                   key={cert.id} 
                   className="p-4 flex items-center gap-3 hover:bg-muted/50"
@@ -393,12 +475,12 @@ export default function ProfilePage() {
             <div className="p-6">
               <div className="flex items-center gap-4 mb-4">
                 <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-primary">{user.level}</span>
+                  <span className="text-2xl font-bold text-primary">{profileData.level || 1}</span>
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium">Progress to Level {user.level + 1}</span>
-                    <span className="text-sm font-medium">{user.stats.exp_points - currentLevelExp}/{nextLevelExp - currentLevelExp} XP</span>
+                    <span className="text-sm font-medium">Progress to Level {profileData.level || 1 + 1}</span>
+                    <span className="text-sm font-medium">{profileData.stats?.exp_points ? Math.floor(profileData.stats.exp_points / 1000) * 1000 - currentLevelExp : 0}/{nextLevelExp - currentLevelExp} XP</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <motion.div 
@@ -414,7 +496,7 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Current rank</span>
-                  <span className="text-sm font-medium">{user.ranking.position} of {user.ranking.total_students}</span>
+                  <span className="text-sm font-medium">{profileData.ranking?.position || 0} of {profileData.ranking?.total_students || 0}</span>
                 </div>
                 <div className="flex">
                   <div className="flex-1 h-2 bg-muted rounded-l-full">
@@ -428,7 +510,7 @@ export default function ProfilePage() {
                   <div className="flex-[2] h-2 bg-muted">
                     <motion.div 
                       className="bg-gradient-to-r from-primary/70 to-primary/30 h-full"
-                      style={{ width: `${user.ranking.position / user.ranking.total_students * 100}%` }}
+                      style={{ width: `${(profileData.ranking?.position || 0) / (profileData.ranking?.total_students || 1) * 100}%` }}
                     />
                   </div>
                   <div className="flex-[2] h-2 bg-muted rounded-r-full" />

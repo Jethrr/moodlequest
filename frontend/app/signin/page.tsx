@@ -81,8 +81,8 @@ export default function SignInPage() {
         <Button variant="ghost" className="flex items-center gap-1 group">
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
           <span>Back</span>
-        </Button>
-      </Link>
+          </Button>
+        </Link>
 
       <motion.div 
         initial="hidden"
@@ -108,7 +108,7 @@ export default function SignInPage() {
           <motion.div variants={itemVariants}>
             <div className="bg-background/80 backdrop-blur-sm p-5 rounded-xl border shadow-sm">
               <SimplifiedMoodleForm />
-            </div>
+          </div>
           </motion.div>
 
           <motion.div 

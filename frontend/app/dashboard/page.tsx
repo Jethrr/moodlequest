@@ -4,8 +4,12 @@ import { motion } from 'framer-motion'
 import { QuestBoard } from "@/components/dashboard/quest-board"
 import { VirtualPet } from "@/components/dashboard/virtual-pet"
 import { Card } from "@/components/ui/card"
+import { useStudentProtection } from "@/hooks/use-role-protection"
 
 export default function DashboardPage() {
+  // Protect this route for students - teachers will be redirected to /teacher/dashboard
+  useStudentProtection("/teacher/dashboard");
+  
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {

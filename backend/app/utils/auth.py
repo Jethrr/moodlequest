@@ -9,6 +9,9 @@ from app.database.connection import get_db
 from app.models.user import User
 from app.models.auth import Token as TokenModel
 from app.schemas.auth import TokenData
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Secret key for JWT - should be loaded from environment in production
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
@@ -227,3 +230,36 @@ def get_role_required(required_role: str):
         return current_user
         
     return role_checker 
+
+
+async def validate_moodle_token(token: str, moodle_service: Any) -> bool:
+    """
+    Validate if a Moodle token is still valid.
+    
+    Args:
+        token: Moodle token to validate
+        moodle_service: Initialized MoodleService instance
+        
+    Returns:
+        True if token is valid, False otherwise
+    """
+    if not token:
+        logger.warning("No token provided for validation")
+        return False
+    
+    logger.info(f"Validating Moodle token against {moodle_service.base_url}")
+    
+    try:
+        user_info_result = await moodle_service.get_user_info(token)
+        is_valid = user_info_result.get("success", False)
+        
+        if is_valid:
+            logger.info(f"Token validation successful")
+        else:
+            error_msg = user_info_result.get("error", "Unknown error")
+            logger.warning(f"Token validation failed: {error_msg}")
+            
+        return is_valid
+    except Exception as exc:
+        logger.error(f"Error validating token: {str(exc)}")
+        return False 

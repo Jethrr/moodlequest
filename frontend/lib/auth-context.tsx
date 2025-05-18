@@ -4,18 +4,24 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter, usePathname } from "next/navigation"
 import { apiClient, MoodleLoginResult } from "./api-client"
 
-type User = {
+export type User = {
   id: string
   token: string
   username: string
-  role?: string
+  name: string
+  email: string
+  role: string
+  moodleId: string
+  avatarUrl?: string
+  level?: number
+  xp?: number
+  badges?: number
 }
 
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (username: string, password: string) => Promise<MoodleLoginResult>
   logout: () => void
 }
 
@@ -24,42 +30,55 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
+  // Mark component as mounted on client-side
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   // Check for existing session on component mount
   useEffect(() => {
-    const checkAuth = async () => {
+    const loadUserFromStorage = () => {
       try {
-        const storedUser = localStorage.getItem("moodlequest_user")
-        if (storedUser) {
-          const userData = JSON.parse(storedUser)
-          // Set the token in the API client
-          apiClient.setToken(userData.token)
-
-          // You could verify the token is still valid here with a server call
-          const userInfoResult = await apiClient.getUserInfo()
-          if (userInfoResult.success) {
+        if (typeof window !== 'undefined') {
+          const storedUser = localStorage.getItem("moodlequest_user")
+          if (storedUser) {
+            const userData = JSON.parse(storedUser)
+            // Set the token in the API client
+            apiClient.setToken(userData.token)
+            
+            // Use the stored user data directly
             setUser(userData)
-          } else {
-            // Token is invalid, clear storage
-            localStorage.removeItem("moodlequest_user")
           }
         }
       } catch (error) {
-        console.error("Error checking authentication:", error)
+        console.error("Error loading user from storage:", error)
         localStorage.removeItem("moodlequest_user")
       } finally {
         setIsLoading(false)
       }
     }
 
-    checkAuth()
-  }, [])
+    if (isMounted) {
+      loadUserFromStorage()
+    }
+  }, [isMounted])
+
+  // Update token in API client whenever user changes
+  useEffect(() => {
+    if (user?.token) {
+      apiClient.setToken(user.token)
+    } else {
+      apiClient.setToken('')
+    }
+  }, [user])
 
   // Redirect unauthenticated users away from protected routes
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && isMounted) {
       const publicRoutes = ["/signin", "/register", "/"]
       const isPublicRoute = publicRoutes.includes(pathname || "")
       
@@ -67,59 +86,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push("/signin")
       }
     }
-  }, [user, isLoading, pathname, router])
+  }, [user, isLoading, isMounted, pathname, router])
 
-  const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    setIsLoading(true)
+  const login = async (username: string, password: string) => {
     try {
-      // Call the FastAPI backend for authentication
-      const result = await apiClient.moodleLogin({ username, password })
+      const result = await apiClient.login(username, password)
       
-      if (result.success && result.data.success && result.data.token) {
+      if (result.success && result.user) {
+        // Ensure we have a complete user object with all required fields
         const userData: User = {
-          id: String(result.data.user?.id || ""),
-          token: result.data.token,
-          username: result.data.user?.username || username,
-          role: result.data.user?.role || "student"
+          id: result.user.id || "",
+          token: result.token || result.access_token || "",
+          username: result.user.username || username,
+          name: result.user.name || result.user.username || username,
+          email: result.user.email || "",
+          role: result.user.role || "student",
+          moodleId: result.user.moodleId || result.user.id || "",
+          avatarUrl: result.user.avatarUrl || "",
+          level: result.user.level,
+          xp: result.user.xp,
+          badges: result.user.badges
         }
         
-        localStorage.setItem("moodlequest_user", JSON.stringify(userData))
         setUser(userData)
-        apiClient.setToken(result.data.token)
-        return { success: true }
-      } else {
-        return { 
-          success: false, 
-          error: result.success ? result.data.error : result.error 
-        }
+        localStorage.setItem("moodlequest_user", JSON.stringify(userData))
       }
+      
+      return result
     } catch (error) {
       console.error("Login error:", error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error occurred" 
-      }
-    } finally {
-      setIsLoading(false)
+      throw error
     }
   }
 
-  const logout = async () => {
-    try {
-      // Call the API to logout
-      await apiClient.logout()
-    } catch (error) {
+  const logout = () => {
+    apiClient.logout().catch(error => {
       console.error("Error during logout:", error)
-    } finally {
-      // Even if API call fails, remove user from local storage
-      localStorage.removeItem("moodlequest_user")
-      setUser(null)
-      router.push("/signin")
-    }
+    })
+    
+    setUser(null)
+    localStorage.removeItem("moodlequest_user")
+    router.push("/signin")
   }
+
+  // Only provide the real context value after mounting on client
+  const contextValue = isMounted 
+    ? { user, isLoading, login, logout }
+    : { user: null, isLoading: true, login, logout }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )
@@ -136,12 +152,17 @@ export function useAuth() {
 export function useRequireAuth() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const [isMounted, setIsMounted] = useState(false)
   
   useEffect(() => {
-    if (!isLoading && !user) {
+    setIsMounted(true)
+  }, [])
+  
+  useEffect(() => {
+    if (isMounted && !isLoading && !user) {
       router.push("/signin")
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, isMounted, router])
   
   return { user, isLoading }
 } 

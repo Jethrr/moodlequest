@@ -3,6 +3,7 @@ from app.models.user import User
 from app.models.course import Course
 from app.models.auth import MoodleConfig
 from passlib.context import CryptContext
+import os
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -11,7 +12,14 @@ def seed_initial_data(db: Session):
     """Seed initial data for testing purposes"""
     # Check if we already have users
     if db.query(User).count() > 0:
-        return  # Skip if data exists
+        # If we have users, just update the Moodle config if needed
+        moodle_url = os.getenv("MOODLE_URL")
+        if moodle_url:
+            moodle_config = db.query(MoodleConfig).first()
+            if moodle_config:
+                moodle_config.base_url = moodle_url
+                db.commit()
+        return  # Skip the rest of data seeding
     
     # Create a teacher user
     teacher = User(
@@ -40,7 +48,7 @@ def seed_initial_data(db: Session):
     # Add a default Moodle configuration
     if db.query(MoodleConfig).count() == 0:
         moodle_config = MoodleConfig(
-            base_url="http://localhost:8080",
+            base_url=os.getenv("MOODLE_URL", "http://localhost:8080"),
             service_name="modquest"
         )
         db.add(moodle_config)

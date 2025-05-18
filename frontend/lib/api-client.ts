@@ -2,7 +2,10 @@
  * API client for interacting with the FastAPI backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002/api';
+import { User } from "./auth-context"
+
+// Update to match your actual backend URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export interface ApiErrorResponse {
   success: false;
@@ -25,17 +28,10 @@ export interface MoodleLoginParams {
 
 export interface MoodleLoginResult {
   success: boolean;
+  user?: User;
   token?: string;
-  user?: {
-    id: number;
-    username: string;
-    email?: string;
-    role: string;
-    first_name?: string;
-    last_name?: string;
-    is_active: boolean;
-    created_at: string;
-  };
+  access_token?: string;
+  refresh_token?: string;
   error?: string;
 }
 
@@ -54,11 +50,11 @@ export interface JwtToken {
 
 export class ApiClient {
   private baseUrl: string;
-  private token: string | null;
+  private token: string | null = null;
 
   constructor(baseUrl = API_BASE_URL) {
     this.baseUrl = baseUrl;
-    this.token = null;
+    console.log('API client initialized with base URL:', this.baseUrl);
   }
 
   setToken(token: string) {
@@ -68,57 +64,54 @@ export class ApiClient {
   async request<T>(
     endpoint: string,
     options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
-    
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {})
-    };
-
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+  ): Promise<T> {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      ...options.headers,
     }
 
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...options,
+      headers,
+    })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        return {
-          success: false,
-          error: errorData.detail || errorData.error || response.statusText,
-          status: response.status,
-        };
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  async login(username: string, password: string): Promise<MoodleLoginResult> {
+    try {
+      const response = await this.request<MoodleLoginResult>("/auth/moodle/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      })
+
+      if (response.success && response.token) {
+        this.setToken(response.token)
       }
 
-      const data = await response.json();
-      return { success: true, data };
+      return response
     } catch (error) {
+      console.error("Login error:", error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      }
     }
   }
 
-  // Authentication methods
-  async moodleLogin(params: MoodleLoginParams): Promise<ApiResponse<MoodleLoginResult>> {
-    return this.request<MoodleLoginResult>('/auth/moodle/login', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
-  }
-
-  async getUserInfo(): Promise<ApiResponse<any>> {
-    return this.request<any>('/auth/me');
-  }
-
-  async logout(): Promise<ApiResponse<any>> {
-    return this.request<any>('/auth/logout', { method: 'POST' });
+  async logout(): Promise<void> {
+    try {
+      await this.request("/auth/logout", { method: "POST" })
+    } catch (error) {
+      console.error("Logout error:", error)
+    } finally {
+      this.token = null
+    }
   }
 }
 
