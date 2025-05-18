@@ -14,13 +14,13 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: Optional[str] = None
-    moodle_user_id: Optional[str] = None
-    moodle_token: Optional[str] = None
+    moodle_user_id: Optional[int] = None
+    user_token: Optional[str] = None
 
 
 class UserResponse(UserBase):
     id: int
-    moodle_user_id: Optional[str] = None
+    moodle_user_id: Optional[int] = None
     created_at: datetime
 
     class Config:

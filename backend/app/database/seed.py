@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.course import Course
+from app.models.auth import MoodleConfig
 from passlib.context import CryptContext
 
 # Password hashing
@@ -35,6 +36,15 @@ def seed_initial_data(db: Session):
     )
     db.add(student)
     db.flush()
+    
+    # Add a default Moodle configuration
+    if db.query(MoodleConfig).count() == 0:
+        moodle_config = MoodleConfig(
+            base_url="http://localhost:8080",
+            service_name="modquest"
+        )
+        db.add(moodle_config)
+        db.flush()
     
     # Create sample courses
     courses = [

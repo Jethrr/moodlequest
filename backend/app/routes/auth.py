@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
-from app.models.user import User 
+from app.models.user import User
 from app.models.auth import MoodleConfig
 from app.schemas.auth import (
     UserResponse, 
@@ -41,8 +41,77 @@ async def moodle_login(
     """
     # Get Moodle config from database or use default
     moodle_config = db.query(MoodleConfig).first()
-    base_url = moodle_config.base_url if moodle_config else "https://moodle"
+    base_url = moodle_config.base_url if moodle_config else "http://localhost:8080"
     service = user_data.service or (moodle_config.service_name if moodle_config else "modquest")
+    
+    # Development mode - bypass Moodle authentication if username contains "dev-"
+    if user_data.username.startswith("dev-"):
+        dev_username = user_data.username[4:]  # Remove "dev-" prefix
+        
+        # Check if user exists
+        user = db.query(User).filter(User.username == dev_username).first()
+        
+        if not user:
+            # Create a development user automatically
+            user = User(
+                username=dev_username,
+                email=f"{dev_username}@example.com",
+                password_hash="development_mode",
+                first_name="Development",
+                last_name="User",
+                role="teacher",  # Default to teacher role for dev
+                user_token="dev-token-123"
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        
+        # Create access & refresh tokens
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username},
+            expires_delta=access_token_expires
+        )
+        
+        refresh_token = create_refresh_token(
+            data={"sub": user.username}
+        )
+        
+        # Store tokens in database
+        store_token(
+            db=db,
+            token=access_token,
+            user_id=user.id,
+            token_type="access",
+            expires_at=datetime.utcnow() + access_token_expires
+        )
+        
+        store_token(
+            db=db,
+            token=refresh_token,
+            user_id=user.id,
+            token_type="refresh",
+            expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+        
+        # Create UserResponse
+        user_response = UserResponse(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            role=user.role,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            is_active=user.is_active,
+            moodle_user_id=user.moodle_user_id,
+            created_at=user.created_at
+        )
+        
+        return MoodleLoginResponse(
+            success=True,
+            token="dev-token-123",
+            user=user_response
+        )
     
     # Initialize Moodle service
     async with MoodleService(base_url=base_url) as moodle:
@@ -76,9 +145,9 @@ async def moodle_login(
         
         if user:
             # Update existing user
-            user.moodle_token = token_result.token
+            user.user_token = token_result.token
             if "id" in moodle_user:
-                user.moodle_user_id = str(moodle_user["id"])
+                user.moodle_user_id = int(moodle_user["id"])
             if "email" in moodle_user:
                 user.email = moodle_user["email"]
             if "firstname" in moodle_user:
@@ -90,8 +159,8 @@ async def moodle_login(
             user = User(
                 username=user_data.username,
                 email=moodle_user.get("email", ""),
-                moodle_user_id=str(moodle_user.get("id", "")),
-                moodle_token=token_result.token,
+                moodle_user_id=int(moodle_user.get("id", 0)),
+                user_token=token_result.token,
                 first_name=moodle_user.get("firstname", ""),
                 last_name=moodle_user.get("lastname", ""),
                 # Determine role from user attributes or default to student

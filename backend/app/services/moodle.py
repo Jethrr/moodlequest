@@ -7,7 +7,7 @@ from app.schemas.auth import MoodleToken, UserResponse
 logger = logging.getLogger(__name__)
 
 class MoodleService:
-    def __init__(self, base_url: str = "https://moodle"):
+    def __init__(self, base_url: str = "http://localhost:8080"):
         """Initialize the Moodle service with the base URL."""
         self.base_url = base_url.rstrip("/")  # Remove trailing slash if present
         self.client = httpx.AsyncClient(timeout=30.0)
@@ -33,12 +33,14 @@ class MoodleService:
         }
         
         try:
+            logger.info(f"Attempting to connect to Moodle at URL: {url}")
             response = await self.client.get(url, params=params)
             response.raise_for_status()
             
             data = response.json()
             
             if "token" in data:
+                logger.info("Successfully obtained Moodle token")
                 return MoodleToken(token=data["token"])
             else:
                 error_msg = data.get("error", "Unknown authentication error")
@@ -46,16 +48,24 @@ class MoodleService:
                 return MoodleToken(token="", error=error_msg)
                 
         except httpx.HTTPStatusError as exc:
-            logger.error(f"HTTP error occurred: {exc.response.status_code} - {exc.response.text}")
-            return MoodleToken(token="", error=f"HTTP error: {exc.response.status_code}")
+            error_msg = f"HTTP error occurred: {exc.response.status_code} - {exc.response.text}"
+            logger.error(error_msg)
+            return MoodleToken(token="", error=error_msg)
+            
+        except httpx.ConnectError as exc:
+            error_msg = f"Connection error: Could not connect to {self.base_url}. Please verify the Moodle URL is correct and the server is running."
+            logger.error(error_msg)
+            return MoodleToken(token="", error=error_msg)
             
         except httpx.RequestError as exc:
-            logger.error(f"Request error occurred: {str(exc)}")
-            return MoodleToken(token="", error=f"Connection error: {str(exc)}")
+            error_msg = f"Request error: {str(exc)}"
+            logger.error(error_msg)
+            return MoodleToken(token="", error=error_msg)
             
         except Exception as exc:
-            logger.error(f"Unexpected error: {str(exc)}")
-            return MoodleToken(token="", error=f"Unexpected error: {str(exc)}")
+            error_msg = f"Unexpected error: {str(exc)}"
+            logger.error(error_msg)
+            return MoodleToken(token="", error=error_msg)
 
     async def get_user_info(self, token: str) -> dict:
         """
