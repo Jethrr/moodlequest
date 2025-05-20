@@ -20,13 +20,15 @@ import {
   MapPin,
   Briefcase,
   Calendar,
-  GraduationCap
+  GraduationCap,
+  Edit
 } from "lucide-react"
 import { fetchUserProfile, ProfileData as MoodleProfileData } from '@/lib/profile-service'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, RefreshCw } from "lucide-react"
+import Link from "next/link"
 
 // Define types for our profile data
 interface Badge {
@@ -247,14 +249,13 @@ export function ProfileContent() {
                 {profileData.role || 'student'}
               </Badge>
             </div>
+            <Button asChild variant="outline" size="sm" className="mt-3">
+              <Link href="/dashboard/profile/edit">
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Link>
+            </Button>
           </div>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-full text-sm font-medium transition-colors"
-          >
-            Edit profile
-          </motion.button>
         </div>
 
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
