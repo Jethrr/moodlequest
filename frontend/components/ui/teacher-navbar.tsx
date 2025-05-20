@@ -13,8 +13,13 @@ import {
   Award,
   UserCircle,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Sun,
+  Moon
 } from "lucide-react"
+import { ModeToggle } from "@/components/ui/mode-toggle"
+import { LogoutButton } from "@/components/logout-button"
+import { useAuth } from "@/lib/auth-context"
 
 const teacherRoutes = [
   {
@@ -58,6 +63,7 @@ const teacherRoutes = [
 export function TeacherNavbar() {
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(true)
+  const { user } = useAuth()
 
   // For smaller screens, automatically collapse the navbar to save space
   useEffect(() => {
@@ -149,6 +155,26 @@ export function TeacherNavbar() {
                 </Link>
               )
             })}
+
+            {user && (
+              <>
+                <div className="ml-2 pl-2 border-l border-muted">
+                  <LogoutButton 
+                    variant="ghost" 
+                    size="sm" 
+                    showIcon={isExpanded} 
+                    className={cn(
+                      "rounded-full transition-all duration-300",
+                      "hover:bg-accent group flex items-center",
+                      !isExpanded && "px-2 py-2"
+                    )}
+                  />
+                </div>
+                <div className="ml-2 pl-2 border-l border-muted">
+                  <ModeToggle />
+                </div>
+              </>
+            )}
           </nav>
 
           {isExpanded && (

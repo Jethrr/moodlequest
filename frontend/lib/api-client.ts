@@ -61,26 +61,56 @@ export class ApiClient {
     this.token = token;
   }
 
-  async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-      ...options.headers,
+  /**
+   * Make a request to the API
+   * @param endpoint The API endpoint to call
+   * @param options Additional fetch options
+   * @returns The API response
+   */
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`;
+    
+    // Merge provided headers with defaults
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {}),
+      ...(options.headers || {})
+    };
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
+      
+      if (!response.ok) {
+        // Try to parse error response
+        try {
+          const errorData = await response.json();
+          return {
+            success: false,
+            error: errorData.error || errorData.message || `HTTP error: ${response.status}`,
+            status: response.status
+          };
+        } catch (parseError) {
+          return {
+            success: false,
+            error: `HTTP error: ${response.status} ${response.statusText}`,
+            status: response.status
+          };
+        }
+      }
+      
+      const data = await response.json();
+      return { success: true, ...data };
+    } catch (error) {
+      console.error(`API request failed for ${endpoint}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error'
+      };
     }
-
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-    })
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   async login(username: string, password: string): Promise<MoodleLoginResult> {

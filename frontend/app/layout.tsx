@@ -1,13 +1,15 @@
-'use client'
-
 import type React from "react"
+import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Providers } from "./providers"
-import { AppLayout } from "@/components/layout/app-layout"
+import { RootLayoutClient } from "./root-layout-client"
 
 const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "MoodleQuest - Gamified Learning Platform",
+  description: "Enhance your Moodle experience with gamification elements",
+}
 
 export default function RootLayout({
   children,
@@ -20,14 +22,8 @@ export default function RootLayout({
         <title>MoodleQuest</title>
         <meta name="description" content="Gamified learning platform for Moodle" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <Providers>
-            <AppLayout>
-              {children}
-            </AppLayout>
-          </Providers>
-        </ThemeProvider>
+      <body className={`${inter.className} transition-colors duration-300`} suppressHydrationWarning>
+        <RootLayoutClient>{children}</RootLayoutClient>
       </body>
     </html>
   )

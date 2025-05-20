@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { apiClient, MoodleLoginResult } from "./api-client"
+import { getMoodleUserByField } from './api-utils'
 
 export type User = {
   id: string
@@ -106,6 +107,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           level: result.user.level,
           xp: result.user.xp,
           badges: result.user.badges
+        }
+        
+        // If we have a token, try to get extended user info from Moodle
+        if (userData.token) {
+          try {
+            const userInfoResult = await getMoodleUserByField(
+              userData.token,
+              'username',
+              userData.username
+            )
+            
+            if (userInfoResult.success && userInfoResult.user) {
+              const moodleUser = userInfoResult.user
+              
+              // Update user data with Moodle information
+              userData.name = `${moodleUser.firstname || ''} ${moodleUser.lastname || ''}`.trim() || userData.name
+              userData.email = moodleUser.email || userData.email
+              userData.avatarUrl = moodleUser.profileimageurl || userData.avatarUrl
+              
+              // Store this updated user in backend
+              try {
+                await fetch('/api/auth/moodle/store-user', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    moodleId: moodleUser.id,
+                    username: userData.username,
+                    email: userData.email,
+                    firstName: moodleUser.firstname || '',
+                    lastName: moodleUser.lastname || '',
+                    token: userData.token
+                  })
+                })
+              } catch (storeError) {
+                console.warn("Failed to store user data in backend:", storeError)
+              }
+            }
+          } catch (userInfoError) {
+            console.warn("Failed to get extended user info:", userInfoError)
+          }
         }
         
         setUser(userData)

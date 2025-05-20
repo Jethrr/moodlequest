@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
 import { AlertCircle, RefreshCcw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { getMoodleUserByField } from '@/lib/api-utils';
 
 export function SimplifiedMoodleForm() {
   const router = useRouter()
@@ -35,36 +36,42 @@ export function SimplifiedMoodleForm() {
     }
 
     try {
-      console.log("Attempting to sign in with Moodle");
+      console.log("Attempting Moodle login...");
       
-      // Use the updated API route that directly communicates with Moodle
-      const response = await fetch("/api/auth/moodle/login", {
-        method: "POST",
+      // First get the login token from Moodle
+      const result = await fetch('/api/auth/moodle/login', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          username,
-          password,
-          service: "modquest", // This should match the service name in Moodle
-        }),
-      });
-      
-      let result;
-      try {
-        result = await response.json();
-      } catch (parseError) {
-        console.error("Error parsing response:", parseError);
-        throw new Error("Invalid response from server. The service might be unavailable.");
-      }
-      
-      if (!response.ok) {
-        console.error("Login API error:", response.status, result?.error);
-        throw new Error(result?.error || `Authentication failed: ${response.statusText}`);
-      }
+        body: JSON.stringify({ username, password }),
+      }).then(res => res.json());
       
       if (result.success && result.token && result.user) {
         console.log("Login successful, storing user data");
+        
+        // Try to get extended user profile with more details
+        try {
+          const userInfoResult = await getMoodleUserByField(
+            result.token,
+            'username',
+            username
+          );
+          
+          if (userInfoResult.success && userInfoResult.user) {
+            const moodleUser = userInfoResult.user;
+            // Update result user with more profile data
+            result.user = {
+              ...result.user,
+              name: `${moodleUser.firstname || ''} ${moodleUser.lastname || ''}`.trim() || result.user.name,
+              email: moodleUser.email || result.user.email,
+              avatarUrl: moodleUser.profileimageurl || result.user.avatarUrl,
+            };
+          }
+        } catch (profileError) {
+          console.warn("Could not fetch extended profile:", profileError);
+          // Continue with basic user info
+        }
         
         // Create a complete user object with all required fields
         const userData = {
@@ -102,24 +109,9 @@ export function SimplifiedMoodleForm() {
       }
     } catch (error: any) {
       console.error("Authentication error:", error);
-      
-      // Different handling based on error type
-      if (error.message.includes("Failed to fetch") || 
-          error.message.includes("NetworkError") || 
-          error.message.includes("network") ||
-          error.message.includes("ECONNREFUSED") ||
-          error.message.includes("Invalid response")) {
-        setNetworkError(
-          "Network error when attempting to connect to Moodle. Please check your connection or contact your administrator."
-        );
-        setIsRetrying(false);
-      } else if (error.message.includes("token")) {
-        setError("Authentication failed. Please check your Moodle username and password.");
-      } else {
-        setError(error.message || "An unexpected error occurred. Please try again later.");
-      }
+      setError(error.message || "Failed to connect to Moodle. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 

@@ -6,54 +6,39 @@ import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import {
-  GraduationCap,
-  Trophy,
-  UserCircle,
+  Home,
+  BookOpen,
+  Info,
+  LogIn,
   Menu,
-  ChevronRight,
-  LineChart,
-  LayoutDashboard,
-  Sun,
-  Moon
+  ChevronRight
 } from "lucide-react"
-import { LogoutButton } from "@/components/logout-button"
+import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { ModeToggle } from "@/components/ui/mode-toggle"
 
 const routes = [
   {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/dashboard",
+    label: "Home",
+    icon: Home,
+    href: "/",
+    color: "text-blue-500"
+  },
+  {
+    label: "Features",
+    icon: BookOpen,
+    href: "/features",
     color: "text-purple-500"
   },
   {
-    label: "Quests",
-    icon: GraduationCap,
-    href: "/student/quests",
-    color: "text-violet-500"
-  },
-  {
-    label: "Progress",
-    icon: LineChart,
-    href: "/dashboard/progress",
+    label: "About",
+    icon: Info,
+    href: "/about",
     color: "text-emerald-500"
-  },
-  {
-    label: "Leaderboard",
-    icon: Trophy,
-    href: "/dashboard/leaderboard",
-    color: "text-orange-500"
-  },
-  {
-    label: "Profile",
-    icon: UserCircle,
-    href: "/dashboard/profile",
-    color: "text-blue-500"
   }
 ]
 
-export function Navbar() {
+export function LandingNavbar() {
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(true)
   const { user } = useAuth()
@@ -78,6 +63,8 @@ export function Navbar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  if (user) return null;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-6 z-50 pointer-events-none">
       <motion.div
@@ -87,16 +74,16 @@ export function Navbar() {
         className="pointer-events-auto"
       >
         <div className={cn(
-          "flex items-center gap-2 bg-background/95 backdrop-blur-lg rounded-full p-2 shadow-xl border",
+          "flex items-center gap-2 navbar-bottom rounded-full p-2 shadow-xl border",
           "transition-all duration-300 ease-in-out",
           isExpanded ? "pr-6" : "hover:pr-6"
         )}>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 hover:bg-accent rounded-full transition"
+            className="p-2 hover:bg-accent/20 rounded-full transition"
             aria-label={isExpanded ? "Collapse navigation" : "Expand navigation"}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5 text-white" />
           </button>
 
           <nav className="flex items-center gap-1">
@@ -109,14 +96,14 @@ export function Navbar() {
                   href={route.href}
                   className={cn(
                     "relative px-3 py-2 rounded-full transition-all duration-300",
-                    "hover:bg-accent group flex items-center gap-2",
-                    isActive && "bg-accent"
+                    "hover:bg-white/10 group flex items-center gap-2",
+                    isActive && "bg-white/10"
                   )}
                 >
                   <route.icon className={cn(
                     "h-5 w-5 transition-colors",
-                    isActive ? route.color : "text-muted-foreground",
-                    "group-hover:text-foreground"
+                    isActive ? route.color : "text-white/70",
+                    "group-hover:text-white"
                   )} />
                   
                   {isExpanded && (
@@ -126,8 +113,8 @@ export function Navbar() {
                       exit={{ opacity: 0, width: 0 }}
                       className={cn(
                         "text-sm font-medium transition-colors",
-                        isActive ? "text-foreground" : "text-muted-foreground",
-                        "group-hover:text-foreground"
+                        isActive ? "text-white" : "text-white/70",
+                        "group-hover:text-white"
                       )}
                     >
                       {route.label}
@@ -136,8 +123,8 @@ export function Navbar() {
 
                   {isActive && (
                     <motion.div
-                      className="absolute inset-0 border rounded-full"
-                      layoutId="navbar-active"
+                      className="absolute inset-0 border border-white/20 rounded-full"
+                      layoutId="landing-navbar-active"
                       transition={{
                         type: "spring",
                         stiffness: 350,
@@ -149,29 +136,22 @@ export function Navbar() {
               )
             })}
 
-            {user && (
-              <>
-                <div className="ml-2 pl-2 border-l border-muted">
-                  <LogoutButton 
-                    variant="ghost" 
-                    size="sm" 
-                    showIcon={isExpanded} 
-                    className={cn(
-                      "rounded-full transition-all duration-300",
-                      "hover:bg-accent group flex items-center",
-                      !isExpanded && "px-2 py-2"
-                    )}
-                  />
-                </div>
-                <div className="ml-2 pl-2 border-l border-muted">
-                  <ModeToggle />
-                </div>
-              </>
-            )}
+            <div className="ml-2 pl-2 border-l border-white/20">
+              <Link href="/signin">
+                <Button className="sign-in-button flex items-center gap-2 rounded-full px-4">
+                  <LogIn className="h-4 w-4" />
+                  {isExpanded && <span>Sign In</span>}
+                </Button>
+              </Link>
+            </div>
+
+            <div className="ml-2 pl-2 border-l border-white/20">
+              <ModeToggle />
+            </div>
           </nav>
 
           {isExpanded && (
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            <ChevronRight className="h-5 w-5 text-white/70" />
           )}
         </div>
       </motion.div>

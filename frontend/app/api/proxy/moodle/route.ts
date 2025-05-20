@@ -1,105 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Middleware to proxy requests to Moodle and avoid CORS/DNS issues
+const MOODLE_URL = process.env.NEXT_PUBLIC_MOODLE_URL || 'https://moodle50:8890';
+
+interface MoodleProxyRequest {
+  endpoint: string;
+  params: Record<string, any>;
+  method?: 'GET' | 'POST';
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { endpoint, params } = await request.json();
-    
-    console.log(`Proxying request to Moodle endpoint: ${endpoint}`);
-    console.log('With params:', params);
-    
-    // Construct the full URL - use direct IP address to avoid DNS issues
-    // Make sure the URL includes the protocol
-    let moodleBaseUrl = process.env.MOODLE_URL || 'http://moodle50:8890';
-    
-    // Ensure base URL has protocol
-    if (!moodleBaseUrl.startsWith('http://') && !moodleBaseUrl.startsWith('https://')) {
-      moodleBaseUrl = `http://${moodleBaseUrl}`;
+    // Allow TLS/SSL connections to self-signed certificates in development
+    if (process.env.NODE_ENV === 'development') {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     }
-    
-    // Ensure endpoint starts with slash
-    const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${moodleBaseUrl}${formattedEndpoint}`;
-    
-    console.log(`Base Moodle URL: ${moodleBaseUrl}`);
-    
-    // Build query string from params
-    const queryParams = new URLSearchParams();
-    Object.entries(params || {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        queryParams.append(key, String(value));
+
+    const body: MoodleProxyRequest = await request.json();
+    const { endpoint, params, method = 'GET' } = body;
+
+    // Construct the URL - if endpoint is a full URL use it, otherwise append to base URL
+    let url = endpoint.startsWith('http') ? endpoint : `${MOODLE_URL}/${endpoint.replace(/^\//, '')}`;
+
+    let response;
+    if (method === 'GET') {
+      // For GET requests, append params to URL
+      const queryParams = new URLSearchParams();
+      
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
       }
-    });
-    
-    const queryString = queryParams.toString();
-    const fullUrl = queryString 
-      ? `${url}${url.includes('?') ? '&' : '?'}${queryString}`
-      : url;
-    
-    console.log(`Full URL: ${fullUrl}`);
-    
-    try {
-      const response = await fetch(fullUrl, {
+      
+      const queryString = queryParams.toString();
+      url = queryString ? `${url}?${queryString}` : url;
+      
+      console.log(`Proxying GET request to: ${url}`);
+      response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        // Add a timeout to prevent hanging requests
-        signal: AbortSignal.timeout(15000), // 15 seconds timeout
       });
-      
-      if (!response.ok) {
-        let errorText;
-        try {
-          errorText = await response.text();
-        } catch (e) {
-          errorText = 'Could not read error response';
-        }
-        
-        console.error(`Moodle API error (${response.status}): ${errorText}`);
-        return NextResponse.json(
-          { success: false, error: `Moodle API error: ${response.statusText || 'Unknown error'}` },
-          { status: response.status }
-        );
-      }
-      
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        console.log('Moodle response received successfully');
-        return NextResponse.json(data);
-      } else {
-        const text = await response.text();
-        console.log('Received non-JSON response from Moodle');
-        // Try to parse as JSON anyway in case the Content-Type header is wrong
-        try {
-          const data = JSON.parse(text);
-          return NextResponse.json(data);
-        } catch (e) {
-          // Not JSON, return as text
-          return NextResponse.json({ success: true, message: text });
-        }
-      }
-    } catch (fetchError) {
-      console.error('Fetch error in proxy:', fetchError);
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: fetchError instanceof Error 
-            ? `Fetch error: ${fetchError.message}` 
-            : 'Failed to fetch from Moodle server'
+    } else {
+      // For POST requests, send params in body
+      console.log(`Proxying POST request to: ${url}`);
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        { status: 502 }
-      );
+        body: JSON.stringify(params),
+      });
     }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Moodle proxy error: ${response.status} ${errorText}`);
+      return NextResponse.json({ 
+        error: `Moodle API error: ${response.status} ${response.statusText}`,
+        details: errorText
+      }, { status: response.status });
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Proxy error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to proxy request to Moodle' 
-      },
-      { status: 500 }
-    );
+    console.error('Moodle proxy error:', error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred'
+    }, { status: 500 });
+  } finally {
+    // Reset NODE_TLS_REJECT_UNAUTHORIZED to its default
+    if (process.env.NODE_ENV === 'development') {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
+    }
   }
 } 

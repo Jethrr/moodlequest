@@ -6,43 +6,51 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useState } from "react"
+import { fetchUserProfile } from '@/lib/profile-service';
+import { useRouter } from "next/navigation"
 
 export default function ProfilePage() {
   const { user, isLoading } = useAuth()
-  const [mounted, setMounted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [profileData, setProfileData] = useState<any>(null)
+  const router = useRouter()
 
-  // Handle client-side effects
+  // Redirect to signin if user is not logged in
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    if (!isLoading && !user) {
+      router.push('/signin')
+    }
+  }, [isLoading, user, router])
 
-  // While not mounted or loading, show skeleton
-  if (!mounted || isLoading) {
+  // Fetch profile data when user is available
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!user) return
+      
+      try {
+        const data = await fetchUserProfile(user)
+        if (data) {
+          setProfileData(data)
+        }
+      } catch (error) {
+        console.error('Error loading profile data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    if (user) {
+      loadProfileData()
+    }
+  }, [user])
+
+  // Show loading during initial loading or profile data fetching
+  if (isLoading || loading) {
     return (
       <div className="container mx-auto py-8 px-4">
         <Card>
-          <CardHeader>
-            <div className="flex items-center space-x-4">
-              <Skeleton className="h-20 w-20 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-6 w-24" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <div>
-                <Skeleton className="h-6 w-32 mb-4" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </div>
-            </div>
+          <CardContent className="py-8 flex justify-center">
+            <div className="w-8 h-8 border-t-2 border-b-2 border-current rounded-full animate-spin"></div>
           </CardContent>
         </Card>
       </div>
@@ -66,16 +74,19 @@ export default function ProfilePage() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
               <Avatar className="h-20 w-20">
-                {user.avatarUrl ? (
-                  <AvatarImage src={user.avatarUrl} alt={user.name || user.username} />
+                {profileData?.profile_image_url ? (
+                  <AvatarImage src={profileData.profile_image_url} alt={user.name || user.username} />
                 ) : null}
-                <AvatarFallback>{(user.name || user.username || "U").charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{((profileData?.first_name || user.name || user.username) || "U").charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="text-center sm:text-left">
-                <CardTitle className="text-2xl">{user.name || user.username}</CardTitle>
-                <CardDescription className="text-base">{user.email || "No email provided"}</CardDescription>
+                <CardTitle className="text-2xl">{profileData?.first_name && profileData?.last_name ? 
+                  `${profileData.first_name} ${profileData.last_name}` : 
+                  (user.name || user.username)}</CardTitle>
+                <CardDescription className="text-base">{profileData?.email || user.email || "No email provided"}</CardDescription>
                 <Badge variant="secondary" className="mt-2">
-                  {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Student"}
+                  {profileData?.role ? profileData.role.charAt(0).toUpperCase() + profileData.role.slice(1) : 
+                   (user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Student")}
                 </Badge>
               </div>
             </div>
@@ -87,37 +98,41 @@ export default function ProfilePage() {
                 <div className="grid gap-3">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="font-medium min-w-[100px]">Username:</span>
-                    <span className="text-muted-foreground">{user.username}</span>
+                    <span className="text-muted-foreground">{profileData?.username || user.username}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="font-medium min-w-[100px]">Email:</span>
-                    <span className="text-muted-foreground">{user.email || "Not provided"}</span>
+                    <span className="text-muted-foreground">{profileData?.email || user.email || "Not provided"}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="font-medium min-w-[100px]">Role:</span>
-                    <span className="text-muted-foreground capitalize">{user.role || "Student"}</span>
+                    <span className="text-muted-foreground capitalize">{profileData?.role || user.role || "Student"}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="font-medium min-w-[100px]">Moodle ID:</span>
                     <span className="text-muted-foreground">{user.moodleId || "Not available"}</span>
                   </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <span className="font-medium min-w-[100px]">Joined:</span>
+                    <span className="text-muted-foreground">{profileData?.joined_date || "Unknown"}</span>
+                  </div>
                 </div>
               </div>
-              {user.level && (
+              {(profileData?.stats || user.level) && (
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Progress</h3>
                   <div className="grid gap-3">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                       <span className="font-medium min-w-[100px]">Level:</span>
-                      <span className="text-muted-foreground">{user.level}</span>
+                      <span className="text-muted-foreground">{profileData?.level || user.level || 1}</span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                       <span className="font-medium min-w-[100px]">XP:</span>
-                      <span className="text-muted-foreground">{user.xp || 0}</span>
+                      <span className="text-muted-foreground">{profileData?.stats?.exp_points || user.xp || 0}</span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                      <span className="font-medium min-w-[100px]">Badges:</span>
-                      <span className="text-muted-foreground">{user.badges || 0}</span>
+                      <span className="font-medium min-w-[100px]">Completed:</span>
+                      <span className="text-muted-foreground">{profileData?.stats?.quests_completed || 0} quests, {profileData?.stats?.courses_completed || 0} courses</span>
                     </div>
                   </div>
                 </div>

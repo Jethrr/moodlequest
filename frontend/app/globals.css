@@ -5,24 +5,24 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 270 50% 60%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 270 50% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
     --chart-1: 270 50% 60%;
     --chart-2: 10 90% 60%;
@@ -32,25 +32,30 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 270 50% 60%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    /* Override background variable to transparent to allow our gradient to show */
+    --background: 0 0% 0% / 0;
+    --foreground: 210 40% 98%;
+    
+    /* Card styling */
+    --card: 222.2 84% 4.9% / 0.7;
+    --card-foreground: 210 40% 98%;
+    
+    /* Other UI elements */
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 270 50% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
   }
 }
 
@@ -59,6 +64,173 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
   }
 }
+
+/* Comprehensive Dark Mode Styling */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: linear-gradient(to bottom right, hsl(230, 45%, 8%), hsl(232, 52%, 14%), hsl(230, 40%, 10%));
+  color: hsl(0, 0%, 100%);
+}
+
+/* Make sure all page backgrounds inherit dark mode */
+.dark main,
+.dark div[class*="container"],
+.dark div[class*="flex-1"],
+.dark div[class*="min-h-screen"] {
+  background-color: transparent;
+}
+
+/* Dashboard specific dark mode */
+.dark [class*="dashboard"] {
+  background-color: transparent !important;
+}
+
+/* Progress page specific dark mode */
+.dark [class*="progress"] {
+  background-color: transparent !important;
+}
+
+/* Enhanced components for dark mode */
+.dark .bg-background {
+  background-color: transparent !important;
+}
+
+.dark .bg-background\/95 {
+  background: hsla(232, 52%, 14%, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .bg-card {
+  background: linear-gradient(145deg, hsla(232, 52%, 16%, 0.8), hsla(230, 45%, 12%, 0.8));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: hsla(217.2, 32.6%, 27.5%, 0.2);
+}
+
+.dark .bg-muted\/40 {
+  background: linear-gradient(145deg, hsla(232, 52%, 18%, 0.4), hsla(230, 45%, 15%, 0.4));
+}
+
+.dark .border {
+  border-color: hsla(217.2, 32.6%, 27.5%, 0.2);
+}
+
+.dark .rounded-xl {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Add purple gradient accents similar to reference images */
+.dark .bg-primary\/10 {
+  background: linear-gradient(145deg, hsla(260, 60%, 50%, 0.15), hsla(230, 70%, 50%, 0.1));
+}
+
+.dark .text-primary {
+  color: hsl(260, 80%, 80%);
+}
+
+/* Add bottom nav styling with proper light/dark mode support */
+.navbar-bottom {
+  background: white;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.dark .navbar-bottom {
+  background: linear-gradient(180deg, hsla(232, 52%, 14%, 0.9), hsla(230, 45%, 10%, 0.95));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid hsla(217.2, 32.6%, 27.5%, 0.2);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Light mode navbar text colors */
+.navbar-bottom .text-white {
+  color: hsl(var(--foreground));
+}
+
+.navbar-bottom .text-white\/70 {
+  color: hsl(var(--muted-foreground));
+}
+
+.navbar-bottom .border-white\/20 {
+  border-color: hsl(var(--border));
+}
+
+.navbar-bottom .hover\:bg-white\/10:hover {
+  background-color: hsl(var(--muted)/0.3);
+}
+
+.navbar-bottom .bg-white\/10 {
+  background-color: hsl(var(--muted)/0.5);
+}
+
+/* Dark mode specific overrides */
+.dark .navbar-bottom .text-white {
+  color: white;
+}
+
+.dark .navbar-bottom .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .navbar-bottom .border-white\/20 {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .navbar-bottom .hover\:bg-white\/10:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .navbar-bottom .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Style for sign-in button - light mode */
+.sign-in-button {
+  background: linear-gradient(90deg, hsl(221.2 83.2% 53.3%), hsl(210 40% 50%));
+  color: white;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sign-in-button:hover {
+  background: linear-gradient(90deg, hsl(221.2 83.2% 58.3%), hsl(210 40% 55%));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Style for sign-in button - dark mode */
+.dark .sign-in-button {
+  background: linear-gradient(90deg, hsl(260, 80%, 60%), hsl(230, 70%, 60%));
+  color: white;
+}
+
+.dark .sign-in-button:hover {
+  background: linear-gradient(90deg, hsl(260, 80%, 65%), hsl(230, 70%, 65%));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Fix for any remaining white backgrounds in dark mode */
+.dark [style*="background-color: white"],
+.dark [style*="background-color: #fff"],
+.dark [style*="background-color: rgb(255, 255, 255)"],
+.dark [style*="background: white"],
+.dark [style*="background: #fff"],
+.dark [style*="background: rgb(255, 255, 255)"] {
+  background-color: transparent !important;
+  background-image: linear-gradient(145deg, hsla(232, 52%, 16%, 0.8), hsla(230, 45%, 12%, 0.8)) !important;
+}
+

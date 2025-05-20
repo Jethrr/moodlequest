@@ -1,18 +1,12 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { BookOpen, ArrowLeft, Compass } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import Link from "next/link"
+import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { Home, ArrowLeft } from "lucide-react"
 
 export default function NotFound() {
-  const [mounted, setMounted] = useState(false)
-  
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-  
+  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -22,84 +16,111 @@ export default function NotFound() {
       }
     }
   }
-  
+
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    hidden: { y: 20, opacity: 0 },
+    visible: {
       y: 0,
-      transition: { duration: 0.5 }
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
     }
   }
-  
+
+  const floatingVariants = {
+    animate: {
+      y: [0, -10, 0],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-background/95 flex flex-col items-center justify-center px-4 relative overflow-hidden">
-      {/* Background particles */}
-      {mounted && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(15)].map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ 
-                x: Math.random() * window.innerWidth, 
-                y: Math.random() * window.innerHeight,
-                scale: Math.random() * 0.5 + 0.5,
-                opacity: Math.random() * 0.3 + 0.1
-              }}
-              animate={{
-                y: [null, Math.random() * -100 - 50],
-                opacity: [null, 0]
-              }}
-              transition={{
-                duration: Math.random() * 10 + 10,
-                repeat: Infinity,
-                delay: Math.random() * 10
-              }}
-              className={`absolute w-2 h-2 rounded-full ${
-                ["bg-primary/20", "bg-blue-500/20", "bg-orange-500/20", "bg-purple-500/20"][Math.floor(Math.random() * 4)]
-              }`}
-            />
-          ))}
-        </div>
-      )}
+    <div className="h-[calc(100vh-4rem)] flex items-center justify-center relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
       
-      <motion.div 
-        variants={containerVariants}
+      {/* Animated particles */}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full bg-primary/20"
+          style={{
+            width: `${4 + (i % 3) * 2}px`,
+            height: `${4 + (i % 3) * 2}px`,
+            left: `${(i + 1) * 15}%`,
+            top: `${(i + 2) * 10}%`,
+          }}
+          animate={{
+            y: [0, -10, 0],
+            opacity: [0.3, 0.8, 0.3]
+          }}
+          transition={{
+            duration: 2 + i % 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      ))}
+
+      <motion.div
         initial="hidden"
         animate="visible"
-        className="max-w-md w-full relative z-10"
+        variants={containerVariants}
+        className="text-center z-10 px-4"
       >
-        <motion.div 
-          variants={itemVariants}
-          className="flex items-center justify-center mb-6"
+        <motion.div
+          variants={floatingVariants}
+          animate="animate"
+          className="mb-8"
         >
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold tracking-tight">MoodleQuest</h1>
-          </div>
+          <div className="text-9xl font-bold text-primary/20">404</div>
         </motion.div>
-        
+
+        <motion.h1
+          variants={itemVariants}
+          className="text-4xl font-bold mb-4"
+        >
+          Page Not Found
+        </motion.h1>
+
+        <motion.p
+          variants={itemVariants}
+          className="text-muted-foreground mb-8 max-w-md mx-auto"
+        >
+          Oops! It seems you've ventured into uncharted territory. Let's get you back on track.
+        </motion.p>
+
         <motion.div
           variants={itemVariants}
-          className="bg-background/80 backdrop-blur-md rounded-xl border shadow-lg p-6 text-center"
+          className="flex gap-4 justify-center"
         >
-          <div className="w-20 h-20 flex items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
-            <Compass className="h-10 w-10 text-primary" />
-          </div>
-          
-          <h2 className="text-2xl font-bold mb-2">Page Not Found</h2>
-          <p className="text-muted-foreground mb-6">
-            Oops! It seems you've ventured into uncharted territory. The page you're looking for doesn't exist or has been moved.
-          </p>
-          
-          <div className="flex flex-col md:flex-row gap-3 justify-center">
-            <Button asChild>
-              <Link href="/" className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Return to Homepage
-              </Link>
-            </Button>
-          </div>
+          <Button
+            asChild
+            variant="default"
+            className="gap-2"
+          >
+            <Link href="/">
+              <Home className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="gap-2"
+          >
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+              Go to Dashboard
+            </Link>
+          </Button>
         </motion.div>
       </motion.div>
     </div>

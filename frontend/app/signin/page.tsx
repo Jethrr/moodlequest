@@ -49,7 +49,7 @@ export default function SignInPage() {
   }));
 
   return (
-    <div className="h-screen flex flex-col relative overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] flex flex-col relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
@@ -113,7 +113,7 @@ export default function SignInPage() {
           <motion.div variants={itemVariants}>
             <div className="bg-background/80 backdrop-blur-sm p-5 rounded-xl border shadow-sm">
               <SimplifiedMoodleForm />
-          </div>
+            </div>
           </motion.div>
 
           <motion.div 
