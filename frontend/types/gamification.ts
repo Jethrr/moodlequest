@@ -58,9 +58,10 @@ export interface PetAccessory {
   id: string
   name: string
   description: string
-  slot: "head" | "body" | "feet" | "background"
+  slot: "background" | "left" | "bottom-left" | "bottom-right"
   iconUrl: string
   position?: {
+    position?: string
     top?: string
     left?: string
     right?: string
@@ -68,6 +69,13 @@ export interface PetAccessory {
     transform?: string
     opacity?: string
     zIndex?: string
+    fontSize?: string
+    display?: string
+    alignItems?: string
+    justifyContent?: string
+    inset?: string
+    width?: string
+    height?: string
   }
   stats?: {
     happinessBoost?: number
