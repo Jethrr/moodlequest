@@ -49,7 +49,7 @@ export default function SignInPage() {
   }));
 
   return (
-    <div className="fixed inset-0 h-screen flex flex-col relative bg-background">
+    <div className="relative flex flex-col h-full">
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/10 via-primary/5 to-purple-500/10 z-0" />
       <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
@@ -94,7 +94,7 @@ export default function SignInPage() {
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className="flex flex-1 flex-col items-center justify-center px-4 z-10 max-h-screen overflow-hidden"
+        className="flex flex-1 flex-col items-center justify-center px-4 z-10"
       >
         <div className="w-full max-w-md">
           <motion.div 

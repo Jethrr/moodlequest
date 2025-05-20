@@ -229,28 +229,32 @@ export function SimplifiedMoodleForm() {
               </div>
               
               {error && (
-                <Alert variant="destructive" className="py-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs ml-2">{error}</AlertDescription>
+                <Alert variant="destructive" className="py-2 mt-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 mt-0.5" />
+                    <AlertDescription className="text-xs">{error}</AlertDescription>
+                  </div>
                 </Alert>
               )}
               
               {networkError && (
-                <Alert variant="destructive" className="py-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs ml-2 flex justify-between items-center">
-                    <span>{networkError}</span>
+                <Alert variant="destructive" className="py-2 mt-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 mt-0.5" />
+                      <AlertDescription className="text-xs">{networkError}</AlertDescription>
+                    </div>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-6 text-xs ml-2 flex items-center gap-1"
+                      className="h-6 text-xs flex items-center gap-1 shrink-0"
                       onClick={handleRetry}
                       disabled={isRetrying}
                     >
                       <RefreshCcw className="h-3 w-3" /> 
                       {isRetrying ? "Checking..." : "Retry"}
                     </Button>
-                  </AlertDescription>
+                  </div>
                 </Alert>
               )}
               
