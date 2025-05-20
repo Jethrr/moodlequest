@@ -172,12 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    // Call API logout endpoint first
-    apiClient.logout().catch(error => {
-      console.error("Error during logout:", error)
-    })
-    
-    // Clear user state
+    // Clear user state first to prevent unauthorized requests
     setUser(null)
     
     // Clear API client token
@@ -194,15 +189,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
     })
     
-    // Force reload to ensure clean state
-    window.setTimeout(() => {
-      router.push("/signin")
+    // Call API logout endpoint with a timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+    
+    fetch('/api/auth/moodle/logout', {
+      method: 'POST',
+      signal: controller.signal
+    }).catch(error => {
+      // Silently handle network errors during logout
+      console.warn("Non-critical: Error during logout API call:", error)
+    }).finally(() => {
+      clearTimeout(timeoutId)
       
-      // After navigation initiated, force reload to clear any lingering React state
+      // Force navigation and reload after cleanup
       window.setTimeout(() => {
-        window.location.reload()
+        router.push("/signin")
+        
+        // After navigation initiated, force reload to clear any lingering state
+        window.setTimeout(() => {
+          window.location.reload()
+        }, 100)
       }, 100)
-    }, 100)
+    })
   }
 
   // Only provide the real context value after mounting on client
