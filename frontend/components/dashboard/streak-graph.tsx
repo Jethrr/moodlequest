@@ -64,16 +64,15 @@ const StreakGraph: React.FC<StreakGraphProps> = ({ data }) => {
   
   const currentStreak = calculateCurrentStreak(data);
   const longestStreak = calculateLongestStreak(data);
-  
-  // Get color based on intensity
+    // Get color based on intensity
   const getColor = (intensity: number): string => {
     switch (intensity) {
-      case 0: return "#ebedf0"; // Light gray for no activity
-      case 1: return "#ffe0e6"; // Lightest pink
-      case 2: return "#ffc2cb"; // Light pink
-      case 3: return "#F88379"; // Medium pink
-      case 4: return "#E56B75"; // Dark pink
-      default: return "#ebedf0";
+      case 0: return "#ebebf0"; // Light gray for no activity (slightly bluer)
+      case 1: return "#f9e0f4"; // Lightest pink/lavender blend
+      case 2: return "#f8c2d6"; // Light pink with lavender hint
+      case 3: return "#F88389"; // Medium pink (slightly deeper)
+      case 4: return "#E5637B"; // Dark pink (slightly warmer)
+      default: return "#ebebf0";
     }
   };
   
@@ -133,16 +132,16 @@ const StreakGraph: React.FC<StreakGraphProps> = ({ data }) => {
             <div className="grid grid-rows-7 gap-1" style={{ gridTemplateRows: 'repeat(7, 1fr)' }}>
               {processedData.map((row, rowIndex) => (
                 <div key={rowIndex} className="grid grid-cols-15 gap-1" style={{ gridTemplateColumns: 'repeat(15, 1fr)' }}>
-                  {row.map((day, colIndex) => (
-                    <motion.div
+                  {row.map((day, colIndex) => (                    <motion.div
                       key={colIndex}
                       className="h-4 w-full rounded-sm"
                       style={{ 
-                        backgroundColor: day ? getColor(day.intensity) : "#ebedf0",
-                        border: "1px solid rgba(0,0,0,0.05)"
+                        backgroundColor: day ? getColor(day.intensity) : "#ebebf0",
+                        border: "1px solid rgba(0,0,0,0.05)",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
                       }}
-                      whileHover={{ scale: 1.2 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                      whileHover={{ scale: 1.25, boxShadow: "0 3px 6px rgba(0,0,0,0.1)" }}
+                      transition={{ type: "spring", stiffness: 450, damping: 12 }}
                       title={day ? `${day.date}: ${day.intensity > 0 ? `${day.intensity} activities` : 'No activity'}` : ''}
                     />
                   ))}
@@ -158,9 +157,9 @@ const StreakGraph: React.FC<StreakGraphProps> = ({ data }) => {
             <div 
               key={intensity} 
               className="h-3 w-3 rounded-sm mx-0.5" 
-              style={{ 
-                backgroundColor: getColor(intensity),
-                border: "1px solid rgba(0,0,0,0.05)"
+              style={{                backgroundColor: getColor(intensity),
+                border: "1px solid rgba(0,0,0,0.05)",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
               }}
             />
           ))}
