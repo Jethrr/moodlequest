@@ -332,7 +332,8 @@ async def moodle_login(
                 user_token=token_result.token,
                 first_name=moodle_user.get("firstname", ""),
                 last_name=moodle_user.get("lastname", ""),
-                role=role
+                role=role,
+                created_at=datetime.utcnow()  # Explicitly set creation time
             )
             logger.info(f"Created new user {user_data.username} with role {role}")
             db.add(user)
@@ -378,7 +379,7 @@ async def moodle_login(
             last_name=user.last_name,
             is_active=user.is_active,
             moodle_user_id=user.moodle_user_id,
-            created_at=user.created_at
+            created_at=user.created_at or datetime.utcnow()
         )
         
         logger.info(f"User {user.username} logged in successfully with new token")
@@ -580,7 +581,7 @@ async def refresh_moodle_token(
                 last_name=current_user.last_name,
                 is_active=current_user.is_active,
                 moodle_user_id=current_user.moodle_user_id,
-                created_at=current_user.created_at
+                created_at=current_user.created_at or datetime.utcnow()
             )
             
             return MoodleLoginResponse(
@@ -645,7 +646,8 @@ async def store_moodle_user(
                 user_token=user_data.token,
                 role="student",  # Default role
                 is_active=True,
-                password_hash="moodle_user"  # Placeholder as we use Moodle auth
+                password_hash="moodle_user",  # Placeholder as we use Moodle auth
+                created_at=datetime.utcnow()  # Explicitly set creation time
             )
             db.add(user)
             logger.info(f"Created new Moodle user: {user_data.username}")
@@ -674,22 +676,24 @@ async def store_moodle_user(
             expires_at=datetime.utcnow() + access_token_expires
         )
         
-        return {
-            "success": True,
-            "message": "User data stored successfully",
-            "token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "role": user.role,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "moodle_user_id": user.moodle_user_id
-            }
-        }
+        # Create UserResponse
+        user_response = UserResponse(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            role=user.role,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            is_active=user.is_active,
+            moodle_user_id=user.moodle_user_id,
+            created_at=user.created_at or datetime.utcnow()
+        )
+        
+        return MoodleLoginResponse(
+            success=True,
+            token=access_token,
+            user=user_response
+        )
     except Exception as e:
         logger.error(f"Error storing Moodle user: {str(e)}")
         raise HTTPException(

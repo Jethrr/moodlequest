@@ -81,6 +81,9 @@ export async function POST(request: NextRequest) {
         // Skip backend storage if it's not available
         try {
           // Store the user data in our backend (if available)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
           const storeUserResponse = await fetch(`${API_BASE_URL}/auth/moodle/store-user`, {
             method: "POST",
             headers: {
@@ -96,7 +99,10 @@ export async function POST(request: NextRequest) {
               token: token,
               privateToken: tokenData.privatetoken || ''
             }),
+            signal: controller.signal
           });
+          
+          clearTimeout(timeoutId);
           
           if (!storeUserResponse.ok) {
             console.error(`Error storing user: ${storeUserResponse.status}`);

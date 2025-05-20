@@ -25,16 +25,10 @@ const routes = [
     color: "text-blue-500"
   },
   {
-    label: "Features",
+    label: "Learn More",
     icon: BookOpen,
-    href: "/features",
+    href: "/learn-more",
     color: "text-purple-500"
-  },
-  {
-    label: "About",
-    icon: Info,
-    href: "/about",
-    color: "text-emerald-500"
   }
 ]
 

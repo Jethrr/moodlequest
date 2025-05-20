@@ -109,7 +109,7 @@ export default function TeacherDashboard() {
       {/* Hero Section */}
       <motion.div 
         variants={itemVariants}
-        className="bg-background/95 backdrop-blur-lg rounded-2xl md:rounded-3xl border shadow-lg overflow-hidden"
+        className="bg-gradient-to-br from-background/95 via-primary/5 to-purple-500/10 backdrop-blur-lg rounded-2xl md:rounded-3xl border shadow-lg overflow-hidden"
       >
         <div className="relative h-auto md:h-48">
           {/* Background pattern */}
@@ -140,9 +140,9 @@ export default function TeacherDashboard() {
             
             {/* Path pattern */}
             <svg className="absolute inset-0 w-full h-full opacity-5" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path d="M0,50 Q25,30 50,50 T100,50" stroke="white" strokeWidth="2" fill="none" />
-              <path d="M0,60 Q35,40 70,60 T100,60" stroke="white" strokeWidth="1.5" fill="none" />
-              <path d="M0,40 Q45,20 90,40 T100,40" stroke="white" strokeWidth="1" fill="none" />
+              <path d="M0,50 Q25,30 50,50 T100,50" stroke="currentColor" strokeWidth="2" fill="none" />
+              <path d="M0,60 Q35,40 70,60 T100,60" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              <path d="M0,40 Q45,20 90,40 T100,40" stroke="currentColor" strokeWidth="1" fill="none" />
             </svg>
           </div>
 
@@ -170,7 +170,7 @@ export default function TeacherDashboard() {
               <Button 
                 onClick={() => setIsCreating(true)} 
                 size="lg" 
-                className="rounded-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="rounded-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all"
               >
                 <PlusCircle className="h-4 w-4" /> Create New Quest
               </Button>
@@ -183,7 +183,7 @@ export default function TeacherDashboard() {
       <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
         <motion.div 
           whileHover={{ scale: 1.02, y: -5 }}
-          className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 flex flex-col"
+          className="bg-gradient-to-br from-background/95 via-primary/5 to-transparent backdrop-blur-lg rounded-xl border p-4 flex flex-col shadow-md"
         >
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">Students</h3>
@@ -200,7 +200,7 @@ export default function TeacherDashboard() {
         
         <motion.div 
           whileHover={{ scale: 1.02, y: -5 }}
-          className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 flex flex-col"
+          className="bg-gradient-to-br from-background/95 via-blue-500/5 to-transparent backdrop-blur-lg rounded-xl border p-4 flex flex-col shadow-md"
         >
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">Active Quests</h3>
@@ -216,7 +216,7 @@ export default function TeacherDashboard() {
         
         <motion.div 
           whileHover={{ scale: 1.02, y: -5 }}
-          className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 flex flex-col"
+          className="bg-gradient-to-br from-background/95 via-emerald-500/5 to-transparent backdrop-blur-lg rounded-xl border p-4 flex flex-col shadow-md"
         >
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">Completion Rate</h3>
@@ -230,7 +230,7 @@ export default function TeacherDashboard() {
         
         <motion.div 
           whileHover={{ scale: 1.02, y: -5 }}
-          className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 flex flex-col"
+          className="bg-gradient-to-br from-background/95 via-amber-500/5 to-transparent backdrop-blur-lg rounded-xl border p-4 flex flex-col shadow-md"
         >
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">Average Score</h3>

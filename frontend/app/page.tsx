@@ -50,8 +50,6 @@ function BottomSignIn() {
   const [isOpen, setIsOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   
-  if (user || isLoading) return null
-
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-6 z-50 pointer-events-none">
       <motion.div
@@ -446,35 +444,19 @@ export default function LandingPage() {
             
             <motion.div variants={itemVariants} className="flex flex-wrap gap-3 md:gap-4 justify-center md:justify-start">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button size="lg" className="rounded-full bg-primary hover:bg-primary/90 gap-2 text-sm md:text-base px-4 md:px-6">
-                  <Play className="h-4 w-4" /> Start Learning
+                <Button size="lg" asChild className="rounded-full bg-primary hover:bg-primary/90 gap-2 text-sm md:text-base px-4 md:px-6">
+                  <Link href="/signin">
+                    <Play className="h-4 w-4 md:h-5 md:w-5" /> Start Learning Now
+                  </Link>
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button size="lg" variant="outline" className="rounded-full gap-2 text-sm md:text-base px-4 md:px-6">
-                  Learn More <ChevronRight className="h-4 w-4" />
+                <Button size="lg" variant="outline" asChild className="rounded-full gap-2 text-sm md:text-base px-4 md:px-6">
+                  <Link href="/learn-more">
+                    <BookOpen className="h-4 w-4 md:h-5 md:w-5" /> Learn More
+                  </Link>
                 </Button>
               </motion.div>
-              
-              {!user && !isLoading && (
-                <motion.div 
-                  whileHover={{ scale: 1.05 }} 
-                  whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                >
-                  <Link href="/signin">
-                    <Button 
-                      size="lg" 
-                      variant="secondary"
-                      className="rounded-full gap-2 text-sm md:text-base px-4 md:px-6 border border-primary/20"
-                    >
-                      <LogIn className="h-4 w-4" /> Sign In
-                    </Button>
-                  </Link>
-                </motion.div>
-              )}
             </motion.div>
           </motion.div>
           
@@ -984,38 +966,21 @@ export default function LandingPage() {
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-4">Play, Learn and Earn bonus</h2>
           <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto px-4">Challenge yourself, earn rewards, and become the master of knowledge while having fun!</p>
           
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="relative inline-block">
-            <Button size="lg" className="rounded-full bg-primary hover:bg-primary/90 gap-2 text-sm md:text-base px-4 md:px-6">
-              <Play className="h-3 w-3 md:h-4 md:w-4" /> Get Started Now
+          <motion.div 
+            whileHover={{ scale: 1.05 }} 
+            whileTap={{ scale: 0.95 }}
+            className="w-full md:w-auto"
+          >
+            <Button 
+              size="lg" 
+              className="w-full md:w-auto rounded-full bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 gap-2 text-sm md:text-base" 
+              asChild
+            >
+              <Link href="/signin">
+                <Trophy className="h-4 w-4 md:h-5 md:w-5" />
+                Get Started Now
+              </Link>
             </Button>
-            
-            {/* Animated rings around button */}
-            <motion.div
-              className="absolute inset-0 rounded-full border border-primary"
-              animate={{
-                scale: [1, 1.5],
-                opacity: [0.7, 0]
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeOut"
-              }}
-            />
-            
-            <motion.div
-              className="absolute inset-0 rounded-full border border-primary"
-              animate={{
-                scale: [1, 1.5],
-                opacity: [0.7, 0]
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeOut",
-                delay: 0.5
-              }}
-            />
           </motion.div>
           
           <motion.div

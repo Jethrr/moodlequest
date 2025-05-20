@@ -169,6 +169,20 @@ def store_token(
     Returns:
         Created token model
     """
+    # Check if token already exists in database
+    existing_token = db.query(TokenModel).filter(TokenModel.token == token).first()
+    
+    if existing_token:
+        # Token already exists, update its properties
+        existing_token.user_id = user_id
+        existing_token.token_type = token_type
+        existing_token.expires_at = expires_at
+        existing_token.revoked = False  # Ensure it's not revoked
+        db.commit()
+        db.refresh(existing_token)
+        return existing_token
+    
+    # Token doesn't exist, create a new one
     db_token = TokenModel(
         token=token,
         user_id=user_id,

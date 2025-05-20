@@ -80,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Redirect unauthenticated users away from protected routes
   useEffect(() => {
     if (!isLoading && isMounted) {
-      const publicRoutes = ["/signin", "/register", "/"]
-      const isPublicRoute = publicRoutes.includes(pathname || "")
+      const publicRoutes = ["/signin", "/register", "/", "/learn-more", "/faq", "/about"]
+      const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route))
       
       if (!user && !isPublicRoute) {
         router.push("/signin")
@@ -126,9 +126,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               userData.email = moodleUser.email || userData.email
               userData.avatarUrl = moodleUser.profileimageurl || userData.avatarUrl
               
-              // Store this updated user in backend
+              // Store this updated user in backend - use AbortController to set timeout
               try {
-                await fetch('/api/auth/moodle/store-user', {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                // Attempt to store user data but don't let it block the login process
+                fetch('/api/auth/moodle/store-user', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -138,10 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     firstName: moodleUser.firstname || '',
                     lastName: moodleUser.lastname || '',
                     token: userData.token
-                  })
-                })
+                  }),
+                  signal: controller.signal
+                }).catch(storeError => {
+                  // Silently handle errors during store user - this shouldn't block login
+                  console.warn("Non-critical: Failed to store user data in backend:", storeError)
+                }).finally(() => {
+                  clearTimeout(timeoutId);
+                });
               } catch (storeError) {
-                console.warn("Failed to store user data in backend:", storeError)
+                // Silently ignore errors as they shouldn't block the login flow
+                console.warn("Non-critical: Exception during store user setup:", storeError)
               }
             }
           } catch (userInfoError) {
@@ -161,13 +172,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    // Call API logout endpoint first
     apiClient.logout().catch(error => {
       console.error("Error during logout:", error)
     })
     
+    // Clear user state
     setUser(null)
+    
+    // Clear API client token
+    apiClient.setToken('')
+    
+    // Clear all storage
     localStorage.removeItem("moodlequest_user")
-    router.push("/signin")
+    localStorage.removeItem("theme")
+    sessionStorage.clear()
+    
+    // Clear any cookies related to authentication
+    document.cookie.split(";").forEach(cookie => {
+      const [name] = cookie.trim().split("=")
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
+    })
+    
+    // Force reload to ensure clean state
+    window.setTimeout(() => {
+      router.push("/signin")
+      
+      // After navigation initiated, force reload to clear any lingering React state
+      window.setTimeout(() => {
+        window.location.reload()
+      }, 100)
+    }, 100)
   }
 
   // Only provide the real context value after mounting on client
