@@ -10,7 +10,7 @@ type Role = "student" | "teacher" | "admin";
  * @param redirectTo Where to redirect if user doesn't have required role
  */
 export function useRoleProtection(requiredRole: Role, redirectTo: string = "/dashboard") {
-  const { user, isLoading } = useAuth();
+   const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -23,7 +23,6 @@ export function useRoleProtection(requiredRole: Role, redirectTo: string = "/das
       }
     }
   }, [user, isLoading, requiredRole, redirectTo, router]);
-
   return { isAuthorized: user?.role && hasRequiredRole(user.role as Role, requiredRole), isLoading };
 }
 

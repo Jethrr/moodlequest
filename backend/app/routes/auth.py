@@ -11,7 +11,8 @@ from app.schemas.auth import (
     UserLogin, 
     Token, 
     MoodleLoginResponse, 
-    MoodleConfigResponse
+    MoodleConfigResponse,
+    StoreUserRequest
 )
 from app.services.moodle import MoodleService
 from app.utils.auth import (
@@ -593,4 +594,105 @@ async def refresh_moodle_token(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Moodle token has expired. Please login again with username and password."
-            ) 
+            )
+
+
+@router.post("/moodle/store-user", response_model=MoodleLoginResponse)
+async def store_moodle_user(
+    user_data: StoreUserRequest,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """
+    Store Moodle user information in the database.
+    
+    This endpoint checks if a user already exists by moodleId or username,
+    and either updates the existing user or creates a new one.
+    """
+    # Add CORS headers
+    for key, value in CORS_HEADERS.items():
+        response.headers[key] = value
+    
+    try:
+        # Check if user already exists by Moodle ID
+        user = db.query(User).filter(User.moodle_user_id == user_data.moodleId).first()
+        
+        if not user:
+            # Also check by username
+            user = db.query(User).filter(User.username == user_data.username).first()
+        
+        if user:
+            # User exists, update their information
+            user.username = user_data.username
+            user.email = user_data.email
+            user.first_name = user_data.firstName
+            user.last_name = user_data.lastName
+            user.moodle_user_id = user_data.moodleId
+            user.user_token = user_data.token
+            
+            # Update last login time
+            user.last_login = datetime.utcnow()
+            
+            logger.info(f"Updated existing user: {user.username} (ID: {user.id})")
+        else:
+            # Create a new user
+            user = User(
+                username=user_data.username,
+                email=user_data.email,
+                first_name=user_data.firstName,
+                last_name=user_data.lastName,
+                moodle_user_id=user_data.moodleId,
+                user_token=user_data.token,
+                role="student",  # Default role
+                is_active=True,
+                password_hash="moodle_user"  # Placeholder as we use Moodle auth
+            )
+            db.add(user)
+            logger.info(f"Created new Moodle user: {user_data.username}")
+        
+        # Commit changes
+        db.commit()
+        db.refresh(user)
+        
+        # Generate JWT for API access
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username},
+            expires_delta=access_token_expires
+        )
+        
+        refresh_token = create_refresh_token(
+            data={"sub": user.username}
+        )
+        
+        # Store token
+        store_token(
+            db=db,
+            token=access_token,
+            user_id=user.id,
+            token_type="access",
+            expires_at=datetime.utcnow() + access_token_expires
+        )
+        
+        return {
+            "success": True,
+            "message": "User data stored successfully",
+            "token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "moodle_user_id": user.moodle_user_id
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error storing Moodle user: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to store user: {str(e)}"
+        ) 

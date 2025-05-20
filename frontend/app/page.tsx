@@ -177,7 +177,18 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   
-  // Handle client-side mounting
+  // Generate fixed trophy confetti data once on client
+  const [confettiItems, setConfettiItems] = useState<Array<{
+    left: string;
+    top: string;
+    color: string;
+    emoji: string;
+    duration: number;
+    delay: number;
+    yMovement: number;
+    rotation: number;
+  }>>([])
+
   useEffect(() => {
     setMounted(true)
     // Set initial dimensions
@@ -289,6 +300,24 @@ export default function LandingPage() {
       }
     }
   }
+
+  useEffect(() => {
+    setMounted(true)
+    
+    // Generate the random confetti data once on the client side
+    const items = [...Array(10)].map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      color: ['text-yellow-500', 'text-primary', 'text-blue-500'][Math.floor(Math.random() * 3)],
+      emoji: ['✨', '🏆', '🌟'][Math.floor(Math.random() * 3)],
+      duration: Math.random() * 3 + 2,
+      delay: Math.random() * 5,
+      yMovement: Math.random() * 20,
+      rotation: Math.random() * 360
+    }))
+    
+    setConfettiItems(items)
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/95 overflow-hidden relative">
@@ -702,29 +731,27 @@ export default function LandingPage() {
             <div className="bg-background/80 backdrop-blur-md rounded-xl md:rounded-3xl border shadow-lg p-4 md:p-6 space-y-4 relative overflow-hidden">
               {/* Trophy confetti animation */}
               <div className="absolute inset-0">
-                {[...Array(10)].map((_, i) => (
+                {mounted && confettiItems.map((item, i) => (
                   <motion.div
                     key={i}
                     className="absolute"
                     style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
+                      left: item.left,
+                      top: item.top,
                     }}
                     animate={{
                       opacity: [0, 1, 0],
-                      y: [0, Math.random() * 20],
-                      rotate: [0, Math.random() * 360]
+                      y: [0, item.yMovement],
+                      rotate: [0, item.rotation]
                     }}
                     transition={{
-                      duration: Math.random() * 3 + 2,
+                      duration: item.duration,
                       repeat: Infinity,
-                      delay: Math.random() * 5
+                      delay: item.delay
                     }}
                   >
-                    <div className={`text-xs ${
-                      ['text-yellow-500', 'text-primary', 'text-blue-500'][Math.floor(Math.random() * 3)]
-                    }`}>
-                      {['✨', '🏆', '🌟'][Math.floor(Math.random() * 3)]}
+                    <div className={`text-xs ${item.color}`}>
+                      {item.emoji}
                     </div>
                   </motion.div>
                 ))}

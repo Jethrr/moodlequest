@@ -10,6 +10,7 @@ export interface MoodleApiError {
 
 export interface MoodleTokenResponse {
   token?: string;
+  privatetoken?: string;
   error?: string;
   errorcode?: string;
 }
@@ -23,8 +24,14 @@ export async function moodleApiRequest<T>(
   token?: string
 ): Promise<T> {
   // Build the query string from params
-  const queryParams = new URLSearchParams(params).toString();
-  const url = `${endpoint}${queryParams ? '?' + queryParams : ''}`;
+  const queryParams = new URLSearchParams();
+  
+  // Add all params to the query string
+  Object.entries(params).forEach(([key, value]) => {
+    queryParams.append(key, value);
+  });
+  
+  const url = `${endpoint}${endpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`;
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -36,6 +43,7 @@ export async function moodleApiRequest<T>(
   }
   
   try {
+    console.log(`Fetching: ${url}`);
     const response = await fetch(url, {
       headers,
       method: 'GET',
@@ -70,22 +78,38 @@ export async function getMoodleToken(
   username: string, 
   password: string, 
   service: string = 'modquest'
-): Promise<string> {
+): Promise<MoodleTokenResponse> {
   try {
-    const endpoint = 'https://moodle/login/token.php';
-    const params = {
-      username: encodeURIComponent(username),
-      password: encodeURIComponent(password),
-      service
-    };
+    console.log('Getting Moodle token via proxy');
     
-    const data = await moodleApiRequest<MoodleTokenResponse>(endpoint, params);
+    // Use our server-side proxy to avoid CORS and DNS issues
+    const response = await fetch('/api/proxy/moodle', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        endpoint: 'login/token.php',
+        params: {
+          username,
+          password,
+          service
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error: ${response.status}`);
+    }
+    
+    const data = await response.json();
     
     if (!data.token) {
       throw new Error(data.error || 'No token returned');
     }
     
-    return data.token;
+    return data;
   } catch (error) {
     console.error('Failed to get Moodle token:', error);
     throw error;
@@ -113,4 +137,69 @@ export function formatApiError(error: unknown): string {
   }
   
   return 'An unknown error occurred';
+}
+
+/**
+ * Get user information from Moodle by field
+ * @param token The Moodle API token
+ * @param field The field to search by (e.g., 'username', 'id', 'email')
+ * @param value The value to search for
+ * @returns User information
+ */
+export async function getMoodleUserByField(
+  token: string,
+  field: string = 'username',
+  value: string
+): Promise<any> {
+  try {
+    console.log('Getting Moodle user info via proxy');
+    
+    // Use our server-side proxy to avoid CORS and DNS issues
+    const response = await fetch('/api/proxy/moodle', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        endpoint: 'webservice/rest/server.php',
+        params: {
+          wstoken: token,
+          wsfunction: 'core_user_get_users_by_field',
+          moodlewsrestformat: 'json',
+          field,
+          'values[0]': value
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (Array.isArray(data) && data.length > 0) {
+      return {
+        success: true,
+        user: data[0]
+      };
+    } else if (data.exception) {
+      return {
+        success: false,
+        error: data.message || 'Error retrieving user information'
+      };
+    } else {
+      return {
+        success: false,
+        error: 'No user found with the specified criteria'
+      };
+    }
+  } catch (error) {
+    console.error('Failed to get Moodle user information:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
 } 

@@ -77,12 +77,17 @@ export default function SignInPage() {
         />
       ))}
 
-      <Link href="/" className="absolute left-4 top-4 md:left-8 md:top-8 z-10">
-        <Button variant="ghost" className="flex items-center gap-1 group">
+      {/* Back button with improved visibility */}
+      <Link href="/" className="absolute left-4 top-4 md:left-8 md:top-8 z-20">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex items-center gap-1.5 group bg-background/80 backdrop-blur-sm hover:bg-background/90 shadow-sm"
+        >
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          <span>Back</span>
-          </Button>
-        </Link>
+          <span>Back to Home</span>
+        </Button>
+      </Link>
 
       <motion.div 
         initial="hidden"

@@ -33,6 +33,16 @@ class UserLogin(BaseModel):
     service: Optional[str] = "modquest"
 
 
+class StoreUserRequest(BaseModel):
+    moodleId: int
+    username: str
+    email: EmailStr
+    firstName: str
+    lastName: str
+    token: str
+    privateToken: Optional[str] = None
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
