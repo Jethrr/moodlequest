@@ -40,7 +40,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsMounted(true)
   }, [])
 
-  // Check for existing session on component mount
+  // TEMPORARY: Auto-login with dummy teacher account for development
+  useEffect(() => {
+    if (isMounted) {
+      console.info("🔧 DEVELOPMENT MODE: Auto-logging in with dummy teacher account")
+      
+      // Create dummy teacher user
+      const dummyTeacher: User = {
+        id: "1",
+        token: "dev-token-123",
+        username: "dev-teacher",
+        name: "Development Teacher",
+        email: "dev-teacher@example.com",
+        role: "teacher",
+        moodleId: "1",
+        avatarUrl: "https://ui-avatars.com/api/?name=Dev+Teacher&background=4f46e5&color=fff",
+        level: 10,
+        xp: 5000,
+        badges: 5
+      }
+      
+      // Set user and save to local storage
+      setUser(dummyTeacher)
+      localStorage.setItem("moodlequest_user", JSON.stringify(dummyTeacher))
+      
+      // Update loading state
+      setIsLoading(false)
+    }
+  }, [isMounted])
+
+  // Check for existing session on component mount - COMMENTED OUT FOR DEVELOPMENT
+  /*
   useEffect(() => {
     const loadUserFromStorage = () => {
       try {
@@ -67,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loadUserFromStorage()
     }
   }, [isMounted])
+  */
 
   // Update token in API client whenever user changes
   useEffect(() => {
@@ -77,7 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
-  // Redirect unauthenticated users away from protected routes
+  // Redirect unauthenticated users away from protected routes - COMMENTED OUT FOR DEVELOPMENT
+  /*
   useEffect(() => {
     if (!isLoading && isMounted) {
       const publicRoutes = ["/signin", "/register", "/", "/learn-more", "/faq", "/about"]
@@ -88,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [user, isLoading, isMounted, pathname, router])
+  */
 
   const login = async (username: string, password: string) => {
     try {
