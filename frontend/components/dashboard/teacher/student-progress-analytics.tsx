@@ -45,10 +45,10 @@ export function StudentProgressAnalytics() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold">Student Progress Analytics</h3>
+        <h3 className="text-xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">Student Progress Analytics</h3>
         <div className="flex gap-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[150px] bg-muted/50 border-muted-foreground/20">
               <SelectValue placeholder="Time Range" />
             </SelectTrigger>
             <SelectContent>
@@ -58,7 +58,7 @@ export function StudentProgressAnalytics() {
             </SelectContent>
           </Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[150px] bg-muted/50 border-muted-foreground/20">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
             <SelectContent>
@@ -74,56 +74,46 @@ export function StudentProgressAnalytics() {
       </div>
 
       <Tabs defaultValue="engagement">
-        <TabsList>
-          <TabsTrigger value="engagement">Engagement</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="individual">Individual Progress</TabsTrigger>
+        <TabsList className="bg-muted/50">
+          <TabsTrigger value="engagement" className="data-[state=active]:bg-background">Engagement</TabsTrigger>
+          <TabsTrigger value="performance" className="data-[state=active]:bg-background">Performance</TabsTrigger>
+          <TabsTrigger value="individual" className="data-[state=active]:bg-background">Individual Progress</TabsTrigger>
         </TabsList>
 
         <TabsContent value="engagement" className="mt-6">
-          <Card>
+          <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-100 shadow-sm">
             <CardHeader>
-              <CardTitle>Class Engagement</CardTitle>
-              <CardDescription>Daily active users and quest activity</CardDescription>
+              <CardTitle className="text-emerald-700">Class Engagement</CardTitle>
+              <CardDescription className="text-emerald-600/80">Daily active users and quest activity</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer
                 config={{
                   activeUsers: {
                     label: "Active Users",
-                    color: "hsl(var(--chart-1))",
+                    color: "hsl(142, 76%, 36%)", // emerald-600
                   },
                   questsStarted: {
                     label: "Quests Started",
-                    color: "hsl(var(--chart-2))",
+                    color: "hsl(142, 71%, 45%)", // emerald-500
                   },
                   questsCompleted: {
                     label: "Quests Completed",
-                    color: "hsl(var(--chart-3))",
+                    color: "hsl(141, 84%, 26%)", // emerald-700
                   },
                 }}
                 className="h-[400px]"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={weeklyEngagementData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" />
-                    <YAxis />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-emerald-200" />
+                    <XAxis dataKey="day" className="text-emerald-900" />
+                    <YAxis className="text-emerald-900" />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Legend />
-                    <Line type="monotone" dataKey="activeUsers" stroke="var(--color-activeUsers)" name="Active Users" />
-                    <Line
-                      type="monotone"
-                      dataKey="questsStarted"
-                      stroke="var(--color-questsStarted)"
-                      name="Quests Started"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="questsCompleted"
-                      stroke="var(--color-questsCompleted)"
-                      name="Quests Completed"
-                    />
+                    <Line type="monotone" dataKey="activeUsers" stroke="var(--color-activeUsers)" name="Active Users" strokeWidth={2} />
+                    <Line type="monotone" dataKey="questsStarted" stroke="var(--color-questsStarted)" name="Quests Started" strokeWidth={2} />
+                    <Line type="monotone" dataKey="questsCompleted" stroke="var(--color-questsCompleted)" name="Quests Completed" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -132,34 +122,34 @@ export function StudentProgressAnalytics() {
         </TabsContent>
 
         <TabsContent value="performance" className="mt-6">
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-100 shadow-sm">
             <CardHeader>
-              <CardTitle>Subject Performance</CardTitle>
-              <CardDescription>Average scores and completion rates by subject</CardDescription>
+              <CardTitle className="text-purple-700">Subject Performance</CardTitle>
+              <CardDescription className="text-purple-600/80">Average scores and completion rates by subject</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer
                 config={{
                   averageScore: {
                     label: "Average Score",
-                    color: "hsl(var(--chart-1))",
+                    color: "hsl(262, 83%, 58%)", // purple-600
                   },
                   completionRate: {
                     label: "Completion Rate",
-                    color: "hsl(var(--chart-2))",
+                    color: "hsl(263, 70%, 50%)", // purple-500
                   },
                 }}
                 className="h-[400px]"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={subjectPerformanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="subject" />
-                    <YAxis />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-purple-200" />
+                    <XAxis dataKey="subject" className="text-purple-900" />
+                    <YAxis className="text-purple-900" />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Legend />
-                    <Bar dataKey="averageScore" fill="var(--color-averageScore)" name="Average Score" />
-                    <Bar dataKey="completionRate" fill="var(--color-completionRate)" name="Completion Rate" />
+                    <Bar dataKey="averageScore" fill="var(--color-averageScore)" name="Average Score" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="completionRate" fill="var(--color-completionRate)" name="Completion Rate" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -168,25 +158,27 @@ export function StudentProgressAnalytics() {
         </TabsContent>
 
         <TabsContent value="individual" className="mt-6">
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-sm">
             <CardHeader>
-              <CardTitle>Individual Student Progress</CardTitle>
-              <CardDescription>Detailed progress for each student</CardDescription>
+              <CardTitle className="text-blue-700">Individual Student Progress</CardTitle>
+              <CardDescription className="text-blue-600/80">Detailed progress for each student</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 {studentProgressData.map((student) => (
-                  <div key={student.name} className="space-y-2">
+                  <div key={student.name} className="space-y-2 bg-white/50 dark:bg-slate-800/50 p-4 rounded-lg">
                     <div className="flex justify-between items-center">
                       <div>
-                        <div className="font-medium">{student.name}</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="font-medium text-blue-700 dark:text-blue-300">{student.name}</div>
+                        <div className="text-sm text-blue-600/80 dark:text-blue-300/80">
                           Level {student.level} • {student.questsCompleted} Quests • {student.badges} Badges
                         </div>
                       </div>
-                      <div className="text-sm font-medium">{student.progress}%</div>
+                      <div className="text-sm font-medium text-blue-700 dark:text-blue-300">{student.progress}%</div>
                     </div>
-                    <Progress value={student.progress} className="h-2" />
+                    <Progress value={student.progress} className="h-2 bg-blue-100 dark:bg-blue-950/30">
+                      <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" style={{ width: `${student.progress}%` }} />
+                    </Progress>
                   </div>
                 ))}
               </div>
