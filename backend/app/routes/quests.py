@@ -32,6 +32,7 @@ def get_quests(
     limit: int = 100, 
     course_id: Optional[int] = None,
     is_active: Optional[bool] = None,
+    difficulty_level: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Quest)
@@ -41,6 +42,9 @@ def get_quests(
     
     if is_active is not None:
         query = query.filter(Quest.is_active == is_active)
+        
+    if difficulty_level is not None:
+        query = query.filter(Quest.difficulty_level == difficulty_level)
     
     return query.offset(skip).limit(limit).all()
 
@@ -79,6 +83,44 @@ def delete_quest(quest_id: int, db: Session = Depends(get_db)):
 def get_quests_by_creator(creator_id: int, db: Session = Depends(get_db)):
     quests = db.query(Quest).filter(Quest.creator_id == creator_id).all()
     return quests
+
+@router.get("/courses", response_model=dict)
+async def get_courses(db: Session = Depends(get_db)):
+    """
+    Get all available courses.
+    """
+    try:
+        from app.models.course import Course as CourseModel
+        
+        # Fetch courses
+        courses = db.query(CourseModel).all()
+        
+        # Convert to dict for response
+        courses_data = []
+        for course in courses:
+            courses_data.append({
+                "id": course.id,
+                "title": course.title,
+                "short_name": course.short_name or "",
+                "description": course.description,
+                "moodle_course_id": course.moodle_course_id,
+                "is_active": course.is_active
+            })
+        
+        return {
+            "success": True,
+            "courses": courses_data
+        }
+    
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error getting courses: {str(e)}")
+        print(error_details)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Error getting courses: {str(e)}"
+        )
 
 @router.post("/sample", response_model=QuestSchema, status_code=status.HTTP_201_CREATED)
 def create_sample_quest(db: Session = Depends(get_db)):

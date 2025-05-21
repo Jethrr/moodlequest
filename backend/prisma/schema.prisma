@@ -1,0 +1,49 @@
+// Course model
+model Course {
+  id              Int       @id @default(autoincrement())
+  title           String
+  description     String?   @db.Text
+  course_code     String    @unique
+  teacher_id      Int
+  is_active       Boolean   @default(true)
+  start_date      DateTime? @db.Date
+  end_date        DateTime? @db.Date
+  created_at      DateTime  @default(now()) @db.Timestamptz()
+  last_updated    DateTime  @default(now()) @db.Timestamptz()
+  moodle_course_id Int?
+  enrollment_key   String?
+  settings        Json      @default("{}")
+
+  // Relations
+  teacher         User      @relation(fields: [teacher_id], references: [id], onDelete: Restrict)
+  enrollments     CourseUser[]
+
+  // Indexes
+  @@index([teacher_id], name: "idx_courses_teacher")
+  @@index([is_active], name: "idx_courses_active")
+}
+
+// CourseUser model for enrollments
+model CourseUser {
+  id              Int       @id @default(autoincrement())
+  course_id       Int
+  user_id         Int
+  role            String    @default("student") // student, teacher, teaching_assistant
+  enrolled_at     DateTime  @default(now())
+  last_accessed   DateTime  @default(now())
+  completion      Float     @default(0) // 0-100 percentage
+  grade           Float?
+  is_active       Boolean   @default(true)
+  moodle_enrollment_id Int?
+  metadata        Json      @default("{}")
+  
+  // Relations
+  course          Course    @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@unique([course_id, user_id]) // A user can only be enrolled once in a course
+  @@index([user_id], name: "idx_course_user_user")
+  @@index([course_id], name: "idx_course_user_course")
+  @@index([enrolled_at], name: "idx_course_user_enrolled_at")
+} 

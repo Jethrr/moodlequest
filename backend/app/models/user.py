@@ -30,5 +30,6 @@ class User(Base):
         ),
     )
     
-    # Add relationship
-    tokens = relationship("Token", back_populates="user", cascade="all, delete-orphan") 
+    # Add relationships
+    tokens = relationship("Token", back_populates="user", cascade="all, delete-orphan")
+    enrollments = relationship("CourseEnrollment", back_populates="user", cascade="all, delete-orphan", lazy="dynamic") 

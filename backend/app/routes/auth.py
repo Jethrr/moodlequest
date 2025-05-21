@@ -699,4 +699,156 @@ async def store_moodle_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to store user: {str(e)}"
+        )
+
+
+@router.get("/courses", response_model=dict)
+async def get_user_courses(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get courses where the current user is enrolled in from Moodle and store them in the database.
+    
+    This endpoint fetches the user's courses from Moodle using core_enrol_get_users_courses
+    and saves them to our database.
+    """
+    try:
+        # Get Moodle config
+        moodle_config = db.query(MoodleConfig).first()
+        base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost:8080")
+        
+        # Check if user has a valid Moodle token
+        if not current_user.user_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User does not have a valid Moodle token"
+            )
+            
+        # Initialize Moodle service
+        async with MoodleService(base_url=base_url, verify_ssl=False) as moodle:
+            # Verify token validity
+            is_valid = await validate_moodle_token(current_user.user_token, moodle)
+            
+            if not is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid or expired Moodle token"
+                )
+            
+            # Get user courses from Moodle
+            if not current_user.moodle_user_id:
+                # First get user info to get Moodle user ID
+                user_info_result = await moodle.get_user_info(current_user.user_token)
+                if not user_info_result["success"]:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Failed to get user info from Moodle: {user_info_result['error']}"
+                    )
+                
+                # Update user with Moodle ID
+                moodle_user = user_info_result["user"]
+                if "id" in moodle_user:
+                    current_user.moodle_user_id = int(moodle_user["id"])
+                    db.commit()
+            
+            # Get user courses
+            courses_result = await moodle.get_user_courses(
+                token=current_user.user_token,
+                user_id=str(current_user.moodle_user_id)
+            )
+            
+            if not courses_result["success"]:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to get courses from Moodle: {courses_result['error']}"
+                )
+            
+            # Process and store courses
+            from app.models.course import Course as CourseModel
+            from app.models.enrollment import CourseEnrollment
+            
+            course_ids = []
+            for course_data in courses_result["courses"]:
+                # Check if course already exists
+                course = db.query(CourseModel).filter(CourseModel.moodle_course_id == course_data["id"]).first()
+                
+                if not course:
+                    # Create new course
+                    course = CourseModel(
+                        title=course_data.get("fullname", ""),
+                        description=course_data.get("summary", ""),
+                        short_name=course_data.get("shortname", ""),
+                        course_code=f"MOODLE-{course_data['id']}",
+                        teacher_id=current_user.id,  # Default to current user as teacher
+                        is_active=True,
+                        moodle_course_id=course_data["id"],
+                        format=course_data.get("format", ""),
+                        visible=course_data.get("visible", True)
+                    )
+                    db.add(course)
+                    db.flush()
+                
+                # Add course enrollment if not exists
+                enrollment = db.query(CourseEnrollment).filter(
+                    CourseEnrollment.user_id == current_user.id,
+                    CourseEnrollment.course_id == course.id
+                ).first()
+                
+                if not enrollment:
+                    # Determine role from Moodle course data
+                    role = "student"
+                    if current_user.role == "teacher" or current_user.role == "admin":
+                        role = "teacher"
+                    
+                    enrollment = CourseEnrollment(
+                        user_id=current_user.id,
+                        course_id=course.id,
+                        moodle_enrollment_id=course_data.get("id", None),
+                        role=role,
+                        status="active",
+                        last_access=datetime.utcnow()
+                    )
+                    db.add(enrollment)
+                else:
+                    # Update last access time
+                    enrollment.last_access = datetime.utcnow()
+                
+                course_ids.append(course.id)
+            
+            # Commit all changes
+            db.commit()
+            
+            # Fetch all courses the user is enrolled in
+            enrollments = db.query(CourseEnrollment).filter(
+                CourseEnrollment.user_id == current_user.id
+            ).all()
+            
+            enrolled_course_ids = [enrollment.course_id for enrollment in enrollments]
+            
+            courses = db.query(CourseModel).filter(CourseModel.id.in_(enrolled_course_ids)).all()
+            
+            # Convert to dict for response
+            courses_data = []
+            for course in courses:
+                courses_data.append({
+                    "id": course.id,
+                    "title": course.title,
+                    "short_name": course.short_name,
+                    "description": course.description,
+                    "moodle_course_id": course.moodle_course_id,
+                    "is_active": course.is_active
+                })
+            
+            return {
+                "success": True,
+                "courses": courses_data,
+                "message": f"Successfully fetched and stored {len(courses_data)} courses"
+            }
+    
+    except Exception as e:
+        logger.error(f"Error in get_user_courses: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user courses: {str(e)}"
         ) 

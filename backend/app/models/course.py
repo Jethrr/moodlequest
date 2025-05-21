@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.database.connection import Base
 
 class Course(Base):
@@ -16,6 +17,14 @@ class Course(Base):
     end_date = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    moodle_course_id = Column(Integer, nullable=True)
+    moodle_course_id = Column(Integer, unique=True, nullable=True)
     enrollment_key = Column(String(100), nullable=True)
-    settings = Column(JSONB, default={}) 
+    settings = Column(JSONB, default={})
+    short_name = Column(String(50), nullable=True)
+    format = Column(String(50), nullable=True)
+    visible = Column(Boolean, default=True)
+    category_id = Column(Integer, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships - use string reference to avoid circular import
+    enrollments = relationship("CourseEnrollment", back_populates="course", cascade="all, delete-orphan", lazy="dynamic") 
