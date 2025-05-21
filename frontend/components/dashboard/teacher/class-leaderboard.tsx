@@ -141,22 +141,22 @@ export function ClassLeaderboard() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h3 className="text-xl font-bold">Class Leaderboard</h3>
+        <h3 className="text-xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">Class Leaderboard</h3>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search students..."
-            className="pl-8 w-full sm:w-[250px]"
+            className="pl-8 w-full sm:w-[250px] bg-muted/50 border-muted-foreground/20 focus:border-primary"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
 
-      <Card>
+      <Card className="bg-gradient-to-br from-background to-muted/20 border-border/50 shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle>Student Rankings</CardTitle>
+          <CardTitle className="text-primary/80">Student Rankings</CardTitle>
           <CardDescription>Based on XP earned and quest completion</CardDescription>
         </CardHeader>
         <CardContent>
@@ -164,8 +164,10 @@ export function ClassLeaderboard() {
             {filteredStudents.map((student) => (
               <div
                 key={student.id}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
-                  selectedStudent === student.id ? "bg-muted" : ""
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                  selectedStudent === student.id 
+                    ? "bg-gradient-to-r from-primary/10 to-primary/5 shadow-sm" 
+                    : "hover:bg-muted/50"
                 }`}
                 onClick={() => setSelectedStudent(student.id === selectedStudent ? null : student.id)}
               >
@@ -174,23 +176,31 @@ export function ClassLeaderboard() {
                     <span
                       className={`font-bold ${
                         student.rank === 1
-                          ? "text-yellow-500"
+                          ? "text-amber-500"
                           : student.rank === 2
-                            ? "text-gray-400"
+                            ? "text-zinc-400"
                             : student.rank === 3
                               ? "text-amber-600"
-                              : ""
+                              : "text-muted-foreground"
                       }`}
                     >
                       {student.rank}
                     </span>
                   </div>
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="h-10 w-10 ring-2 ring-offset-2 ring-offset-background transition-all duration-200
+                    ${student.rank === 1 
+                      ? 'ring-amber-500/50' 
+                      : student.rank === 2 
+                        ? 'ring-zinc-400/50' 
+                        : student.rank === 3 
+                          ? 'ring-amber-600/50' 
+                          : 'ring-primary/20'}"
+                  >
                     <AvatarImage src={student.avatar || "/placeholder.svg"} alt={student.name} />
                     <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{student.name}</div>
+                    <div className="font-medium text-foreground">{student.name}</div>
                     <div className="text-sm text-muted-foreground">Level {student.level}</div>
                   </div>
                 </div>
@@ -211,7 +221,7 @@ export function ClassLeaderboard() {
                       <path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.11" />
                       <path d="M15 7a3 3 0 1 0-6 0c0 1.66.5 3 2 5h2c1.5-2 2-3.34 2-5Z" />
                     </svg>
-                    <span className="text-sm">{student.badges}</span>
+                    <span className="text-sm font-medium text-purple-700">{student.badges}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <svg
@@ -224,11 +234,11 @@ export function ClassLeaderboard() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="h-4 w-4 text-yellow-500"
+                      className="h-4 w-4 text-amber-500"
                     >
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
-                    <span className="text-sm font-medium">{student.xp} XP</span>
+                    <span className="text-sm font-medium text-amber-700">{student.xp} XP</span>
                   </div>
                 </div>
               </div>
@@ -238,10 +248,10 @@ export function ClassLeaderboard() {
       </Card>
 
       {selectedStudent && (
-        <Card>
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-sm">
           <CardHeader>
-            <CardTitle>Student Details</CardTitle>
-            <CardDescription>Detailed information about the selected student</CardDescription>
+            <CardTitle className="text-blue-700">Student Details</CardTitle>
+            <CardDescription className="text-blue-600/80">Detailed information about the selected student</CardDescription>
           </CardHeader>
           <CardContent>
             {(() => {
@@ -251,49 +261,54 @@ export function ClassLeaderboard() {
               return (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <Avatar className="h-16 w-16">
+                    <Avatar className="h-16 w-16 ring-2 ring-offset-2 ring-offset-blue-50 ring-blue-200">
                       <AvatarImage src={student.avatar || "/placeholder.svg"} alt={student.name} />
                       <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="text-xl font-bold">{student.name}</h3>
-                      <div className="text-sm text-muted-foreground">
+                      <h3 className="text-xl font-bold text-blue-700">{student.name}</h3>
+                      <div className="text-sm text-blue-600/80">
                         Rank #{student.rank} • Level {student.level}
                       </div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Experience Points</div>
-                      <div className="text-2xl font-bold">{student.xp} XP</div>
+                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
+                      <div className="text-sm font-medium text-blue-600/80">Experience Points</div>
+                      <div className="text-2xl font-bold text-blue-700">{student.xp} XP</div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Badges Earned</div>
-                      <div className="text-2xl font-bold">{student.badges}</div>
+                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
+                      <div className="text-sm font-medium text-blue-600/80">Badges Earned</div>
+                      <div className="text-2xl font-bold text-blue-700">{student.badges}</div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Quests Completed</div>
-                      <div className="text-2xl font-bold">{student.questsCompleted}</div>
+                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
+                      <div className="text-sm font-medium text-blue-600/80">Quests Completed</div>
+                      <div className="text-2xl font-bold text-blue-700">{student.questsCompleted}</div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Current Streak</div>
-                      <div className="text-2xl font-bold">{student.streak} days</div>
+                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
+                      <div className="text-sm font-medium text-blue-600/80">Current Streak</div>
+                      <div className="text-2xl font-bold text-blue-700">{student.streak} days</div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-sm font-medium">Last Active</div>
+                    <div className="text-sm font-medium text-blue-600/80">Last Active</div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={student.lastActive.includes("minutes") ? "default" : "outline"}>
+                      <Badge variant={student.lastActive.includes("minutes") ? "default" : "outline"} 
+                        className={student.lastActive.includes("minutes") 
+                          ? "bg-blue-500 hover:bg-blue-600" 
+                          : "text-blue-700 border-blue-200"}>
                         {student.lastActive}
                       </Badge>
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button>View Progress</Button>
-                    <Button variant="outline">Send Message</Button>
+                  <div className="flex justify-end">
+                    <Button variant="outline" onClick={() => setSelectedStudent(null)}
+                      className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                      Close
+                    </Button>
                   </div>
                 </div>
               )
