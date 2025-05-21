@@ -9,6 +9,13 @@ from app.database.connection import engine, Base, SessionLocal
 from app.database.seed import seed_initial_data
 from app.models.auth import MoodleConfig
 
+# ============================================================================
+# ⚠️ DEVELOPMENT WARNING: Authentication is currently DISABLED
+# This configuration automatically logs in with a dummy teacher account
+# Do not use this setup in production! Re-enable authentication when needed.
+# See app/utils/auth.py and frontend/lib/auth-context.tsx
+# ============================================================================
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

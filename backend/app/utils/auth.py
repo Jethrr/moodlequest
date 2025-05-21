@@ -90,6 +90,40 @@ async def get_current_user(
     Returns:
         Current user or raises an exception
     """
+    # ===========================================================================
+    # TEMPORARY MODIFICATION FOR DEVELOPMENT: Bypassing authentication
+    # This code automatically returns a dummy teacher user without authentication.
+    # REMEMBER TO RESTORE THE ORIGINAL CODE WHEN AUTHENTICATION IS NEEDED AGAIN.
+    # ===========================================================================
+    
+    # Look for an existing teacher user
+    dummy_user = db.query(User).filter(User.role == "teacher").first()
+    
+    # If no teacher user exists, create one
+    if not dummy_user:
+        dummy_user = User(
+            username="dev-teacher",
+            email="dev-teacher@example.com",
+            password_hash=get_password_hash("password"),  # Using a simple password for development
+            first_name="Development",
+            last_name="Teacher",
+            role="teacher",
+            is_active=True,
+            user_token="dev-token-123",  # Dummy token for Moodle API calls
+            moodle_user_id=1  # Dummy Moodle user ID
+        )
+        db.add(dummy_user)
+        db.commit()
+        db.refresh(dummy_user)
+        logger.warning("Created dummy teacher user for development purposes")
+    
+    return dummy_user
+    
+    # ===========================================================================
+    # ORIGINAL AUTHENTICATION CODE - COMMENTED OUT TEMPORARILY
+    # Uncomment this and remove the dummy user code above when authentication is needed again
+    # ===========================================================================
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -129,6 +163,7 @@ async def get_current_user(
         )
         
     return user
+    """
 
 
 async def get_current_active_user(
