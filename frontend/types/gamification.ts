@@ -60,6 +60,7 @@ export interface PetAccessory {
   description: string
   slot: "background" | "left" | "bottom-left" | "bottom-right"
   iconUrl: string
+  levelRequired: number
   position?: {
     position?: string
     top?: string

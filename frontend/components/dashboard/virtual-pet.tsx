@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import type { VirtualPet as VirtualPetType, PetAccessory } from "@/types/gamification"
-import { Heart, Zap, Clock, Plus } from "lucide-react"
+import { Heart, Zap, Clock, Plus, Lock } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -26,6 +26,7 @@ const availableAccessories: PetAccessory[] = [
     description: "A cozy bed designed for optimal rest.",
     slot: "background",
     iconUrl: "/pet-access/bed.png",
+    levelRequired: 10,
     position: {
       position: 'absolute',
       inset: '0',
@@ -36,7 +37,7 @@ const availableAccessories: PetAccessory[] = [
       opacity: '0.8',
       width: '140px',
       height: '140px',
-      top: '0',
+      top: '30px', 
       left: '-10px'
     },
     stats: {
@@ -49,11 +50,12 @@ const availableAccessories: PetAccessory[] = [
     description: "A scratching post for exercise.",
     slot: "left",
     iconUrl: "/pet-access/pole.png",
+    levelRequired: 15,
     position: {
       position: 'absolute',
       width: '50px',
       height: '100px',
-      left: '-90px',
+      left: '-150px', // moved even more to the left
       bottom: '10px',
       zIndex: '1'
     },
@@ -67,11 +69,12 @@ const availableAccessories: PetAccessory[] = [
     description: "A companion for your virtual pet.",
     slot: "bottom-left",
     iconUrl: "/pet-access/kitten.png",
+    levelRequired: 25,
     position: {
       position: 'absolute',
       width: '40px',
       height: '40px',
-      left: '-20px',
+      left: '-90px', 
       bottom: '0px',
       zIndex: '2'
     },
@@ -85,12 +88,13 @@ const availableAccessories: PetAccessory[] = [
     description: "A special feeding bowl.",
     slot: "bottom-right",
     iconUrl: "/pet-access/food.png",
+    levelRequired: 30,
     position: {
       position: 'absolute',
       width: '40px',
       height: '40px',
-      right: '-90px',
-      bottom: '0px',
+      right: '-150px', // moved even more to the right
+      bottom: '10px', // adjusted to be more aligned with other items
       zIndex: '2'
     },
     stats: {
@@ -99,17 +103,18 @@ const availableAccessories: PetAccessory[] = [
   },
 ]
 
+
 // Mock pet data
 const mockPet: VirtualPetType = {
   id: "pet1",
   name: "Derrick",
   species: "Owl",
-  level: 3,
+  level: 5,
   happiness: 10,
   energy: 10,
   lastFed: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
   lastPlayed: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-  accessories: [availableAccessories[0]],
+  accessories: [], // No accessories initially since level is too low
   iconUrl: "/animations/Chilling.gif",
 }
 
@@ -196,6 +201,11 @@ export function VirtualPet() {
   }
 
   const equipAccessory = (accessory: PetAccessory) => {
+    // Check if the pet level is high enough to use this accessory
+    if (pet.level < accessory.levelRequired) {
+      return; // Can't equip if level requirement isn't met
+    }
+    
     setPet(prevPet => {
       // Check if accessory is already equipped
       const isEquipped = prevPet.accessories.some(acc => acc.id === accessory.id)
@@ -232,6 +242,11 @@ export function VirtualPet() {
       // Default to chilling when active, idle when inactive
       setPetState('chilling')
     }
+  }
+
+  // Helper to calculate levels needed to unlock an accessory
+  const getLevelsNeeded = (accessory: PetAccessory) => {
+    return Math.max(0, accessory.levelRequired - pet.level)
   }
 
   // Set up user activity tracking
@@ -510,12 +525,15 @@ export function VirtualPet() {
                 <div className="grid grid-cols-2 gap-6 mt-4">
                   {availableAccessories.map((accessory) => {
                     const isEquipped = pet.accessories.some(acc => acc.id === accessory.id)
+                    const isLocked = pet.level < accessory.levelRequired
+                    const levelsNeeded = getLevelsNeeded(accessory)
                     return (
                       <Button
                         key={accessory.id}
                         variant={isEquipped ? "default" : "outline"}
-                        className={`flex flex-col items-center justify-between h-auto p-5 ${isEquipped ? 'bg-primary text-primary-foreground' : ''}`}
+                        className={`flex flex-col items-center justify-between h-auto p-5 ${isEquipped ? 'bg-primary text-primary-foreground' : ''} ${isLocked ? 'opacity-80' : ''}`}
                         onClick={() => equipAccessory(accessory)}
+                        disabled={isLocked}
                       >
                         <div className="relative w-16 h-16 mb-3">
                           <Image
@@ -523,7 +541,15 @@ export function VirtualPet() {
                             alt={accessory.name}
                             layout="fill"
                             objectFit="contain"
+                            className={isLocked ? "opacity-50" : ""}
                           />
+                          {isLocked && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="bg-background/80 rounded-full p-1">
+                                <Lock className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className={`text-sm font-medium mb-2 ${isEquipped ? 'text-white' : ''}`}>
                           {accessory.name}
@@ -531,10 +557,14 @@ export function VirtualPet() {
                         <div 
                           className={`text-xs ${isEquipped ? 'text-white/90' : 'text-muted-foreground'} text-center leading-relaxed w-full overflow-hidden break-words`}
                         >
-                          {accessory.description}
+                          {isLocked 
+                            ? `Unlocks at level ${accessory.levelRequired}` 
+                            : accessory.description}
                         </div>
                         <div className={`text-xs font-medium mt-3 ${isEquipped ? 'text-white/90' : ''}`}>
-                          {isEquipped ? '✓ Equipped' : 'Click to equip'}
+                          {isLocked 
+                            ? `🔒 ${levelsNeeded} more level${levelsNeeded !== 1 ? 's' : ''} needed` 
+                            : isEquipped ? '✓ Equipped' : 'Click to equip'}
                         </div>
                       </Button>
                     )
