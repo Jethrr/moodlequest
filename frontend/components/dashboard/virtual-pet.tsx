@@ -516,7 +516,7 @@ export function VirtualPet() {
                   Accessories
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="sm:max-w-[600px] dark:bg-background/1000 dark:border dark:border-border">
                 <DialogHeader>
                   <DialogTitle>Pet Accessories</DialogTitle>
                   <DialogDescription>Customize your pet with special items that boost their stats</DialogDescription>
@@ -545,7 +545,7 @@ export function VirtualPet() {
                           />
                           {isLocked && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="bg-background/80 rounded-full p-1">
+                              <div className="bg-background/80 dark:bg-background rounded-full p-1">
                                 <Lock className="h-5 w-5 text-muted-foreground" />
                               </div>
                             </div>

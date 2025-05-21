@@ -2,8 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api-client'
-import { Quest } from '@/lib/api-client'
+// Define Quest interface locally until it's properly exported from api-client
+interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  xp: number;
+  progress: number;
+  difficulty: "Easy" | "Medium" | "Hard" | "Epic";
+  category: string;
+  deadline: string;
+  status: "not-started" | "in-progress" | "completed";
+}
 import Image from 'next/image'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Trophy, 
@@ -18,7 +30,8 @@ import {
   Users,
   Sparkles,
   Crown,
-  ArrowUp
+  ArrowUp,
+  Lock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -149,8 +162,34 @@ export default function StudentQuestsPage() {
   useEffect(() => {
     async function fetchQuests() {
       try {
-        const fetchedQuests = await apiClient.getQuests()
-        setQuests(fetchedQuests)
+        // Mocking quest data since API client might not have getQuests method yet
+        // TODO: Uncomment this when the API endpoint is ready
+        // const fetchedQuests = await apiClient.getQuests()
+        const mockQuests: Quest[] = [
+          {
+            id: '1',
+            title: 'Complete Your Profile',
+            description: 'Update your profile details and add a profile picture',
+            xp: 50,
+            progress: 75,
+            difficulty: 'Easy',
+            category: 'Onboarding',
+            deadline: new Date(Date.now() + 86400000).toISOString(),
+            status: 'in-progress'
+          },
+          {
+            id: '2',
+            title: 'Welcome to MoodleQuest',
+            description: 'Learn how to navigate the platform',
+            xp: 30,
+            progress: 100,
+            difficulty: 'Easy',
+            category: 'Tutorial',
+            deadline: new Date(Date.now() + 86400000).toISOString(),
+            status: 'completed'
+          }
+        ]
+        setQuests(mockQuests)
         setLoading(false)
       } catch (err) {
         console.error('Error fetching quests:', err)
@@ -497,9 +536,11 @@ export default function StudentQuestsPage() {
           
           <div className="text-center">
             <p className="text-xs md:text-sm text-muted-foreground">Rank points: <span className="font-medium text-foreground">{user.rankPoints}</span></p>
-            <Button variant="outline" size="sm" className="mt-3 gap-1 rounded-full text-xs">
-              View Leaderboard <ChevronRight className="h-3 w-3" />
-            </Button>
+            <Link href="/dashboard/leaderboard">
+              <Button variant="outline" size="sm" className="mt-3 gap-1 rounded-full text-xs">
+                View Leaderboard <ChevronRight className="h-3 w-3" />
+              </Button>
+            </Link>
           </div>
         </motion.div>
       </motion.div>
@@ -519,8 +560,7 @@ export default function StudentQuestsPage() {
               key={game.id}
               variants={itemVariants}
               whileHover={{ scale: 1.03, y: -5 }}
-              className={`bg-gradient-to-br ${game.color} rounded-xl overflow-hidden border border-white/10 shadow-lg cursor-pointer`}
-              onClick={() => setSelectedGame(game.id === selectedGame ? null : game.id)}
+              className={`bg-gradient-to-br ${game.color} rounded-xl overflow-hidden border border-white/10 shadow-lg`}
             >
               <div className="h-36 md:h-44 relative p-4 md:p-6 text-white">
                 {/* Game badge */}
@@ -560,6 +600,13 @@ export default function StudentQuestsPage() {
                     />
                   ))}
                 </div>
+
+                {/* Overlay - locked state */}
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                  <Lock className="h-8 w-8 text-white/80 mb-2" />
+                  <div className="text-white font-semibold text-lg">Coming Soon</div>
+                  <div className="text-white/70 text-xs mt-1">Future Update</div>
+                </div>
                 
                 <div className="relative z-10">
                   <h3 className="text-lg md:text-xl font-bold mb-1">{game.title}</h3>
@@ -584,6 +631,7 @@ export default function StudentQuestsPage() {
                   <Button 
                     size="sm" 
                     className="mt-2 bg-white/20 hover:bg-white/30 text-white border-white/10 rounded-full text-xs"
+                    disabled
                   >
                     <Play className="h-3 w-3 mr-1" /> Play Now
                   </Button>
@@ -667,9 +715,11 @@ export default function StudentQuestsPage() {
             <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
               <Trophy className="h-4 w-4 md:h-5 md:w-5 text-amber-500" /> Leaderboard
             </h2>
-            <Button variant="ghost" size="sm" className="gap-1 text-xs">
-              View All <ChevronRight className="h-4 w-4" />
-            </Button>
+            <Link href="/dashboard/leaderboard">
+              <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                View All <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
           
           <div className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6 relative overflow-hidden">
