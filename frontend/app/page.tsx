@@ -174,6 +174,7 @@ export default function LandingPage() {
   const controls = useAnimation()
   const [mounted, setMounted] = useState(false)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [isDev, setIsDev] = useState(false)
   
   // Generate fixed trophy confetti data once on client
   const [confettiItems, setConfettiItems] = useState<Array<{
@@ -189,6 +190,8 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true)
+    // Set development mode
+    setIsDev(process.env.NODE_ENV === 'development')
     // Set initial dimensions
     setDimensions({
       width: window.innerWidth,
@@ -319,6 +322,33 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/95 overflow-hidden relative">
+      {/* Development Mode Notice */}
+      {isDev && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground px-4 py-2 flex items-center justify-center gap-4 shadow-lg">
+          <div className="text-sm font-medium">
+            🔧 Development Mode: Authentication is bypassed with an auto-login teacher account
+          </div>
+          <Link href="/dev-dashboard" passHref>
+            <Button size="sm" variant="secondary" className="text-sm">
+              Dev Dashboard
+              <ChevronRight className="h-4 w-4 ml-1"/>
+            </Button>
+          </Link>
+          <Link href="/dashboard/teacher" passHref>
+            <Button size="sm" variant="secondary" className="text-sm">
+              Teacher Dashboard
+              <ChevronRight className="h-4 w-4 ml-1"/>
+            </Button>
+          </Link>
+          <Link href="/dashboard/quests" passHref>
+            <Button size="sm" variant="secondary" className="text-sm">
+              Quests
+              <ChevronRight className="h-4 w-4 ml-1"/>
+            </Button>
+          </Link>
+        </div>
+      )}
+      
       {/* Bottom Sign-in button */}
       <BottomSignIn />
       
