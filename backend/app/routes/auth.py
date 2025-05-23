@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
@@ -28,6 +28,7 @@ from app.utils.auth import (
 )
 import os
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -851,4 +852,192 @@ async def get_user_courses(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get user courses: {str(e)}"
-        ) 
+        )
+
+
+@router.get("/get-activities", response_model=dict)
+async def get_activities(
+    request: Request,
+    course_ids: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch all available assignments and quizzes from Moodle using the token from cookies.
+    """
+    token = request.cookies.get("moodleToken")
+    if not token:
+        raise HTTPException(status_code=401, detail="No Moodle token found in cookies. Please login first.")
+
+    # Get Moodle config
+    moodle_config = db.query(MoodleConfig).first()
+    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost")
+    base_url = base_url.rstrip("/")
+
+    # Prepare params for assignments
+    assign_params = {
+        "wstoken": token,
+        "wsfunction": "mod_assign_get_assignments",
+        "moodlewsrestformat": "json"
+    }
+    quiz_params = {
+        "wstoken": token,
+        "wsfunction": "mod_quiz_get_quizzes_by_courses",
+        "moodlewsrestformat": "json"
+    }
+    # Add courseids if provided
+    if course_ids:
+        try:
+            course_id_list = [int(cid.strip()) for cid in course_ids.split(",") if cid.strip()]
+            for idx, cid in enumerate(course_id_list):
+                assign_params[f"courseids[{idx}]"] = cid
+                quiz_params[f"courseids[{idx}]"] = cid
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid course_ids format. Use comma-separated integers.")
+
+    # Direct HTTP requests to Moodle REST API
+    try:
+        assign_url = f"{base_url}/webservice/rest/server.php"
+        quiz_url = f"{base_url}/webservice/rest/server.php"
+        assign_resp = requests.get(assign_url, params=assign_params, verify=False)
+        quiz_resp = requests.get(quiz_url, params=quiz_params, verify=False)
+        assignments_result = assign_resp.json()
+        quizzes_result = quiz_resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch from Moodle: {str(e)}")
+
+    # Parse assignments
+    assignments = []
+    if assignments_result and "courses" in assignments_result:
+        for course in assignments_result["courses"]:
+            for assign in course.get("assignments", []):
+                assignments.append({
+                    "id": assign.get("id"),
+                    "name": assign.get("name"),
+                    "course": assign.get("course"),
+                    "duedate": assign.get("duedate"),
+                    "type": "assignment",
+                    "raw": assign
+                })
+    # Parse quizzes
+    quizzes = []
+    if quizzes_result and "quizzes" in quizzes_result:
+        for quiz in quizzes_result["quizzes"]:
+            quizzes.append({
+                "id": quiz.get("id"),
+                "name": quiz.get("name"),
+                "course": quiz.get("course"),
+                "timeopen": quiz.get("timeopen"),
+                "timeclose": quiz.get("timeclose"),
+                "type": "quiz",
+                "raw": quiz
+            })
+
+    return {
+        "success": True,
+        "assignments": assignments,
+        "quizzes": quizzes,
+        "activities": assignments + quizzes,
+        "count": len(assignments) + len(quizzes)
+    }
+
+
+@router.get("/test-get-activities")
+def test_get_activities():
+    """
+    Simple test route to verify /auth/get-activities is reachable.
+    """
+    return {"message": "The /auth/get-activities route is registered and working."}
+
+
+@router.get("/get-course")
+async def get_course(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch course details from Moodle using the token from cookies.
+    Uses the Moodle user ID associated with the token.
+    """
+    token = request.cookies.get("moodleToken")
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="No Moodle token found in cookies. Please login first."
+        )
+
+    # Get Moodle config
+    moodle_config = db.query(MoodleConfig).first()
+    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost")
+    base_url = base_url.rstrip("/")
+
+    try:
+        # First get user info to get Moodle user ID
+        user_info_params = {
+            "wstoken": token,
+            "wsfunction": "core_webservice_get_site_info",
+            "moodlewsrestformat": "json"
+        }
+        user_info_url = f"{base_url}/webservice/rest/server.php"
+        user_info_resp = requests.get(user_info_url, params=user_info_params, verify=False)
+        user_info = user_info_resp.json()
+
+        if "exception" in user_info:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid or expired Moodle token"
+            )
+
+        user_id = user_info.get("userid")
+        if not user_id:
+            raise HTTPException(
+                status_code=500,
+                detail="Could not get user ID from Moodle token"
+            )
+
+        # Now get the courses for this user
+        course_params = {
+            "wstoken": token,
+            "wsfunction": "core_enrol_get_users_courses",
+            "userid": user_id,
+            "moodlewsrestformat": "json"
+        }
+
+        url = f"{base_url}/webservice/rest/server.php"
+        response = requests.get(url, params=course_params, verify=False)
+        courses_result = response.json()
+
+        # Check for Moodle API errors
+        if isinstance(courses_result, dict) and "exception" in courses_result:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Moodle API error: {courses_result.get('message', 'Unknown error')}"
+            )
+
+        # Process and format the courses
+        courses = []
+        for course in courses_result:
+            courses.append({
+                "id": course.get("id"),
+                "fullname": course.get("fullname"),
+                "shortname": course.get("shortname"),
+                "categoryid": course.get("category"),
+                "summary": course.get("summary", ""),
+                "format": course.get("format"),
+                "startdate": course.get("startdate"),
+                "enddate": course.get("enddate"),
+                "visible": course.get("visible", True),
+                "raw": course  # Include raw data for additional fields
+            })
+
+        return {
+            "success": True,
+            "courses": courses,
+            "count": len(courses)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to fetch courses from Moodle: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch courses from Moodle: {str(e)}"
+        )
