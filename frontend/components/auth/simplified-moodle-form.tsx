@@ -100,6 +100,7 @@ export function SimplifiedMoodleForm() {
 
       if (result.success && result.token && result.user) {
         console.log("Login successful, storing user data");
+        console.log("User Role", result.user.role);
 
         // Create a complete user object with all required fields
         const userData = {
@@ -109,7 +110,7 @@ export function SimplifiedMoodleForm() {
           username: result.user.username || username,
           name: result.user.name || username,
           email: result.user.email || "",
-          role: result.user.role || "student",
+          role: result.user.role,
           moodleId: result.user.moodleId || result.user.id || "",
           avatarUrl: result.user.avatarUrl || "",
         };
@@ -166,7 +167,7 @@ export function SimplifiedMoodleForm() {
 
       setTimeout(() => {
         if (userData.role === "teacher" || userData.role === "admin") {
-          router.push("/teacher/dashboard");
+          router.push("/dashboard/teacher");
         } else {
           router.push("/dashboard");
         }
