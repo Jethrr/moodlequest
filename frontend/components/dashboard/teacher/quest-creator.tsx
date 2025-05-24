@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { useCurrentUser } from "@/hooks/useCurrentMoodleUser";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -98,15 +99,12 @@ const MOCK_MOODLE_ACTIVITIES: MoodleActivity[] = [
   },
 ];
 
-// Helper function to strip HTML tags
 const stripHtmlTags = (html: string) => {
-  // Create a temporary DOM element
   if (typeof document !== "undefined") {
     const temp = document.createElement("div");
     temp.innerHTML = html;
     return temp.textContent || temp.innerText || "";
   }
-  // Fallback for server-side: basic regex strip
   return html.replace(/<[^>]*>?/gm, "");
 };
 
@@ -122,7 +120,7 @@ export function QuestCreator() {
   const [filterAssigned, setFilterAssigned] = useState<string>("unassigned");
   const [searchQuery, setSearchQuery] = useState("");
   const [courseMap, setCourseMap] = useState<{ [id: number]: string }>({});
-
+  const { user } = useCurrentUser();
   const [quest, setQuest] = useState<Partial<Quest>>({
     xp: 50,
     difficulty: "Medium",
@@ -141,12 +139,14 @@ export function QuestCreator() {
     value: 0,
     name: "",
   });
+
   // Fetch Moodle activities and courses
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         // Fetch activities
+        // Change the URL to your actual Backend API endpoint i didnt put env here sa diri
         const activitiesRes = await fetch(
           "http://localhost:8002/api/auth/get-activities",
           {
@@ -345,13 +345,15 @@ export function QuestCreator() {
       description: quest.description || selectedActivity.description || "",
       xp: totalXP,
       progress: 0,
+      moodleActivityId: selectedActivity.id,
+      moodleCourse: selectedActivity.course,
       difficulty: quest.difficulty as "Easy" | "Medium" | "Hard" | "Epic",
-      category: quest.category || selectedActivity.course.toString(),
+      category: selectedActivity.type.toString(),
       deadline: selectedActivity.duedate
         ? new Date(selectedActivity.duedate * 1000).toISOString()
         : "2 weeks",
       status: "not-started",
-      createdBy: "teacher-123",
+      creatorId: user?.id ?? 0,
       learningObjectives: quest.learningObjectives || [],
       tasks: (quest.tasks as Task[]) || [],
       rewards: (quest.rewards as Reward[]) || [],
@@ -385,6 +387,10 @@ export function QuestCreator() {
       rewards: [],
     });
 
+    console.log(
+      "Quest successfully assigned to Moodle activity:",
+      completeQuest
+    );
     // Show success message
     alert("Gamification elements successfully assigned to Moodle activity!");
   };
@@ -604,7 +610,7 @@ export function QuestCreator() {
                     </Label>
                     <Textarea
                       id="description"
-                      value={quest.description || selectedActivity.description}
+                      value={quest.description}
                       onChange={(e) =>
                         setQuest({ ...quest, description: e.target.value })
                       }
@@ -835,9 +841,11 @@ interface Quest {
   progress: number;
   difficulty: "Easy" | "Medium" | "Hard" | "Epic";
   category: string;
+  moodleCourse: number;
+  moodleActivityId: number;
   deadline: string;
   status: string;
-  createdBy: string;
+  creatorId: number;
   learningObjectives?: string[];
   tasks: Task[];
   rewards: Reward[];

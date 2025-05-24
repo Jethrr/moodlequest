@@ -98,9 +98,11 @@ export function SimplifiedMoodleForm() {
           clearTimeout(loginTimeout);
         });
 
-      if (result.success && result.token && result.user) {
+      //  && result.token && result.user
+
+      if (result.success) {
         console.log("Login successful, storing user data");
-        console.log("User Role", result.user.role);
+        // console.log("User Role", result.user.role);
 
         // Create a complete user object with all required fields
         const userData = {
@@ -115,10 +117,12 @@ export function SimplifiedMoodleForm() {
           avatarUrl: result.user.avatarUrl || "",
         };
 
-        console.log("User Role From Client: ", userData.role);
+        console.log("User Data: ", userData);
+
+        // console.log("User Role From Client: ", userData.role);
 
         // Store complete user data in localStorage
-        localStorage.setItem("moodlequest_user", JSON.stringify(userData));
+        localStorage.setItem("moodle_user", JSON.stringify(userData));
 
         setLoadingPhase("authenticating");
 
