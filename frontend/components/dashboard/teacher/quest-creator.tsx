@@ -53,54 +53,6 @@ interface Course {
   raw?: any;
 }
 
-// // Mock Moodle activities for demonstration
-// const MOCK_MOODLE_ACTIVITIES: MoodleActivity[] = [
-//   {
-//     id: 101,
-//     name: "Introduction to Programming",
-//     type: "assignment",
-//     course: 1,
-//     description: "Submit your first program in Python",
-//     duedate: 1702598400, // 2023-12-15
-//     is_assigned: false,
-//   },
-//   {
-//     id: 102,
-//     name: "Data Structures Quiz",
-//     type: "quiz",
-//     course: 1,
-//     description: "Test your knowledge of data structures",
-//     duedate: 1702972800, // 2023-12-20
-//     is_assigned: false,
-//   },
-//   {
-//     id: 103,
-//     name: "Literature Analysis",
-//     type: "forum",
-//     course: 2,
-//     description: "Discuss the themes in 'To Kill a Mockingbird'",
-//     is_assigned: false,
-//   },
-//   {
-//     id: 104,
-//     name: "Chemical Equations",
-//     type: "assignment",
-//     course: 3,
-//     description: "Balance the given chemical equations",
-//     duedate: 1702512000, // 2023-12-18
-//     is_assigned: true,
-//   },
-//   {
-//     id: 105,
-//     name: "Algebra Test",
-//     type: "quiz",
-//     course: 4,
-//     description: "Test on linear equations and inequalities",
-//     duedate: 1703155200, // 2023-12-22
-//     is_assigned: false,
-//   },
-// ];
-
 const stripHtmlTags = (html: string) => {
   if (typeof document !== "undefined") {
     const temp = document.createElement("div");
@@ -143,6 +95,22 @@ export function QuestCreator() {
   });
 
   const { toast } = useToast();
+
+  // Task types for dropdown
+  const TASK_TYPES = [
+    "view_lesson",
+    "submit_assignment",
+    "pass_quiz",
+    "attempt_quiz",
+    "get_graded",
+    "complete_module",
+    "complete_course",
+    "post_in_forum",
+    "watch_video",
+    "download_file",
+    "join_chat",
+    "submit_feedback",
+  ];
 
   // Fetch Moodle activities and courses
   useEffect(() => {
@@ -276,13 +244,13 @@ export function QuestCreator() {
           ...(quest.tasks || []),
           {
             id: `task-${Date.now()}`,
-            description: newTask.description,
+            description: newTask.description, // Will be the task type
             completed: false,
             xpReward: newTask.xpReward || 10,
           } as Task,
         ],
       });
-      setNewTask({ description: "", xpReward: 10 });
+      setNewTask({ description: TASK_TYPES[0], xpReward: 10 });
     }
   };
 
@@ -678,16 +646,25 @@ export function QuestCreator() {
                     </Label>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                       <div className="sm:col-span-3">
-                        <Input
-                          value={newTask.description}
-                          onChange={(e) =>
-                            setNewTask({
-                              ...newTask,
-                              description: e.target.value,
-                            })
+                        <Select
+                          value={newTask.description || TASK_TYPES[0]}
+                          onValueChange={(value) =>
+                            setNewTask({ ...newTask, description: value })
                           }
-                          placeholder="Task description"
-                        />
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select task type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TASK_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type
+                                  .replace(/_/g, " ")
+                                  .replace(/\b\w/g, (l) => l.toUpperCase())}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <Input
@@ -723,7 +700,11 @@ export function QuestCreator() {
                         >
                           <div className="flex-1">
                             <div className="font-medium">
-                              {task.description}
+                              {typeof task.description === "string"
+                                ? task.description
+                                    .replace(/_/g, " ")
+                                    .replace(/\b\w/g, (l) => l.toUpperCase())
+                                : ""}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {task.xpReward} XP
