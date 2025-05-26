@@ -41,6 +41,7 @@ class StoreUserRequest(BaseModel):
     lastName: str
     token: str
     privateToken: Optional[str] = None
+    role: Optional[str] = "student"
 
 
 class Token(BaseModel):

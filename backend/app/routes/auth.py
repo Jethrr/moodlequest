@@ -632,6 +632,7 @@ async def store_moodle_user(
             user.last_name = user_data.lastName
             user.moodle_user_id = user_data.moodleId
             user.user_token = user_data.token
+            user.role = user_data.role or "student"  # Default to student if no role provided
             
             # Update last login time
             user.last_login = datetime.utcnow()
@@ -646,7 +647,7 @@ async def store_moodle_user(
                 last_name=user_data.lastName,
                 moodle_user_id=user_data.moodleId,
                 user_token=user_data.token,
-                role="student",  # Default role
+                role=user_data.role,  # Default role
                 is_active=True,
                 password_hash="moodle_user",  # Placeholder as we use Moodle auth
                 created_at=datetime.utcnow()  # Explicitly set creation time

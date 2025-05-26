@@ -409,3 +409,22 @@ def get_assigned_activity_ids(db: Session = Depends(get_db)):
     assigned_ids = db.query(Quest.moodle_activity_id).filter(Quest.moodle_activity_id != None).all()
     # Flatten the list of tuples
     return [row[0] for row in assigned_ids if row[0] is not None]
+
+@router.get("/for-user/{user_id}", response_model=List[QuestSchema])
+def get_quests_for_user(user_id: int, db: Session = Depends(get_db)):
+    """
+    Get all quests linked to Moodle activities (moodle_activity_id is not null)
+    for the courses the specified user is currently enrolled in.
+    """
+    # Get all course_ids the user is enrolled in
+    from app.models.enrollment import CourseEnrollment
+    enrolled_course_ids = db.query(CourseEnrollment.course_id).filter(CourseEnrollment.user_id == user_id).all()
+    enrolled_course_ids = [row[0] for row in enrolled_course_ids]
+    if not enrolled_course_ids:
+        return []
+    # Get all quests for these courses with a non-null moodle_activity_id
+    quests = db.query(Quest).filter(
+        Quest.course_id.in_(enrolled_course_ids),
+        Quest.moodle_activity_id != None
+    ).all()
+    return quests

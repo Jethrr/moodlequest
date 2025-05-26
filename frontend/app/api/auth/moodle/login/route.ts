@@ -212,6 +212,28 @@ export async function POST(request: NextRequest) {
           // Continue with login process even if backend storage fails
         }
 
+        // --- SYNC ENROLLMENTS TO BACKEND ---
+        try {
+          const syncEnrollmentsResponse = await fetch(
+            `${API_BASE_URL}/enrollment/sync-for-user/${moodleUser.id}?token=${token}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+            }
+          );
+          if (!syncEnrollmentsResponse.ok) {
+            console.error("Failed to sync enrollments for user", moodleUser.id);
+          } else {
+            console.log("Enrollments synced for user", moodleUser.id);
+          }
+        } catch (enrollSyncError) {
+          console.error("Error syncing enrollments:", enrollSyncError);
+        }
+        // --- END SYNC ENROLLMENTS ---
+
         console.log("Login successful for user:", username);
         console.log("User data:", finalUserData);
 
