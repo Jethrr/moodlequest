@@ -2,6 +2,8 @@
 
 import type React from "react";
 import { useCurrentUser } from "@/hooks/useCurrentMoodleUser";
+import { createQuest } from "@/lib/quest-service";
+import { useToast } from "@/hooks/use-toast";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -51,53 +53,53 @@ interface Course {
   raw?: any;
 }
 
-// Mock Moodle activities for demonstration
-const MOCK_MOODLE_ACTIVITIES: MoodleActivity[] = [
-  {
-    id: 101,
-    name: "Introduction to Programming",
-    type: "assignment",
-    course: 1,
-    description: "Submit your first program in Python",
-    duedate: 1702598400, // 2023-12-15
-    is_assigned: false,
-  },
-  {
-    id: 102,
-    name: "Data Structures Quiz",
-    type: "quiz",
-    course: 1,
-    description: "Test your knowledge of data structures",
-    duedate: 1702972800, // 2023-12-20
-    is_assigned: false,
-  },
-  {
-    id: 103,
-    name: "Literature Analysis",
-    type: "forum",
-    course: 2,
-    description: "Discuss the themes in 'To Kill a Mockingbird'",
-    is_assigned: false,
-  },
-  {
-    id: 104,
-    name: "Chemical Equations",
-    type: "assignment",
-    course: 3,
-    description: "Balance the given chemical equations",
-    duedate: 1702512000, // 2023-12-18
-    is_assigned: true,
-  },
-  {
-    id: 105,
-    name: "Algebra Test",
-    type: "quiz",
-    course: 4,
-    description: "Test on linear equations and inequalities",
-    duedate: 1703155200, // 2023-12-22
-    is_assigned: false,
-  },
-];
+// // Mock Moodle activities for demonstration
+// const MOCK_MOODLE_ACTIVITIES: MoodleActivity[] = [
+//   {
+//     id: 101,
+//     name: "Introduction to Programming",
+//     type: "assignment",
+//     course: 1,
+//     description: "Submit your first program in Python",
+//     duedate: 1702598400, // 2023-12-15
+//     is_assigned: false,
+//   },
+//   {
+//     id: 102,
+//     name: "Data Structures Quiz",
+//     type: "quiz",
+//     course: 1,
+//     description: "Test your knowledge of data structures",
+//     duedate: 1702972800, // 2023-12-20
+//     is_assigned: false,
+//   },
+//   {
+//     id: 103,
+//     name: "Literature Analysis",
+//     type: "forum",
+//     course: 2,
+//     description: "Discuss the themes in 'To Kill a Mockingbird'",
+//     is_assigned: false,
+//   },
+//   {
+//     id: 104,
+//     name: "Chemical Equations",
+//     type: "assignment",
+//     course: 3,
+//     description: "Balance the given chemical equations",
+//     duedate: 1702512000, // 2023-12-18
+//     is_assigned: true,
+//   },
+//   {
+//     id: 105,
+//     name: "Algebra Test",
+//     type: "quiz",
+//     course: 4,
+//     description: "Test on linear equations and inequalities",
+//     duedate: 1703155200, // 2023-12-22
+//     is_assigned: false,
+//   },
+// ];
 
 const stripHtmlTags = (html: string) => {
   if (typeof document !== "undefined") {
@@ -140,6 +142,8 @@ export function QuestCreator() {
     name: "",
   });
 
+  const { toast } = useToast();
+
   // Fetch Moodle activities and courses
   useEffect(() => {
     const fetchData = async () => {
@@ -176,13 +180,13 @@ export function QuestCreator() {
             ...a,
             type: "assignment",
             description: stripHtmlTags(a.raw?.intro || ""),
-            is_assigned: false, // You might want to track this in your backend
+            is_assigned: a.is_assigned ?? false, // Use backend-provided is_assigned
           })),
           ...(activitiesData.quizzes || []).map((q: any) => ({
             ...q,
             type: "quiz",
             description: stripHtmlTags(q.raw?.intro || ""),
-            is_assigned: false,
+            is_assigned: q.is_assigned ?? false, // Use backend-provided is_assigned
           })),
         ];
 
@@ -359,40 +363,47 @@ export function QuestCreator() {
       rewards: (quest.rewards as Reward[]) || [],
     };
 
-    // In a real app, this would send the quest to the server
-    console.log("Created quest from Moodle activity:", completeQuest);
-    console.log("Original Moodle activity:", selectedActivity);
-
-    // Mark activity as assigned in the mock data
-    const updatedActivities = activities.map((activity) =>
-      activity.id === selectedActivity.id
-        ? { ...activity, is_assigned: true }
-        : activity
-    );
-
-    setActivities(updatedActivities);
-    setFilteredActivities(
-      updatedActivities.filter(
-        (a) => !a.is_assigned && (filterType === "all" || a.type === filterType)
-      )
-    );
-
-    // Reset form and selection
-    setSelectedActivity(null);
-    setQuest({
-      xp: 50,
-      difficulty: "Medium",
-      learningObjectives: [],
-      tasks: [],
-      rewards: [],
-    });
-
-    console.log(
-      "Quest successfully assigned to Moodle activity:",
-      completeQuest
-    );
-    // Show success message
-    alert("Gamification elements successfully assigned to Moodle activity!");
+    try {
+      await createQuest({
+        ...completeQuest,
+        moodle_course_id: selectedActivity.course,
+        moodle_user_id: user?.id ?? 0,
+        moodleActivityId: selectedActivity.id, // <-- ensure this is sent to backend
+      });
+      // Mark activity as assigned in the mock data
+      const updatedActivities = activities.map((activity) =>
+        activity.id === selectedActivity.id
+          ? { ...activity, is_assigned: true }
+          : activity
+      );
+      setActivities(updatedActivities);
+      setFilteredActivities(
+        updatedActivities.filter(
+          (a) =>
+            !a.is_assigned && (filterType === "all" || a.type === filterType)
+        )
+      );
+      setSelectedActivity(null);
+      setQuest({
+        xp: 50,
+        difficulty: "Medium",
+        learningObjectives: [],
+        tasks: [],
+        rewards: [],
+      });
+      toast({
+        title: "Quest Assigned!",
+        description:
+          "Gamification elements successfully assigned to Moodle activity.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to assign quest",
+        description:
+          error?.error || error?.message || "Unknown error. See console.",
+      });
+      console.error("Quest creation error:", error);
+    }
   };
 
   if (loading) {

@@ -20,4 +20,8 @@ class Quest(Base):
     is_active = Column(Boolean, default=True)
     difficulty_level = Column(SmallInteger, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()) 
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    moodle_activity_id = Column(Integer, nullable=True, index=True)
+
+
+

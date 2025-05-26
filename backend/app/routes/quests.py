@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.quest import Quest
@@ -324,4 +324,88 @@ async def create_single_dummy(db: Session = Depends(get_db)):
         error_details = traceback.format_exc()
         print(f"Error creating dummy quest: {str(e)}")
         print(error_details)
-        raise HTTPException(status_code=500, detail=f"Error creating dummy quest: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Error creating dummy quest: {str(e)}")
+
+from typing import Dict, Any
+
+@router.post("/create-quest", status_code=201)
+def create_quest_from_frontend(
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a quest from the frontend payload and save to the database.
+    """
+    try:
+        # Map difficulty string to integer
+        difficulty_map = {"Easy": 1, "Medium": 2, "Hard": 3}
+        difficulty_raw = payload.get("difficulty", 1)
+        if isinstance(difficulty_raw, str):
+            difficulty_level = difficulty_map.get(difficulty_raw, 1)
+        else:
+            difficulty_level = difficulty_raw if isinstance(difficulty_raw, int) else 1
+
+        # Debug: print all courses and their moodle_course_id
+        all_courses = db.query(CourseModel).all()
+        print("Available courses in DB:")
+        for c in all_courses:
+            print(f"id={c.id}, moodle_course_id={c.moodle_course_id}, title={c.title}")
+
+        # Map moodleCourse (Moodle course id) to local course id (ensure int type)
+        moodle_course_id = payload.get("moodleCourse")
+        try:
+            moodle_course_id_int = int(moodle_course_id)
+        except Exception:
+            return {"success": False, "error": f"Invalid moodleCourse id: {moodle_course_id}"}
+        course = db.query(CourseModel).filter(CourseModel.moodle_course_id == moodle_course_id_int).first()
+        if not course:
+            return {"success": False, "error": f"No local course found with moodle_course_id={moodle_course_id_int}"}
+        local_course_id = course.id
+
+        # Map creatorId (Moodle user id) to local user id (ensure int type)
+        creator_moodle_id = payload.get("creatorId")
+        try:
+            creator_moodle_id_int = int(creator_moodle_id)
+        except Exception:
+            return {"success": False, "error": f"Invalid creatorId: {creator_moodle_id}"}
+        user = db.query(UserModel).filter(UserModel.moodle_user_id == creator_moodle_id_int).first()
+        if not user:
+            return {"success": False, "error": f"No local user found with moodle_user_id={creator_moodle_id_int}"}
+        local_creator_id = user.id
+
+        quest = Quest(
+            title=payload.get("title"),
+            description=payload.get("description"),
+            course_id=local_course_id,
+            creator_id=local_creator_id,
+            exp_reward=payload.get("xp", 0),
+            quest_type=payload.get("category", "assignment"),
+            validation_method="manual",  # or map from payload if available
+            validation_criteria={
+                "tasks": payload.get("tasks", []),
+                "learningObjectives": payload.get("learningObjectives", []),
+                "rewards": payload.get("rewards", []),
+                "status": payload.get("status"),
+                "progress": payload.get("progress"),
+            },
+            start_date=None,
+            end_date=payload.get("deadline"),
+            is_active=True,
+            difficulty_level=difficulty_level,
+            moodle_activity_id=payload.get("moodleActivityId")
+        )
+        db.add(quest)
+        db.commit()
+        db.refresh(quest)
+        return {"success": True, "quest_id": quest.quest_id, "message": "Quest created successfully"}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "error": str(e)}
+    
+
+
+@router.get("/assigned-activity-ids", response_model=List[int])
+def get_assigned_activity_ids(db: Session = Depends(get_db)):
+    assigned_ids = db.query(Quest.moodle_activity_id).filter(Quest.moodle_activity_id != None).all()
+    # Flatten the list of tuples
+    return [row[0] for row in assigned_ids if row[0] is not None]

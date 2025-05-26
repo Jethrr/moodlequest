@@ -1,35 +1,40 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { AuthMethod } from "@/lib/moodle-auth"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MFAVerificationForm } from "@/components/auth/mfa-verification-form"
-import { useAuth } from "@/lib/auth-context"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AuthMethod } from "@/lib/moodle-auth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MFAVerificationForm } from "@/components/auth/mfa-verification-form";
+import { useAuth } from "@/lib/auth-context";
 
 export function MoodleLoginForm() {
-  const router = useRouter()
-  const { login } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [authMethod, setAuthMethod] = useState<AuthMethod>(AuthMethod.MOODLE_SSO)
-  const [requiresMfa, setRequiresMfa] = useState(false)
-  const [mfaChallenge, setMfaChallenge] = useState<{ challengeId: string; method: string } | null>(null)
-  const [tempUser, setTempUser] = useState<any>(null)
+  const router = useRouter();
+  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [authMethod, setAuthMethod] = useState<AuthMethod>(
+    AuthMethod.MOODLE_SSO
+  );
+  const [requiresMfa, setRequiresMfa] = useState(false);
+  const [mfaChallenge, setMfaChallenge] = useState<{
+    challengeId: string;
+    method: string;
+  } | null>(null);
+  const [tempUser, setTempUser] = useState<any>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setIsLoading(true)
-    setError("")
+    event.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-    const formData = new FormData(event.currentTarget)
-    const username = formData.get("username") as string
-    const password = formData.get("password") as string
+    const formData = new FormData(event.currentTarget);
+    const username = formData.get("username") as string;
+    const password = formData.get("password") as string;
 
     try {
       // Use our backend API directly for Moodle authentication
@@ -44,15 +49,15 @@ export function MoodleLoginForm() {
           service: "modquest", // This should match the service name in your Moodle setup
         }),
         cache: "no-store",
-      })
-      
+      });
+
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Login API error:", response.status, errorText)
-        throw new Error(`API error ${response.status}: ${errorText}`)
+        const errorText = await response.text();
+        console.error("Login API error:", response.status, errorText);
+        throw new Error(`API error ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (result.success) {
         // Create a complete user object with all required fields
@@ -68,15 +73,15 @@ export function MoodleLoginForm() {
           // Add optional gaming data if available
           level: result.user?.level,
           xp: result.user?.xp,
-          badges: result.user?.badges
+          badges: result.user?.badges,
         };
 
         // Store complete user data in localStorage
         localStorage.setItem("moodlequest_user", JSON.stringify(userData));
-        
+
         // Update the auth context with login method
         await login(username, password);
-        
+
         // Redirect based on user role
         if (userData.role === "teacher" || userData.role === "admin") {
           router.push("/teacher/dashboard");
@@ -84,24 +89,27 @@ export function MoodleLoginForm() {
           router.push("/dashboard");
         }
       } else {
-        console.error("Login failed:", result.error)
-        setError(result.error || "Authentication failed. Please check your credentials.")
+        console.error("Login failed:", result.error);
+        setError(
+          result.error ||
+            "Authentication failed. Please check your credentials."
+        );
       }
     } catch (error: any) {
-      console.error("Authentication error:", error)
-      setError(error.message || "An error occurred. Please try again later.")
+      console.error("Authentication error:", error);
+      setError(error.message || "An error occurred. Please try again later.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   const handleMfaSuccess = () => {
     // Store user in localStorage
     if (tempUser) {
-      localStorage.setItem("moodlequest_user", JSON.stringify(tempUser))
-      router.push("/dashboard")
+      // localStorage.setItem("moodlequest_user", JSON.stringify(tempUser))
+      router.push("/dashboard");
     }
-  }
+  };
 
   if (requiresMfa) {
     return (
@@ -111,15 +119,20 @@ export function MoodleLoginForm() {
         onSuccess={handleMfaSuccess}
         onCancel={() => setRequiresMfa(false)}
       />
-    )
+    );
   }
 
   return (
     <div className="grid gap-6">
-      <Tabs defaultValue="moodle_sso" onValueChange={(value) => setAuthMethod(value as AuthMethod)}>
+      <Tabs
+        defaultValue="moodle_sso"
+        onValueChange={(value) => setAuthMethod(value as AuthMethod)}
+      >
         <TabsList className="grid grid-cols-3">
           <TabsTrigger value={AuthMethod.MOODLE_SSO}>Moodle Login</TabsTrigger>
-          <TabsTrigger value={AuthMethod.INSTITUTIONAL}>Institutional</TabsTrigger>
+          <TabsTrigger value={AuthMethod.INSTITUTIONAL}>
+            Institutional
+          </TabsTrigger>
           <TabsTrigger value={AuthMethod.OAUTH}>OAuth</TabsTrigger>
         </TabsList>
 
@@ -192,12 +205,13 @@ export function MoodleLoginForm() {
         <TabsContent value={AuthMethod.OAUTH}>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground text-center">
-              Click the button below to authenticate with your Moodle OAuth provider.
+              Click the button below to authenticate with your Moodle OAuth
+              provider.
             </p>
             <Button
               onClick={() => {
                 // In a real implementation, this would redirect to the OAuth provider
-                window.location.href = "/api/auth/oauth/moodle"
+                window.location.href = "/api/auth/oauth/moodle";
               }}
               className="w-full"
             >
@@ -207,8 +221,9 @@ export function MoodleLoginForm() {
         </TabsContent>
       </Tabs>
       <div className="text-xs text-center text-muted-foreground">
-        Development login: Use username starting with "dev-" to login without Moodle
+        Development login: Use username starting with "dev-" to login without
+        Moodle
       </div>
     </div>
-  )
+  );
 }
