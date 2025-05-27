@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useCurrentUser } from "@/hooks/useCurrentMoodleUser";
-import { createQuest } from "@/lib/quest-service";
+import { createQuest, QuestCreationResponse } from "@/lib/quest-service";
 import { useToast } from "@/hooks/use-toast";
 
 import { useState, useEffect } from "react";
@@ -32,16 +32,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
+interface MoodleDate {
+  label: string;
+  timestamp: number;
+  dataid: string;
+}
+
 interface MoodleActivity {
   id: number;
   name: string;
   type: string;
+  modname: string; // Moodle module name (assign, quiz, etc.)
   course: number; // course ID from Moodle
   description?: string;
-  duedate?: number; // Unix timestamp
-  timeopen?: number; // for quizzes
-  timeclose?: number; // for quizzes
+  instance: number;
   is_assigned?: boolean;
+  dates?: MoodleDate[]; // Activity dates (due dates, open/close dates, etc.)
   raw?: any; // Raw Moodle data
 }
 
@@ -85,7 +91,7 @@ export function QuestCreator() {
 
   const [newObjective, setNewObjective] = useState("");
   const [newTask, setNewTask] = useState<Partial<Task>>({
-    description: "",
+    description: "view_lesson", // Initialize with the first task type
     xpReward: 10,
   });
   const [newReward, setNewReward] = useState<Partial<Reward>>({
@@ -140,23 +146,104 @@ export function QuestCreator() {
         coursesData.courses?.forEach((course: Course) => {
           courseMapping[course.id] = course.fullname;
         });
-        setCourseMap(courseMapping);
+        setCourseMap(courseMapping); // Log the received data for debugging
+        console.log("Activities data received:", activitiesData);
 
-        // Combine assignments and quizzes into activities
-        const allActivities = [
-          ...(activitiesData.assignments || []).map((a: any) => ({
+        // Function to normalize activity types from Moodle's internal names
+        const normalizeActivityType = (type: string) => {
+          switch (type) {
+            case "assign":
+              return "assignment";
+            case "quiz":
+              return "quiz";
+            case "lesson":
+              return "lesson";
+            case "forum":
+              return "forum";
+            default:
+              return "other";
+          }
+        };
+
+        // Function to extract description from various sources
+        const extractDescription = (activity: any) => {
+          return stripHtmlTags(
+            activity.description ||
+              activity.raw?.description ||
+              activity.raw?.intro ||
+              ""
+          );
+        };
+
+        // Process each type of activity
+        const assignmentActivities = (activitiesData.assignments || []).map(
+          (a: any) => ({
             ...a,
-            type: "assignment",
-            description: stripHtmlTags(a.raw?.intro || ""),
-            is_assigned: a.is_assigned ?? false, // Use backend-provided is_assigned
-          })),
-          ...(activitiesData.quizzes || []).map((q: any) => ({
-            ...q,
-            type: "quiz",
-            description: stripHtmlTags(q.raw?.intro || ""),
-            is_assigned: q.is_assigned ?? false, // Use backend-provided is_assigned
-          })),
+            type: normalizeActivityType(a.modname || a.type),
+            description: extractDescription(a),
+            is_assigned: a.is_assigned ?? false,
+            dates: a.raw?.dates || [],
+          })
+        );
+
+        const quizActivities = (activitiesData.quizzes || []).map((q: any) => ({
+          ...q,
+          type: normalizeActivityType(q.modname || q.type),
+          description: extractDescription(q),
+          is_assigned: q.is_assigned ?? false,
+          dates: q.raw?.dates || [],
+        }));
+
+        const lessonActivities = (activitiesData.lessons || []).map(
+          (l: any) => ({
+            ...l,
+            type: normalizeActivityType(l.modname || l.type),
+            description: extractDescription(l),
+            is_assigned: l.is_assigned ?? false,
+            dates: l.raw?.dates || [],
+          })
+        );
+
+        const forumActivities = (activitiesData.forums || []).map((f: any) => ({
+          ...f,
+          type: normalizeActivityType(f.modname || f.type),
+          description: extractDescription(f),
+          is_assigned: f.is_assigned ?? false,
+          dates: f.raw?.dates || [],
+        }));
+
+        const otherActivities = (activitiesData.others || []).map((o: any) => ({
+          ...o,
+          type: normalizeActivityType(o.modname || o.type),
+          description: extractDescription(o),
+          is_assigned: o.is_assigned ?? false,
+          dates: o.raw?.dates || [],
+        })); // Combine all activities
+        const allActivities = [
+          ...assignmentActivities,
+          ...quizActivities,
+          ...lessonActivities,
+          ...forumActivities,
+          ...otherActivities,
         ];
+
+        // Log the processed activities for debugging
+        // console.log("Processed activities:", {
+        //   total: allActivities.length,
+        //   byType: allActivities.reduce((acc, curr) => {
+        //     acc[curr.type] = (acc[curr.type] || 0) + 1;
+        //     return acc;
+        //   }, {} as Record<string, number>),
+        // });
+
+        // Log the processed activities for debugging
+        // console.log("Processed activities:", {
+        //   total: allActivities.length,
+        //   byType: allActivities.reduce((acc, curr) => {
+        //     acc[curr.type] = (acc[curr.type] || 0) + 1;
+        //     return acc;
+        //   }, {} as Record<string, number>),
+        // });
 
         setActivities(allActivities);
         setFilteredActivities(allActivities);
@@ -170,10 +257,14 @@ export function QuestCreator() {
 
     fetchData();
   }, []);
-
   // Apply filters when they change
   useEffect(() => {
+    // Log current filter state
+
     let result = [...activities];
+
+    // Log unique activity types in current dataset
+    const uniqueTypes = [...new Set(activities.map((a) => a.type))];
 
     // Filter by activity type
     if (filterType !== "all") {
@@ -198,12 +289,18 @@ export function QuestCreator() {
       );
     }
 
+    // console.log("Final filtered activities:", {
+    //   count: result.length,
+    //   types: [...new Set(result.map((a) => a.type))],
+    // });
+
     setFilteredActivities(result);
   }, [filterType, filterAssigned, searchQuery, activities]);
 
   // Handle activity selection
   const handleSelectActivity = (activity: MoodleActivity) => {
     setSelectedActivity(activity);
+    // console.log("Selected activity:", activity.id);
     // Pre-populate the quest form with activity data
     setQuest({
       title: activity.name,
@@ -235,22 +332,33 @@ export function QuestCreator() {
       learningObjectives: updatedObjectives,
     });
   };
-
   const addTask = () => {
-    if (newTask.description?.trim()) {
+    // Make sure there is a valid task type selected
+    if (newTask.description) {
+      // console.log("Task description exists, adding to quest");
+      const updatedTasks = [
+        ...(quest.tasks || []),
+        {
+          id: `task-${Date.now()}`,
+          description: newTask.description, // Task type from dropdown
+          completed: false,
+          xpReward: newTask.xpReward || 10,
+        } as Task,
+      ];
+
+      // Update quest with new task
       setQuest({
         ...quest,
-        tasks: [
-          ...(quest.tasks || []),
-          {
-            id: `task-${Date.now()}`,
-            description: newTask.description, // Will be the task type
-            completed: false,
-            xpReward: newTask.xpReward || 10,
-          } as Task,
-        ],
+        tasks: updatedTasks,
       });
-      setNewTask({ description: TASK_TYPES[0], xpReward: 10 });
+
+      // Reset newTask for the next input
+      setNewTask({
+        description: TASK_TYPES[0],
+        xpReward: 10,
+      });
+    } else {
+      console.warn("No task description provided");
     }
   };
 
@@ -294,7 +402,11 @@ export function QuestCreator() {
     e.preventDefault();
 
     if (!selectedActivity) {
-      alert("Please select a Moodle activity first");
+      toast({
+        title: "No Activity Selected",
+        description: "Please select a Moodle activity first.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -303,13 +415,19 @@ export function QuestCreator() {
       (sum, task) => sum + (task.xpReward || 0),
       0
     );
-
-    // Add additional XP from rewards
     const rewardXP = (quest.rewards || [])
       .filter((reward) => reward.type === "xp")
       .reduce((sum, reward) => sum + (reward.value || 0), 0);
-
     const totalXP = taskXP + rewardXP;
+
+    // Map difficulty string to integer for backend
+    const difficultyMap: Record<string, number> = {
+      Easy: 1,
+      Medium: 2,
+      Hard: 3,
+      Epic: 4,
+    };
+    const difficultyInt = difficultyMap[quest.difficulty as string] || 2;
 
     const completeQuest: Quest = {
       id: `quest-${Date.now()}`,
@@ -321,8 +439,14 @@ export function QuestCreator() {
       moodleCourse: selectedActivity.course,
       difficulty: quest.difficulty as "Easy" | "Medium" | "Hard" | "Epic",
       category: selectedActivity.type.toString(),
-      deadline: selectedActivity.duedate
-        ? new Date(selectedActivity.duedate * 1000).toISOString()
+      deadline: selectedActivity.dates?.find((d) =>
+        d.label.toLowerCase().includes("due")
+      )?.timestamp
+        ? new Date(
+            selectedActivity.dates.find((d) =>
+              d.label.toLowerCase().includes("due")
+            )!.timestamp * 1000
+          ).toISOString()
         : "2 weeks",
       status: "not-started",
       creatorId: user?.id ?? 0,
@@ -332,12 +456,32 @@ export function QuestCreator() {
     };
 
     try {
-      await createQuest({
+      // Send to backend with correct difficulty type
+      const response: QuestCreationResponse = await createQuest({
         ...completeQuest,
+        difficulty: difficultyInt,
         moodle_course_id: selectedActivity.course,
         moodle_user_id: user?.id ?? 0,
-        moodleActivityId: selectedActivity.id, // <-- ensure this is sent to backend
+        moodleActivityId: selectedActivity.id,
       });
+
+      if (!response || response.success === false) {
+        toast({
+          title: "Failed to create quest",
+          description:
+            response?.error || response?.message || "Unknown error. See console.",
+          variant: "destructive",
+        });
+        console.error("Quest creation error:", response);
+        return;
+      }
+
+      // Success!
+      toast({
+        title: "Quest Assigned!",
+        description: "Gamification elements successfully assigned to Moodle activity.",
+      });
+
       // Mark activity as assigned in the mock data
       const updatedActivities = activities.map((activity) =>
         activity.id === selectedActivity.id
@@ -359,16 +503,12 @@ export function QuestCreator() {
         tasks: [],
         rewards: [],
       });
-      toast({
-        title: "Quest Assigned!",
-        description:
-          "Gamification elements successfully assigned to Moodle activity.",
-      });
     } catch (error: any) {
       toast({
         title: "Failed to assign quest",
         description:
           error?.error || error?.message || "Unknown error. See console.",
+        variant: "destructive",
       });
       console.error("Quest creation error:", error);
     }
@@ -422,12 +562,14 @@ export function QuestCreator() {
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
+                  </SelectTrigger>{" "}
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="assignment">Assignments</SelectItem>
                     <SelectItem value="quiz">Quizzes</SelectItem>
+                    <SelectItem value="lesson">Lessons</SelectItem>
                     <SelectItem value="forum">Forums</SelectItem>
+                    <SelectItem value="other">Other Activities</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -490,15 +632,18 @@ export function QuestCreator() {
                             <span className="text-xs text-muted-foreground">
                               {courseMap[activity.course] ||
                                 `Course ${activity.course}`}
-                            </span>
-                            {activity.duedate && (
-                              <span className="text-xs text-muted-foreground">
-                                Due:{" "}
+                            </span>{" "}
+                            {activity.dates?.map((date, index) => (
+                              <span
+                                key={index}
+                                className="text-xs text-muted-foreground"
+                              >
+                                {date.label}{" "}
                                 {new Date(
-                                  activity.duedate * 1000
+                                  date.timestamp * 1000
                                 ).toLocaleDateString()}
                               </span>
-                            )}
+                            ))}
                           </div>
                         </div>
                         {activity.is_assigned && (
@@ -646,11 +791,16 @@ export function QuestCreator() {
                     </Label>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                       <div className="sm:col-span-3">
+                        {" "}
                         <Select
-                          value={newTask.description || TASK_TYPES[0]}
-                          onValueChange={(value) =>
-                            setNewTask({ ...newTask, description: value })
-                          }
+                          value={newTask.description || "view_lesson"}
+                          onValueChange={(value) => {
+                            console.log("Selected task type:", value);
+                            setNewTask({
+                              ...newTask,
+                              description: value,
+                            });
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select task type" />

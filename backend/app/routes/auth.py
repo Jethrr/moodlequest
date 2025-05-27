@@ -864,10 +864,11 @@ async def get_activities(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch all available assignments and quizzes from Moodle using the token from cookies.
+    Fetch all available activities (assignments, quizzes, lessons, forums, etc.) from Moodle using core_course_get_contents.
     Each activity will include an 'is_assigned' boolean indicating if it is already tied to a quest.
     This allows the frontend to filter for assigned, unassigned, or all activities.
     """
+    import requests
     token = request.cookies.get("moodleToken")
     if not token:
         raise HTTPException(status_code=401, detail="No Moodle token found in cookies. Please login first.")
@@ -877,77 +878,101 @@ async def get_activities(
     base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost")
     base_url = base_url.rstrip("/")
 
-    # Prepare params for assignments
-    assign_params = {
-        "wstoken": token,
-        "wsfunction": "mod_assign_get_assignments",
-        "moodlewsrestformat": "json"
-    }
-    quiz_params = {
-        "wstoken": token,
-        "wsfunction": "mod_quiz_get_quizzes_by_courses",
-        "moodlewsrestformat": "json"
-    }
-    # Add courseids if provided
+    # Determine course IDs
     if course_ids:
         try:
             course_id_list = [int(cid.strip()) for cid in course_ids.split(",") if cid.strip()]
-            for idx, cid in enumerate(course_id_list):
-                assign_params[f"courseids[{idx}]"] = cid
-                quiz_params[f"courseids[{idx}]"] = cid
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid course_ids format. Use comma-separated integers.")
-
-    # Direct HTTP requests to Moodle REST API
-    try:
-        assign_url = f"{base_url}/webservice/rest/server.php"
-        quiz_url = f"{base_url}/webservice/rest/server.php"
-        assign_resp = requests.get(assign_url, params=assign_params, verify=False)
-        quiz_resp = requests.get(quiz_url, params=quiz_params, verify=False)
-        assignments_result = assign_resp.json()
-        quizzes_result = quiz_resp.json()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch from Moodle: {str(e)}")
+    else:
+        # Get all courses for the user from Moodle
+        user_info_params = {
+            "wstoken": token,
+            "wsfunction": "core_webservice_get_site_info",
+            "moodlewsrestformat": "json"
+        }
+        user_info_url = f"{base_url}/webservice/rest/server.php"
+        user_info_resp = requests.get(user_info_url, params=user_info_params, verify=False)
+        user_info = user_info_resp.json()
+        if "exception" in user_info:
+            raise HTTPException(status_code=401, detail="Invalid or expired Moodle token")
+        user_id = user_info.get("userid")
+        if not user_id:
+            raise HTTPException(status_code=500, detail="Could not get user ID from Moodle token")
+        # Now get the courses for this user
+        course_params = {
+            "wstoken": token,
+            "wsfunction": "core_enrol_get_users_courses",
+            "userid": user_id,
+            "moodlewsrestformat": "json"
+        }
+        url = f"{base_url}/webservice/rest/server.php"
+        response = requests.get(url, params=course_params, verify=False)
+        courses_result = response.json()
+        if isinstance(courses_result, dict) and "exception" in courses_result:
+            raise HTTPException(status_code=400, detail=f"Moodle API error: {courses_result.get('message', 'Unknown error')}")
+        course_id_list = [course.get("id") for course in courses_result if course.get("id")]
 
     # Get all assigned moodle_activity_id values from quests table
     from app.models.quest import Quest
     assigned_ids = set(row[0] for row in db.query(Quest.moodle_activity_id).filter(Quest.moodle_activity_id != None).all())
 
-    # Parse assignments
+    activities = []
     assignments = []
-    if assignments_result and "courses" in assignments_result:
-        for course in assignments_result["courses"]:
-            for assign in course.get("assignments", []):
-                assignments.append({
-                    "id": assign.get("id"),
-                    "name": assign.get("name"),
-                    "course": assign.get("course"),
-                    "duedate": assign.get("duedate"),
-                    "type": "assignment",
-                    "is_assigned": assign.get("id") in assigned_ids,
-                    "raw": assign
-                })
-    # Parse quizzes
     quizzes = []
-    if quizzes_result and "quizzes" in quizzes_result:
-        for quiz in quizzes_result["quizzes"]:
-            quizzes.append({
-                "id": quiz.get("id"),
-                "name": quiz.get("name"),
-                "course": quiz.get("course"),
-                "timeopen": quiz.get("timeopen"),
-                "timeclose": quiz.get("timeclose"),
-                "type": "quiz",
-                "is_assigned": quiz.get("id") in assigned_ids,
-                "raw": quiz
-            })
+    lessons = []
+    forums = []
+    others = []
+
+    for course_id in course_id_list:
+        params = {
+            "wstoken": token,
+            "wsfunction": "core_course_get_contents",
+            "courseid": course_id,
+            "moodlewsrestformat": "json"
+        }
+        url = f"{base_url}/webservice/rest/server.php"
+        try:
+            resp = requests.get(url, params=params, verify=False)
+            course_contents = resp.json()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch from Moodle: {str(e)}")
+
+        # Parse course_contents for activities
+        for section in course_contents:
+            for mod in section.get("modules", []):
+                activity = {
+                    "id": mod.get("id"),
+                    "name": mod.get("name"),
+                    "modname": mod.get("modname"),
+                    "instance": mod.get("instance"),
+                    "course": course_id,
+                    "description": mod.get("description", ""),
+                    "type": mod.get("modname"),
+                    "is_assigned": mod.get("id") in assigned_ids,
+                    "raw": mod
+                }
+                activities.append(activity)
+                if mod.get("modname") == "assign":
+                    assignments.append(activity)
+                elif mod.get("modname") == "quiz":
+                    quizzes.append(activity)
+                elif mod.get("modname") == "lesson":
+                    lessons.append(activity)
+                elif mod.get("modname") == "forum":
+                    forums.append(activity)
+                else:
+                    others.append(activity)
 
     return {
         "success": True,
         "assignments": assignments,
         "quizzes": quizzes,
-        "activities": assignments + quizzes,
-        "count": len(assignments) + len(quizzes)
+        "lessons": lessons,
+        "forums": forums,
+        "others": others,
+        "activities": activities,
+        "count": len(activities)
     }
 
 
@@ -1082,202 +1107,200 @@ async def get_course(
 
 
 # Web hooks to be transferred sa other routes do not delete 
-# @router.post("/user-created")
-# async def handle_user_created_webhook(request: Request):
-#     """
-#     Endpoint to handle Moodle's user_created webhook event.
-#     Simply logs the incoming webhook payload without any additional processing.
-#     """
-#     try:
-#         data = await request.json()
-#         logger.info("📥 Received webhook payload: %s", data)
-        
-#         # Validate and log event type
-#         event_name = data.get("eventname")
-#         if event_name != "\\core\\event\\user_created":
-#             logger.warning("⚠️ Unexpected event type received: %s", event_name)
-#             return {
-#                 "status": "ignored",
-#                 "message": f"Unexpected event type: {event_name}"
-#             }
-        
-#         # Extract and log relevant user details
-#         user_data = {
-#             "event_id": data.get("eventid"),
-#             "user_id": data.get("userid"),
-#             "username": data.get("other", {}).get("username"),
-#             "email": data.get("other", {}).get("email"),
-#             "time_created": data.get("timecreated")
-#         }
-        
-#         logger.info("✨ New User Creation Event:")
-#         for key, value in user_data.items():
-#             logger.info(f"📋 {key}: {value}")
-        
-#         return {
-#             "status": "success",
-#             "message": "Webhook received and logged successfully",
-#             "event_type": event_name,
-#             "timestamp": datetime.utcnow().isoformat()
-#         }
+@router.post("/user-created")
+async def handle_user_created_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's user_created webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received webhook payload: %s", data)
+        return {
+            "status": "success",
+            "message": "Webhook received and logged successfully",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
-#     except json.JSONDecodeError as e:
-#         logger.error("❌ Invalid JSON payload received: %s", str(e))
-#         raise HTTPException(
-#             status_code=400,
-#             detail="Invalid JSON payload"
-#         )
-#     except Exception as e:
-#         logger.error("❌ Error processing webhook: %s", str(e))
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Failed to process webhook: {str(e)}"
-#         )
+@router.post("/quiz/attempt-submitted")
+async def handle_quiz_attempt_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's quiz attempt submission webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received quiz attempt webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Quiz attempt webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing quiz attempt webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
+@router.post("/assign/submitted")
+async def handle_assignment_submission_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's assignment submission webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received assignment submission webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Assignment submission webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing assignment submission webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
-# @router.post("/quiz/attempt-submitted")
-# async def handle_quiz_attempt_webhook(request: Request):
-#     """
-#     Endpoint to handle Moodle's quiz attempt submission webhook event.
-#     """
-#     try:
-#         data = await request.json()
-#         logger.info("📥 Received quiz attempt webhook: %s", data)
-        
-#         # Extract and log quiz attempt details
-#         quiz_data = {
-#             "event_type": data.get("event_type"),
-#             "user_id": data.get("user_id"),
-#             "quiz_id": data.get("quiz_id"),
-#             "attempt_id": data.get("attempt_id"),
-#             "course_id": data.get("course_id"),
-#             "timestamp": data.get("timestamp")
-#         }
-        
-#         logger.info("✨ New Quiz Attempt Submission:")
-#         for key, value in quiz_data.items():
-#             logger.info(f"📋 {key}: {value}")
-        
-#         return {
-#             "status": "success",
-#             "message": "Quiz attempt webhook received and logged",
-#             "event_type": "quiz_attempt_submitted",
-#             "timestamp": datetime.utcnow().isoformat()
-#         }
-#     except Exception as e:
-#         logger.error("❌ Error processing quiz attempt webhook: %s", str(e))
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Failed to process webhook: {str(e)}"
-#         )
+@router.post("/assign/graded")
+async def handle_assignment_graded_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's assignment grading webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received assignment grading webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Assignment grading webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing assignment grading webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
+@router.post("/course/completion-updated")
+async def handle_module_completion_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's module completion update webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received module completion webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Module completion webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing module completion webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
-# @router.post("/assign/submitted")
-# async def handle_assignment_submission_webhook(request: Request):
-#     """
-#     Endpoint to handle Moodle's assignment submission webhook event.
-#     """
-#     try:
-#         data = await request.json()
-#         logger.info("📥 Received assignment submission webhook: %s", data)
-        
-#         # Extract and log assignment submission details
-#         assignment_data = {
-#             "event_type": data.get("event_type"),
-#             "user_id": data.get("user_id"),
-#             "assignment_id": data.get("assignment_id"),
-#             "course_id": data.get("course_id"),
-#             "timestamp": data.get("timestamp")
-#         }
-        
-#         logger.info("✨ New Assignment Submission:")
-#         for key, value in assignment_data.items():
-#             logger.info(f"📋 {key}: {value}")
-        
-#         return {
-#             "status": "success",
-#             "message": "Assignment submission webhook received and logged",
-#             "event_type": "assignment_submitted",
-#             "timestamp": datetime.utcnow().isoformat()
-#         }
-#     except Exception as e:
-#         logger.error("❌ Error processing assignment submission webhook: %s", str(e))
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Failed to process webhook: {str(e)}"
-#         )
+@router.post("/forum/post-created")
+async def handle_forum_post_created_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's forum post created webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received forum post created webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Forum post created webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing forum post created webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
+@router.post("/lesson/completed")
+async def handle_lesson_completed_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's lesson completed webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received lesson completed webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Lesson completed webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing lesson completed webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
-# @router.post("/assign/graded")
-# async def handle_assignment_graded_webhook(request: Request):
-#     """
-#     Endpoint to handle Moodle's assignment grading webhook event.
-#     """
-#     try:
-#         data = await request.json()
-#         logger.info("📥 Received assignment grading webhook: %s", data)
-        
-#         # Extract and log grading details
-#         grading_data = {
-#             "event_type": data.get("event_type"),
-#             "grader_id": data.get("grader_id"),
-#             "assignment_id": data.get("assignment_id"),
-#             "grade": data.get("grade"),
-#             "student_id": data.get("student_id"),
-#             "course_id": data.get("course_id"),
-#             "timestamp": data.get("timestamp")
-#         }
-        
-#         logger.info("✨ Assignment Graded:")
-#         for key, value in grading_data.items():
-#             logger.info(f"📋 {key}: {value}")
-        
-#         return {
-#             "status": "success",
-#             "message": "Assignment grading webhook received and logged",
-#             "event_type": "assignment_graded",
-#             "timestamp": datetime.utcnow().isoformat()
-#         }
-#     except Exception as e:
-#         logger.error("❌ Error processing assignment grading webhook: %s", str(e))
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Failed to process webhook: {str(e)}"
-#         )
+@router.post("/feedback/submitted")
+async def handle_feedback_submitted_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's feedback submitted webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received feedback submitted webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Feedback submitted webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing feedback submitted webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
 
-
-# @router.post("/course/completion-updated")
-# async def handle_module_completion_webhook(request: Request):
-#     """
-#     Endpoint to handle Moodle's module completion update webhook event.
-#     """
-#     try:
-#         data = await request.json()
-#         logger.info("📥 Received module completion webhook: %s", data)
-        
-#         # Extract and log completion details
-#         completion_data = {
-#             "event_type": data.get("event_type"),
-#             "user_id": data.get("user_id"),
-#             "module_id": data.get("module_id"),
-#             "completion_state": data.get("completion_state"),
-#             "course_id": data.get("course_id"),
-#             "timestamp": data.get("timestamp")
-#         }
-        
-#         logger.info("✨ Module Completion Updated:")
-#         for key, value in completion_data.items():
-#             logger.info(f"📋 {key}: {value}")
-        
-#         return {
-#             "status": "success",
-#             "message": "Module completion webhook received and logged",
-#             "event_type": "module_completion_updated",
-#             "timestamp": datetime.utcnow().isoformat()
-#         }
-#     except Exception as e:
-#         logger.error("❌ Error processing module completion webhook: %s", str(e))
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Failed to process webhook: {str(e)}"
-#         )
+@router.post("/glossary/entry-created")
+async def handle_glossary_entry_created_webhook(request: Request):
+    """
+    Endpoint to handle Moodle's glossary entry created webhook event.
+    Logs the incoming webhook payload.
+    """
+    try:
+        data = await request.json()
+        logger.info("📥 Received glossary entry created webhook: %s", data)
+        return {
+            "status": "success",
+            "message": "Glossary entry created webhook received and logged",
+            "event_type": data.get("event_type"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("❌ Error processing glossary entry created webhook: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process webhook: {str(e)}"
+        )
