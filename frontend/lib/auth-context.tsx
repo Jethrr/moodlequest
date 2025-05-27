@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           xp: result.user.xp,
           badges: result.user.badges,
         };
-
+        console.log("Hello");
         // If we have a token, try to get extended user info from Moodle
         if (userData.token) {
           try {
