@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
-from app.routes import quests, auth,enrollment
+from app.routes import quests, auth,enrollment,webhooks
 from app.database.connection import engine, Base, SessionLocal
 from app.database.seed import seed_initial_data
 from app.models.auth import MoodleConfig
@@ -92,6 +92,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(quests.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(enrollment.router, prefix="/api")
+app.include_router(webhooks.router, prefix="/api")
 
 @app.get("/")
 async def root():
