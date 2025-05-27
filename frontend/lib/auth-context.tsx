@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // TEMPORARY: Auto-login with dummy teacher account for development
+  /*
   useEffect(() => {
     if (isMounted) {
       console.info(
@@ -77,26 +78,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, [isMounted]);
+  */
 
-  // Check for existing session on component mount - COMMENTED OUT FOR DEVELOPMENT
-  /*
+  // Check for existing session on component mount
   useEffect(() => {
     const loadUserFromStorage = () => {
       try {
         if (typeof window !== 'undefined') {
-          const storedUser = localStorage.getItem("moodlequest_user")
+          // Check for user data in localStorage
+          let storedUser = localStorage.getItem("moodlequest_user")
+          
+          // Fallback to old key for backward compatibility
+          if (!storedUser) {
+            storedUser = localStorage.getItem("moodle_user")
+            // If found with old key, migrate to new key
+            if (storedUser) {
+              localStorage.setItem("moodlequest_user", storedUser)
+              localStorage.removeItem("moodle_user")
+            }
+          }
+          
           if (storedUser) {
             const userData = JSON.parse(storedUser)
+            console.log("Loaded user from storage:", userData)
             // Set the token in the API client
             apiClient.setToken(userData.token)
             
             // Use the stored user data directly
             setUser(userData)
+          } else {
+            console.log("No user found in storage")
           }
         }
       } catch (error) {
         console.error("Error loading user from storage:", error)
         localStorage.removeItem("moodlequest_user")
+        localStorage.removeItem("moodle_user")
       } finally {
         setIsLoading(false)
       }
@@ -104,9 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (isMounted) {
       loadUserFromStorage()
+    } else {
+      setIsLoading(false)
     }
   }, [isMounted])
-  */
 
   // Update token in API client whenever user changes
   useEffect(() => {
@@ -117,8 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  // Redirect unauthenticated users away from protected routes - COMMENTED OUT FOR DEVELOPMENT
-  /*
+  // Redirect unauthenticated users away from protected routes
   useEffect(() => {
     if (!isLoading && isMounted) {
       const publicRoutes = ["/signin", "/register", "/", "/learn-more", "/faq", "/about"]
@@ -129,7 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [user, isLoading, isMounted, pathname, router])
-  */
 
   const login = async (username: string, password: string) => {
     try {
@@ -215,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setUser(userData);
-        // localStorage.setItem("moodlequest_user", JSON.stringify(userData));
+        localStorage.setItem("moodlequest_user", JSON.stringify(userData));
       }
 
       return result;
@@ -233,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apiClient.setToken("");
 
     // Clear all storage
-    // localStorage.removeItem("moodlequest_user");
+    localStorage.removeItem("moodlequest_user");
     localStorage.removeItem("moodle_user");
 
     localStorage.removeItem("theme");

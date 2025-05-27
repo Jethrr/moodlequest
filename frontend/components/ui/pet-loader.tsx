@@ -13,6 +13,7 @@ export function PetLoader({ message = "Loading...", loadingPhase = 'connecting' 
   const [petState, setPetState] = useState<'idle' | 'happy' | 'thinking'>('idle')
   const [foodAppeared, setFoodAppeared] = useState(false)
   const [thoughtBubble, setThoughtBubble] = useState("")
+  const [progressWidth, setProgressWidth] = useState(0)
   
   // Different loading thoughts for each phase
   const thoughtsByPhase = {
@@ -47,6 +48,16 @@ export function PetLoader({ message = "Loading...", loadingPhase = 'connecting' 
     }, 300)
     
     return () => clearTimeout(phaseTimer)
+  }, [loadingPhase])
+  
+  // Update progress width only when moving forward
+  useEffect(() => {
+    const newWidth = loadingPhase === 'connecting' ? 25 : 
+                     loadingPhase === 'authenticating' ? 50 : 
+                     loadingPhase === 'redirecting' ? 75 : 100;
+    
+    // Only update if the new width is greater than current width (only move forward)
+    setProgressWidth(prev => Math.max(prev, newWidth));
   }, [loadingPhase])
   
   // Change thoughts every few seconds
@@ -181,11 +192,7 @@ export function PetLoader({ message = "Loading...", loadingPhase = 'connecting' 
           <motion.div 
             className="h-full bg-primary"
             initial={{ width: "0%" }}
-            animate={{ 
-              width: loadingPhase === 'connecting' ? "25%" : 
-                     loadingPhase === 'authenticating' ? "50%" : 
-                     loadingPhase === 'redirecting' ? "75%" : "100%" 
-            }}
+            animate={{ width: `${progressWidth}%` }}
             transition={{ duration: 0.5 }}
           />
         </div>

@@ -57,8 +57,6 @@ export function LandingNavbar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  if (user) return null;
-
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-6 z-50 pointer-events-none">
       <motion.div

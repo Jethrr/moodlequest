@@ -3,8 +3,8 @@
 import { usePathname } from "next/navigation"
 import { Navbar } from "@/components/ui/navbar"
 import { TeacherNavbar } from "@/components/ui/teacher-navbar"
+import { LandingNavbar } from "@/components/ui/landing-navbar"
 import { useAuth } from "@/lib/auth-context"
-import { UserRole } from "@/lib/moodle-auth"
 import { useEffect, useState } from "react"
 
 interface AppLayoutProps {
@@ -17,16 +17,27 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isMounted, setIsMounted] = useState(false)
   
   // Define page types
-  const isHomePage = pathname === '/'
-  const isSignInPage = pathname === '/signin' || pathname === '/register'
   const isNotFoundPage = pathname === '/not-found' || pathname === '/404'
+  const isSignInPage = pathname === '/signin' || pathname === '/register'
   const publicRoutes = ['/signin', '/register', '/', '/learn-more', '/faq', '/about']
   const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route))
-  const isTeacherRoute = pathname?.startsWith('/teacher')
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Debug logging
+  useEffect(() => {
+    console.log("AppLayout Debug:", {
+      pathname,
+      user: user ? { id: user.id, role: user.role, username: user.username } : null,
+      isLoading,
+      isMounted,
+      isPublicRoute,
+      isSignInPage,
+      isNotFoundPage
+    })
+  }, [pathname, user, isLoading, isMounted, isPublicRoute, isSignInPage, isNotFoundPage])
 
   // During server-side rendering or first mount, render minimal content to avoid hydration mismatch
   if (!isMounted) {
@@ -39,22 +50,42 @@ export function AppLayout({ children }: AppLayoutProps) {
     )
   }
 
-  // Determine if we should show navbar:
-  // 1. Never show on not-found pages
-  // 2. Never show on sign-in/register pages
-  // 3. Show when user is authenticated (regardless of page)
-  const showNavbar = !isNotFoundPage && !isSignInPage && user !== null;
+  // Don't show any navbar on not-found pages or sign-in/register pages
+  if (isNotFoundPage || isSignInPage) {
+    console.log("Rendering without navbar (not-found or sign-in page)")
+    return (
+      <div className="min-h-screen flex flex-col">
+        <main className="flex-1">
+          {children}
+        </main>
+      </div>
+    )
+  }
 
+  // For authenticated users, show the appropriate navbar based on their role
+  if (user) {
+    const isTeacherUser = user.role === 'teacher';
+    console.log(`Rendering with ${isTeacherUser ? 'Teacher' : 'Student'} navbar for user:`, user.username)
+    return (
+      <div className="min-h-screen flex flex-col">
+        <main className="flex-1 pb-24">
+          {children}
+        </main>
+        {!isLoading && (
+          isTeacherUser ? <TeacherNavbar /> : <Navbar />
+        )}
+      </div>
+    )
+  }
+
+  // For unauthenticated users on public routes, show the landing navbar
+  console.log("Rendering with landing navbar (unauthenticated user on public route)")
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1 pb-24">
         {children}
       </main>
-      {!isLoading && showNavbar && (
-        <>
-          {isTeacherRoute ? <TeacherNavbar /> : <Navbar />}
-        </>
-      )}
+      {!isLoading && isPublicRoute && <LandingNavbar />}
     </div>
   )
 } 

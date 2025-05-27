@@ -21,7 +21,7 @@ export function useCurrentUser() {
     try {
       // Check if we're in a browser environment
       if (typeof window !== "undefined") {
-        const userData = localStorage.getItem("moodle_user");
+        const userData = localStorage.getItem("moodlequest_user");
         if (userData) {
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
@@ -38,7 +38,7 @@ export function useCurrentUser() {
   // Function to update user data
   const updateUser = (userData: MoodleUser) => {
     try {
-      localStorage.setItem("moodleUser", JSON.stringify(userData));
+      localStorage.setItem("moodlequest_user", JSON.stringify(userData));
       setUser(userData);
     } catch (err) {
       console.error("Error updating user in localStorage:", err);
@@ -49,7 +49,7 @@ export function useCurrentUser() {
   // Function to clear user data (for logout)
   const clearUser = () => {
     try {
-      localStorage.removeItem("moodleUser");
+      localStorage.removeItem("moodlequest_user");
       setUser(null);
     } catch (err) {
       console.error("Error clearing user from localStorage:", err);

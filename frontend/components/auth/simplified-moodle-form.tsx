@@ -24,6 +24,7 @@ export function SimplifiedMoodleForm() {
   const [networkError, setNetworkError] = useState("");
   const [isRetrying, setIsRetrying] = useState(false);
   const [formVisible, setFormVisible] = useState(true);
+  const [loadingKey, setLoadingKey] = useState(0);
 
   // Create a loading timer to show various loading stages even if the server responds quickly
   useEffect(() => {
@@ -66,6 +67,7 @@ export function SimplifiedMoodleForm() {
     setNetworkError("");
     setLoadingPhase("connecting");
     setFormVisible(false);
+    setLoadingKey(prev => prev + 1);
 
     const formData = new FormData(event.currentTarget);
     const username = formData.get("username") as string;
@@ -122,7 +124,7 @@ export function SimplifiedMoodleForm() {
         // console.log("User Role From Client: ", userData.role);
 
         // Store complete user data in localStorage
-        localStorage.setItem("moodle_user", JSON.stringify(userData));
+        localStorage.setItem("moodlequest_user", JSON.stringify(userData));
 
         setLoadingPhase("authenticating");
 
@@ -145,6 +147,7 @@ export function SimplifiedMoodleForm() {
             "Authentication failed. Please check your credentials."
         );
         setIsLoading(false);
+        setLoadingPhase("connecting");
         setFormVisible(true);
       }
     } catch (error: any) {
@@ -157,6 +160,7 @@ export function SimplifiedMoodleForm() {
         );
       }
       setIsLoading(false);
+      setLoadingPhase("connecting");
       setFormVisible(true);
     }
   }
@@ -318,7 +322,7 @@ export function SimplifiedMoodleForm() {
             exit={{ opacity: 0 }}
             className="min-h-[300px] flex items-center justify-center"
           >
-            <PetLoader loadingPhase={loadingPhase} />
+            <PetLoader key={loadingKey} loadingPhase={loadingPhase} />
           </motion.div>
         )}
       </AnimatePresence>
