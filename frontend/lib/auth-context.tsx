@@ -30,6 +30,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<MoodleLoginResult>;
   logout: () => void;
+  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -292,8 +293,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Only provide the real context value after mounting on client
   const contextValue = isMounted
-    ? { user, isLoading, login, logout }
-    : { user: null, isLoading: true, login, logout };
+    ? { user, isLoading, login, logout, setUser }
+    : { user: null, isLoading: true, login, logout, setUser };
 
   return (
     <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>

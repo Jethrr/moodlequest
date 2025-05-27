@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
+import type { User } from "@/lib/auth-context";
 import { AlertCircle, RefreshCcw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getMoodleUserByField } from "@/lib/api-utils";
@@ -15,7 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export function SimplifiedMoodleForm() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<
     "connecting" | "authenticating" | "redirecting" | "complete"
@@ -107,10 +108,9 @@ export function SimplifiedMoodleForm() {
         // console.log("User Role", result.user.role);
 
         // Create a complete user object with all required fields
-        const userData = {
+        const userData: User = {
           id: result.user.id || "",
           token: result.token || "",
-          privateToken: result.privateToken || "",
           username: result.user.username || username,
           name: result.user.name || username,
           email: result.user.email || "",
@@ -126,20 +126,13 @@ export function SimplifiedMoodleForm() {
         // Store complete user data in localStorage
         localStorage.setItem("moodlequest_user", JSON.stringify(userData));
 
+        // Immediately update the auth context with the user data
+        setUser(userData);
+
         setLoadingPhase("authenticating");
 
-        // Update the auth context and prepare for redirect
-        try {
-          await login(username, password);
-          proceedWithRedirect(userData);
-        } catch (authError) {
-          console.warn(
-            "Auth context update failed, but continuing with login flow",
-            authError
-          );
-          // Still proceed with the redirect even if auth context update fails
-          proceedWithRedirect(userData);
-        }
+        // Proceed with redirect without calling the auth context login
+        proceedWithRedirect(userData);
       } else {
         console.error("Login failed:", result.error);
         setError(

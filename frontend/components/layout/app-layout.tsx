@@ -26,19 +26,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     setIsMounted(true)
   }, [])
 
-  // Debug logging
-  useEffect(() => {
-    console.log("AppLayout Debug:", {
-      pathname,
-      user: user ? { id: user.id, role: user.role, username: user.username } : null,
-      isLoading,
-      isMounted,
-      isPublicRoute,
-      isSignInPage,
-      isNotFoundPage
-    })
-  }, [pathname, user, isLoading, isMounted, isPublicRoute, isSignInPage, isNotFoundPage])
-
   // During server-side rendering or first mount, render minimal content to avoid hydration mismatch
   if (!isMounted) {
     return (
@@ -52,7 +39,6 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Don't show any navbar on not-found pages or sign-in/register pages
   if (isNotFoundPage || isSignInPage) {
-    console.log("Rendering without navbar (not-found or sign-in page)")
     return (
       <div className="min-h-screen flex flex-col">
         <main className="flex-1">
@@ -65,7 +51,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   // For authenticated users, show the appropriate navbar based on their role
   if (user) {
     const isTeacherUser = user.role === 'teacher';
-    console.log(`Rendering with ${isTeacherUser ? 'Teacher' : 'Student'} navbar for user:`, user.username)
     return (
       <div className="min-h-screen flex flex-col">
         <main className="flex-1 pb-24">
@@ -79,7 +64,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   // For unauthenticated users on public routes, show the landing navbar
-  console.log("Rendering with landing navbar (unauthenticated user on public route)")
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1 pb-24">
