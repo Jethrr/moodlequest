@@ -104,18 +104,27 @@ export function QuestCreator() {
 
   // Task types for dropdown
   const TASK_TYPES = [
-    "view_lesson",
-    "submit_assignment",
-    "pass_quiz",
-    "attempt_quiz",
-    "get_graded",
-    "complete_module",
-    "complete_course",
-    "post_in_forum",
-    "watch_video",
-    "download_file",
-    "join_chat",
-    "submit_feedback",
+    "New Beginnings – Create an account",
+    "Tested and Tried – Submit a quiz",
+    "Taking the Challenge – Attempt a quiz",
+    "Mission Accomplished – Submit an assignment",
+    "Scoreboard Update – Receive a grade",
+    "Checkpoint Cleared – Complete an activity",
+    "Champion Status – Complete a course",
+    "Speak Up – Create a forum post",
+    "Gather the Troops – Create a discussion",
+    "Lesson Mastered – Complete a lesson",
+    "Curious Mind – View a lesson",
+    "Your Voice Matters – Submit feedback",
+    "Decision Time – Submit a choice",
+    "Explorer Mode – View a resource",
+    "Bookworm Bonus – View a book",
+    "Page Turner – View a page",
+    "Link Seeker – View a URL",
+    "Wordsmith – Create a glossary entry",
+    "Wiki Wizard – Create a wiki page",
+    "Wiki Refresher – Update a wiki page",
+    "Chatterbox – Send a chat message",
   ];
 
   // Fetch Moodle activities and courses
@@ -469,7 +478,9 @@ export function QuestCreator() {
         toast({
           title: "Failed to create quest",
           description:
-            response?.error || response?.message || "Unknown error. See console.",
+            response?.error ||
+            response?.message ||
+            "Unknown error. See console.",
           variant: "destructive",
         });
         console.error("Quest creation error:", response);
@@ -479,7 +490,8 @@ export function QuestCreator() {
       // Success!
       toast({
         title: "Quest Assigned!",
-        description: "Gamification elements successfully assigned to Moodle activity.",
+        description:
+          "Gamification elements successfully assigned to Moodle activity.",
       });
 
       // Mark activity as assigned in the mock data
