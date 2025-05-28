@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
 import type { VirtualPet as VirtualPetType, PetAccessory } from "@/types/gamification"
-import { Heart, Zap, Clock, Plus, Lock } from "lucide-react"
+import { Heart, Zap, Clock, Plus, Lock, Edit2, Check } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -107,9 +108,9 @@ const availableAccessories: PetAccessory[] = [
 // Mock pet data
 const mockPet: VirtualPetType = {
   id: "pet1",
-  name: "Derrick",
-  species: "Owl",
-  level: 5,
+  name: "Whiskers",
+  species: "Cat",
+  level: 50,
   happiness: 10,
   energy: 10,
   lastFed: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
@@ -125,6 +126,8 @@ export function VirtualPet() {
   const [petState, setPetState] = useState<'idle' | 'chilling' | 'eating' | 'playing' | 'dancing' | 'crying' | 'dead'>('chilling')
   const [isFeeding, setIsFeeding] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [newPetName, setNewPetName] = useState(pet.name)
   const userActivityTimeout = useRef<NodeJS.Timeout | null>(null)
   const feedingTimeout = useRef<NodeJS.Timeout | null>(null)
   const playingTimeout = useRef<NodeJS.Timeout | null>(null)
@@ -200,12 +203,25 @@ export function VirtualPet() {
     }, 3000)
   }
 
+  // Handle saving the pet name
+  const handleSaveName = () => {
+    if (newPetName.trim()) {
+      setPet(prevPet => ({
+        ...prevPet,
+        name: newPetName.trim()
+      }))
+    } else {
+      // If empty, revert to current name
+      setNewPetName(pet.name)
+    }
+    setIsEditingName(false)
+  }
+
   const equipAccessory = (accessory: PetAccessory) => {
     // Check if the pet level is high enough to use this accessory
     if (pet.level < accessory.levelRequired) {
       return; // Can't equip if level requirement isn't met
     }
-    
     setPet(prevPet => {
       // Check if accessory is already equipped
       const isEquipped = prevPet.accessories.some(acc => acc.id === accessory.id)
@@ -431,20 +447,50 @@ export function VirtualPet() {
                     objectFit="contain"
                   />
                 </div>
-              )}
-
-              <Image 
+              )}              <Image 
                 src={getPetAnimationSrc()} 
-                alt={`${pet.name} the ${pet.species}`}
+                alt={`${pet.name} the Cat`}
                 width={120}
                 height={120}
                 priority
               />
             </div>
-          </div>
-
-          <div className="text-xl font-bold mb-2">
-            {pet.name} the {pet.species}
+          </div>          <div className="flex items-center justify-center text-xl font-bold mb-2 gap-2">
+            {isEditingName ? (
+              <div className="flex items-center">
+                <Input 
+                  value={newPetName}
+                  onChange={(e) => setNewPetName(e.target.value)}
+                  className="h-8 px-2 py-1 w-32 text-center font-bold"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 ml-1" 
+                  onClick={handleSaveName}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <span>{pet.name}</span>
+                <span>the Cat</span>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={() => {
+                    setNewPetName(pet.name);
+                    setIsEditingName(true);
+                  }}
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
           </div>
 
           <div className="w-full space-y-3">
