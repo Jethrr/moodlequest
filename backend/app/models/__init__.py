@@ -7,6 +7,6 @@ from app.models.user import User
 from app.models.course import Course
 from app.models.enrollment import CourseEnrollment
 from app.models.auth import Token, MoodleConfig
-from app.models.quest import Quest
+from app.models.quest import Quest, StudentProgress, ExperiencePoints
 
-# This file ensures proper loading order of models when using relationships 
+# This file ensures proper loading order of models when using relationships
