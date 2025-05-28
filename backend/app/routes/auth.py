@@ -911,7 +911,9 @@ async def get_activities(
         courses_result = response.json()
         if isinstance(courses_result, dict) and "exception" in courses_result:
             raise HTTPException(status_code=400, detail=f"Moodle API error: {courses_result.get('message', 'Unknown error')}")
-        course_id_list = [course.get("id") for course in courses_result if course.get("id")]
+        if not isinstance(courses_result, list):
+            raise HTTPException(status_code=500, detail="Unexpected response format from Moodle API")
+        course_id_list = [course.get("id") for course in courses_result if isinstance(course, dict) and course.get("id")]
 
     # Get all assigned moodle_activity_id values from quests table
     from app.models.quest import Quest
@@ -939,7 +941,13 @@ async def get_activities(
             raise HTTPException(status_code=500, detail=f"Failed to fetch from Moodle: {str(e)}")
 
         # Parse course_contents for activities
+        if not isinstance(course_contents, list):
+            logger.warning(f"Unexpected course contents format for course {course_id}: {course_contents}")
+            continue
+            
         for section in course_contents:
+            if not isinstance(section, dict):
+                continue
             for mod in section.get("modules", []):
                 activity = {
                     "id": mod.get("id"),
@@ -974,14 +982,6 @@ async def get_activities(
         "activities": activities,
         "count": len(activities)
     }
-
-
-@router.get("/test-get-activities")
-def test_get_activities():
-    """
-    Simple test route to verify /auth/get-activities is reachable.
-    """
-    return {"message": "The /auth/get-activities route is registered and working."}
 
 
 @router.get("/get-course")

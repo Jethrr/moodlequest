@@ -102,3 +102,106 @@ export interface UserProgress {
     };
   };
 }
+
+// Leaderboard Types
+export interface LeaderboardEntry {
+  entry_id: number;
+  leaderboard_id: number;
+  user_id: number;
+  score: number;
+  rank: number;
+  last_updated: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  profile_image_url?: string;
+}
+
+export interface Leaderboard {
+  leaderboard_id: number;
+  name: string;
+  description?: string;
+  course_id?: number;
+  metric_type: 'exp' | 'quests_completed' | 'badges_earned' | 'engagement_score';
+  timeframe: 'daily' | 'weekly' | 'monthly' | 'all_time';
+  is_active: boolean;
+  created_at: string;
+  last_updated: string;
+  entries: LeaderboardEntry[];
+}
+
+export interface TopStudent {
+  user_id: number;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  profile_image_url?: string;
+  score: number;
+  rank: number;
+  total_exp?: number;
+  quests_completed?: number;
+  badges_earned?: number;
+}
+
+export interface LeaderboardSummary {
+  leaderboard_id: number;
+  name: string;
+  metric_type: string;
+  timeframe: string;
+  total_participants: number;
+  top_score?: number;
+  last_updated: string;
+}
+
+export interface CourseLeaderboard {
+  course_id: number;
+  course_name: string;
+  leaderboards: LeaderboardSummary[];
+  top_students: TopStudent[];
+}
+
+export interface StudentProgress {
+  progress_id: number;
+  user_id: number;
+  course_id: number;
+  total_exp: number;
+  quests_completed: number;
+  badges_earned: number;
+  engagement_score?: number;
+  study_hours?: number;
+  last_activity?: string;
+  streak_days?: number;
+  last_updated: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export interface LeaderboardFilter {
+  course_id?: number;
+  metric_type?: string;
+  timeframe?: string;
+  is_active?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+// Frontend-specific leaderboard types
+export interface LeaderboardUser {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  profile_image_url: string | null;
+  rank: string;
+  stats: {
+    quests_completed: number;
+    exp_points: number;
+    rank_score: number;
+  };
+  level: number;
+  position?: number; // Actual rank position in leaderboard
+}
+
+export type TimeFrameOption = 'daily' | 'weekly' | 'monthly' | 'all_time';
+export type MetricType = 'exp' | 'quests_completed' | 'badges_earned' | 'engagement_score';

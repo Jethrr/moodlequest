@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
-from app.routes import quests, auth,enrollment,webhooks
+from app.routes import quests, auth, enrollment, webhooks, leaderboard
 from app.database.connection import engine, Base, SessionLocal
 from app.database.seed import seed_initial_data
 from app.models.auth import MoodleConfig
@@ -60,7 +60,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex="https://.*\.vercel\.app",  # Allow Vercel deployments
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Allow Vercel deployments
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
@@ -93,6 +93,7 @@ app.include_router(quests.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(enrollment.router, prefix="/api")
 app.include_router(webhooks.router, prefix="/api")
+app.include_router(leaderboard.router, prefix="/api")
 
 @app.get("/")
 async def root():
