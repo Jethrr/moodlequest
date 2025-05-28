@@ -456,7 +456,7 @@ export function QuestCreator() {
               d.label.toLowerCase().includes("due")
             )!.timestamp * 1000
           ).toISOString()
-        : "2 weeks",
+        : null,
       status: "not-started",
       creatorId: user?.id ?? 0,
       learningObjectives: quest.learningObjectives || [],
@@ -997,7 +997,7 @@ interface Quest {
   category: string;
   moodleCourse: number;
   moodleActivityId: number;
-  deadline: string;
+  deadline: string | null;
   status: string;
   creatorId: number;
   learningObjectives?: string[];

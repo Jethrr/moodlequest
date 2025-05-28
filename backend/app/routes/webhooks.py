@@ -37,8 +37,27 @@ def log_and_ack(event_type: str, data: dict, msg: str):
 # Placeholder handlers
 # ------------------------
 
-def handle_user_created(data: dict): pass
-def handle_quiz_attempt_submitted(data: dict): pass
+def handle_user_created(data: dict, db: Session):
+    moodle_user_id = data.get("user_id")
+    username = data.get("username")
+    email = data.get("email")
+    if not (moodle_user_id and username and email):
+        logger.error("Missing required fields in user_created webhook: %s", data)
+        return
+    user = db.query(User).filter(User.moodle_user_id == moodle_user_id).first()
+    if not user:
+        user = User(moodle_user_id=moodle_user_id, username=username, email=email, role="student", is_active=True)
+        db.add(user)
+        db.commit()
+        logger.info(f"Created new user for moodle_user_id={moodle_user_id}")
+    else:
+        logger.info(f"User already exists for moodle_user_id={moodle_user_id}")
+
+def handle_quiz_attempt_submitted(data: dict, db: Session):
+    # This is a stub for quiz attempt logic. You may want to update quest progress, award XP, etc.
+    logger.info(f"Quiz attempt submitted: {data}")
+    # TODO: Implement quiz/quest mapping and progress update
+
 def handle_assign_submitted(data: dict, db: Session):
     moodle_course_id = data.get("course_id")
     moodle_activity_id = data.get("assignment_id")
@@ -114,22 +133,73 @@ def handle_assign_submitted(data: dict, db: Session):
     db.add(ep)
     db.commit()
     logger.info(f"Updated quest progress, student progress, and experience points for user {user_id} on quest {quest.quest_id}")
-def handle_assign_graded(data: dict): pass
-def handle_course_completion_updated(data: dict): pass
-def handle_forum_post_created(data: dict): pass
-def handle_forum_discussion_created(data: dict): pass
-def handle_lesson_completed(data: dict): pass
-def handle_lesson_viewed(data: dict): pass
-def handle_feedback_submitted(data: dict): pass
-def handle_glossary_entry_created(data: dict): pass
-def handle_resource_file_viewed(data: dict): pass
-def handle_resource_book_viewed(data: dict): pass
-def handle_resource_page_viewed(data: dict): pass
-def handle_resource_url_viewed(data: dict): pass
-def handle_choice_answer_submitted(data: dict): pass
-def handle_wiki_page_created(data: dict): pass
-def handle_wiki_page_updated(data: dict): pass
-def handle_chat_message_sent(data: dict): pass
+
+def handle_assign_graded(data: dict, db: Session):
+    # This is a stub for assignment graded logic. You may want to update quest validation, award XP, etc.
+    logger.info(f"Assignment graded: {data}")
+    # TODO: Implement grading/validation logic
+
+def handle_course_completion_updated(data: dict, db: Session):
+    # This is a stub for course completion logic. You may want to update student progress, award XP, etc.
+    logger.info(f"Course completion updated: {data}")
+    # TODO: Implement course completion logic
+
+def handle_forum_post_created(data: dict, db: Session):
+    # This is a stub for forum post logic. You may want to award XP for engagement.
+    logger.info(f"Forum post created: {data}")
+    # TODO: Implement forum engagement XP logic
+
+def handle_forum_discussion_created(data: dict, db: Session):
+    logger.info(f"Forum discussion created: {data}")
+    # TODO: Implement forum discussion XP logic
+
+def handle_lesson_completed(data: dict, db: Session):
+    logger.info(f"Lesson completed: {data}")
+    # TODO: Implement lesson completion XP/quest logic
+
+def handle_lesson_viewed(data: dict, db: Session):
+    logger.info(f"Lesson viewed: {data}")
+    # TODO: Implement lesson view tracking/XP
+
+def handle_feedback_submitted(data: dict, db: Session):
+    logger.info(f"Feedback submitted: {data}")
+    # TODO: Implement feedback XP/quest logic
+
+def handle_glossary_entry_created(data: dict, db: Session):
+    logger.info(f"Glossary entry created: {data}")
+    # TODO: Implement glossary XP/quest logic
+
+def handle_resource_file_viewed(data: dict, db: Session):
+    logger.info(f"Resource file viewed: {data}")
+    # TODO: Implement resource file view XP/quest logic
+
+def handle_resource_book_viewed(data: dict, db: Session):
+    logger.info(f"Resource book viewed: {data}")
+    # TODO: Implement resource book view XP/quest logic
+
+def handle_resource_page_viewed(data: dict, db: Session):
+    logger.info(f"Resource page viewed: {data}")
+    # TODO: Implement resource page view XP/quest logic
+
+def handle_resource_url_viewed(data: dict, db: Session):
+    logger.info(f"Resource URL viewed: {data}")
+    # TODO: Implement resource URL view XP/quest logic
+
+def handle_choice_answer_submitted(data: dict, db: Session):
+    logger.info(f"Choice answer submitted: {data}")
+    # TODO: Implement choice answer XP/quest logic
+
+def handle_wiki_page_created(data: dict, db: Session):
+    logger.info(f"Wiki page created: {data}")
+    # TODO: Implement wiki page XP/quest logic
+
+def handle_wiki_page_updated(data: dict, db: Session):
+    logger.info(f"Wiki page updated: {data}")
+    # TODO: Implement wiki page update XP/quest logic
+
+def handle_chat_message_sent(data: dict, db: Session):
+    logger.info(f"Chat message sent: {data}")
+    # TODO: Implement chat message XP/quest logic
 
 # ------------------------
 # Dispatcher map: event -> message + handler
