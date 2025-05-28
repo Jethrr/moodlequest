@@ -46,6 +46,8 @@ export interface VirtualPet {
   name: string;
   species: string;
   level: number;
+  experience: number;
+  experienceToNextLevel: number;
   happiness: number;
   energy: number;
   lastFed: string;

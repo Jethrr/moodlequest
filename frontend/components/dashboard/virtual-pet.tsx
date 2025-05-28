@@ -109,7 +109,9 @@ const mockPet: VirtualPetType = {
   id: "pet1",
   name: "Derrick",
   species: "Owl",
-  level: 5,
+  level: 20,
+  experience: 1580,
+  experienceToNextLevel: 2000,
   happiness: 10,
   energy: 10,
   lastFed: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
@@ -144,7 +146,6 @@ export function VirtualPet() {
       return `${diffHrs} hours ago`
     }
   }
-
   // Handle Feed Pet button click
   const handleFeedClick = () => {
     if (pet.energy >= 100) return // Don't feed if energy is full
@@ -157,6 +158,7 @@ export function VirtualPet() {
       ...prevPet,
       energy: Math.min(100, prevPet.energy + 20),
       lastFed: new Date().toISOString(),
+      experience: prevPet.experience + 15, // Gain experience when feeding
     }))
 
     // Clear any existing timeout
@@ -171,7 +173,6 @@ export function VirtualPet() {
       updatePetState()
     }, 3000)
   }
-
   // Handle Play button click
   const handlePlayClick = () => {
     if (pet.energy <= 0) return // Don't play if no energy
@@ -185,6 +186,7 @@ export function VirtualPet() {
       happiness: Math.min(100, prevPet.happiness + 15),
       energy: Math.max(0, prevPet.energy - 10),
       lastPlayed: new Date().toISOString(),
+      experience: prevPet.experience + 25, // Gain more experience when playing
     }))
 
     // Clear any existing timeout
@@ -305,6 +307,31 @@ export function VirtualPet() {
   useEffect(() => {
     updatePetState()
   }, [pet.happiness, pet.energy])
+  
+  // Check for level up when experience changes
+  useEffect(() => {
+    if (pet.experience >= pet.experienceToNextLevel) {
+      // Level up the pet
+      const newLevel = pet.level + 1;
+      const remainingExp = pet.experience - pet.experienceToNextLevel;
+      
+      // Calculate experience needed for next level (increases with each level)
+      const newExpRequired = Math.floor(pet.experienceToNextLevel * 1.2);
+      
+      setPet(prevPet => ({
+        ...prevPet,
+        level: newLevel,
+        experience: remainingExp,
+        experienceToNextLevel: newExpRequired,
+        // Bonus happiness and energy for leveling up
+        happiness: Math.min(100, prevPet.happiness + 20),
+        energy: Math.min(100, prevPet.energy + 20),
+      }));
+      
+      // Could add a level up animation or notification here
+      console.log(`${pet.name} leveled up to level ${newLevel}!`);
+    }
+  }, [pet.experience]);
 
   // Simulate pet stats decreasing over time
   useEffect(() => {
@@ -445,9 +472,26 @@ export function VirtualPet() {
 
           <div className="text-xl font-bold mb-2">
             {pet.name} the {pet.species}
-          </div>
-
-          <div className="w-full space-y-3">
+          </div>          <div className="w-full space-y-3">
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <div className="flex items-center">
+                  <svg className="h-4 w-4 mr-1 text-purple-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z"/>
+                    <path d="M15 6h-6v12h6v-12z"/>
+                  </svg>
+                  <span>Experience</span>
+                </div>
+                <span>{pet.experience} / {pet.experienceToNextLevel}</span>
+              </div>
+              <Progress value={(pet.experience / pet.experienceToNextLevel) * 100} className="h-2 bg-purple-100 dark:bg-purple-900/20">
+                <div 
+                  className="bg-gradient-to-r from-purple-500 to-purple-700 h-full transition-all" 
+                  style={{ width: `${(pet.experience / pet.experienceToNextLevel) * 100}%` }}
+                />
+              </Progress>
+            </div>
+            
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <div className="flex items-center">
