@@ -25,7 +25,7 @@ const teacherRoutes = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    href: "/teacher/dashboard",
+    href: "/dashboard/teacher",
     color: "text-purple-500"
   },
   {
