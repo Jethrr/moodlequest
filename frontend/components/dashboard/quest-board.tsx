@@ -163,10 +163,16 @@ export function QuestBoard() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Card className="overflow-hidden">
-                    <CardHeader className="pb-3">
+                  <Card className="overflow-hidden h-[300px] flex flex-col">
+                    {" "}
+                    <CardHeader className="pb-2">
+                      {" "}
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{quest.title}</CardTitle>
+                        <div className="w-full pr-2">
+                          <CardTitle className="text-lg font-bold hover:text-primary break-words">
+                            {quest.title}
+                          </CardTitle>
+                        </div>
                         <motion.div whileHover={{ scale: 1.1 }}>
                           <Badge
                             variant={
@@ -180,11 +186,13 @@ export function QuestBoard() {
                             {quest.difficulty}
                           </Badge>
                         </motion.div>
-                      </div>
-                      <CardDescription>{quest.description}</CardDescription>
+                      </div>{" "}
+                      <CardDescription className="line-clamp-2 h-[40px] mt-1">
+                        {quest.description}
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="pb-3">
-                      <div className="space-y-3">
+                    <CardContent className="pb-2 flex-grow">
+                      <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <motion.div
                             className="flex items-center"
@@ -206,7 +214,7 @@ export function QuestBoard() {
                             </svg>
                             <span>{quest.xp} XP</span>
                           </motion.div>
-                          <span className="text-muted-foreground">
+                          <span className="text-muted-foreground truncate max-w-[120px]">
                             {quest.deadline}
                           </span>
                         </div>
@@ -219,7 +227,7 @@ export function QuestBoard() {
                         </motion.div>
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="mt-auto pt-2">
                       <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
