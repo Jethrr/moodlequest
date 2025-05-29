@@ -34,24 +34,36 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
+        {" "}
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>{quest.title}</span>
-            <Badge
-              variant={
-                quest.difficulty === "Easy"
-                  ? "outline"
-                  : quest.difficulty === "Medium"
-                  ? "secondary"
-                  : "destructive"
-              }
-            >
-              {quest.difficulty}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant={
+                  quest.difficulty === "Easy"
+                    ? "outline"
+                    : quest.difficulty === "Medium"
+                    ? "secondary"
+                    : "destructive"
+                }
+              >
+                {quest.difficulty}
+              </Badge>
+              {quest.is_completed && (
+                <Badge className="bg-green-500 hover:bg-green-600 text-white">
+                  ✓ Completed
+                </Badge>
+              )}
+              {quest.status === "in-progress" && (
+                <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
+                  ⚡ In Progress
+                </Badge>
+              )}
+            </div>
           </DialogTitle>
           <DialogDescription>{quest.description}</DialogDescription>
         </DialogHeader>
-
         <Tabs
           defaultValue="details"
           value={activeTab}
@@ -61,8 +73,7 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="rewards">Rewards</TabsTrigger>
-          </TabsList>
-
+          </TabsList>{" "}
           <TabsContent value="details" className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -79,21 +90,117 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
               </div>
               <div className="space-y-1">
                 <div className="text-sm font-medium">Status</div>
-                <div className="text-sm capitalize">
+                <div
+                  className={`text-sm capitalize ${
+                    quest.is_completed
+                      ? "text-green-600 font-medium"
+                      : quest.status === "in-progress"
+                      ? "text-blue-600 font-medium"
+                      : "text-muted-foreground"
+                  }`}
+                >
                   {quest.status.replace("-", " ")}
                 </div>
               </div>
+              {quest.course_title && (
+                <div className="space-y-1 col-span-2">
+                  <div className="text-sm font-medium">Course</div>
+                  <div className="text-sm">{quest.course_title}</div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
               <div className="text-sm font-medium">Progress</div>
-              <Progress value={progress} className="h-2" />
+              <Progress
+                value={progress}
+                className={`h-2 ${
+                  quest.is_completed
+                    ? "[&>div]:bg-green-500"
+                    : quest.status === "in-progress"
+                    ? "[&>div]:bg-blue-500"
+                    : "[&>div]:bg-gray-400"
+                }`}
+              />
               <div className="text-xs text-right text-muted-foreground">
                 {progress}% complete
               </div>
             </div>
-          </TabsContent>
 
+            {/* Quest Timeline */}
+            {(quest.started_at || quest.completed_at || quest.validated_at) && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Quest Timeline</div>
+                <div className="space-y-2 text-sm">
+                  {quest.started_at && (
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <polygon points="10 8 16 12 10 16 10 8" />
+                      </svg>
+                      Started: {new Date(quest.started_at).toLocaleString()}
+                    </div>
+                  )}
+                  {quest.completed_at && (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Completed: {new Date(quest.completed_at).toLocaleString()}
+                    </div>
+                  )}
+                  {quest.validated_at && (
+                    <div className="flex items-center gap-2 text-purple-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M9 12l2 2 4-4" />
+                        <path d="M21 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1" />
+                        <path d="M3 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1" />
+                      </svg>
+                      Validated: {new Date(quest.validated_at).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+                {quest.validation_notes && (
+                  <div className="mt-2 p-2 bg-muted rounded text-sm">
+                    <div className="font-medium text-muted-foreground mb-1">
+                      Validation Notes:
+                    </div>
+                    <div>{quest.validation_notes}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
           <TabsContent value="tasks" className="py-4">
             <div className="space-y-4">
               {Array.isArray(quest.validation_criteria?.tasks) &&
@@ -129,7 +236,6 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
               )}
             </div>
           </TabsContent>
-
           <TabsContent value="rewards" className="py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col items-center justify-center rounded-lg border p-4">
@@ -176,7 +282,6 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
             </div>
           </TabsContent>
         </Tabs>
-
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Close
