@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.database.connection import get_db
-from app.models.quest import Quest, QuestProgress
+from app.models.quest import Quest, QuestProgress, StudentProgress
 from app.schemas.quest import QuestCreate, QuestUpdate, Quest as QuestSchema
 from app.models.course import Course as CourseModel
 from app.models.user import User as UserModel
@@ -216,17 +216,18 @@ def get_quests_for_user(user_id: int, db: Session = Depends(get_db)):
     Get all quests for a specific user based on their enrolled courses.
     Returns quests with completion status, progress, and organized by completion state.
     """
-    try:
-        # Verify user exists
-        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    try:        # Verify user exists and get local user ID
+        user = db.query(UserModel).filter(UserModel.moodle_user_id == user_id).first() 
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Get all courses the user is enrolled in
+        # Get all courses the user is enrolled in using the local user ID
         user_enrollments = db.query(CourseEnrollment).filter(
-            CourseEnrollment.user_id == user_id,
+            CourseEnrollment.user_id == user.id,
             CourseEnrollment.status == "active"
         ).all()
+
+        
         
         if not user_enrollments:
             return {
@@ -277,11 +278,10 @@ def get_quests_for_user(user_id: int, db: Session = Depends(get_db)):
                     "incomplete": []
                 }
             }
-        
-        # Get quest progress for this user
+          # Get quest progress for this user using the local user ID
         quest_ids = [quest.quest_id for quest in quests]
         quest_progress_records = db.query(QuestProgress).filter(
-            QuestProgress.user_id == user_id,
+            QuestProgress.user_id == user.id,
             QuestProgress.quest_id.in_(quest_ids)
         ).all()
         
@@ -381,4 +381,62 @@ def get_quests_for_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, 
             detail=f"Error fetching quests for user: {str(e)}"
+        )
+
+@router.get("/student-progress/{user_id}")
+def get_student_progress(user_id: int, db: Session = Depends(get_db)):
+    """
+    Get student progress including total EXP and quests completed for a specific user.
+    The user_id parameter is the Moodle user ID.
+    Aggregates data from multiple StudentProgress records for the same user.
+    """
+    try:
+        # Find the local user by moodle_user_id
+        user = db.query(UserModel).filter(UserModel.moodle_user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get all student progress records for this user and aggregate the data
+        from sqlalchemy import func
+        
+        progress_aggregates = db.query(
+            func.sum(StudentProgress.total_exp).label('total_exp_sum'),
+            func.count(StudentProgress.quests_completed).label('total_records'),
+            func.sum(StudentProgress.badges_earned).label('total_badges'),
+            func.sum(StudentProgress.study_hours).label('total_study_hours'),
+            func.max(StudentProgress.streak_days).label('max_streak'),
+            func.max(StudentProgress.last_activity).label('latest_activity')
+        ).filter(
+            StudentProgress.user_id == user.id
+        ).first()
+        
+        # If no progress records exist, return default values
+        if not progress_aggregates or progress_aggregates.total_exp_sum is None:
+            return {
+                "user_id": user_id,
+                "total_exp": 0,
+                "quests_completed": 0,
+                "badges_earned": 0,
+                "study_hours": 0.0,
+                "streak_days": 0,
+                "last_activity": None
+            }
+        
+        return {
+            "user_id": user_id,
+            "total_exp": int(progress_aggregates.total_exp_sum or 0),
+            "quests_completed": int(progress_aggregates.total_records or 0),
+            "badges_earned": int(progress_aggregates.total_badges or 0),
+            "study_hours": float(progress_aggregates.total_study_hours or 0.0),
+            "streak_days": int(progress_aggregates.max_streak or 0),
+            "last_activity": progress_aggregates.latest_activity.isoformat() if progress_aggregates.latest_activity else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching student progress for user {user_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching student progress: {str(e)}"
         )

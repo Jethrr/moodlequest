@@ -49,6 +49,16 @@ export interface JwtToken {
   };
 }
 
+export interface StudentProgress {
+  user_id: number;
+  total_exp: number;
+  quests_completed: number;
+  badges_earned: number;
+  study_hours: number;
+  streak_days: number;
+  last_activity: string | null;
+}
+
 class ApiClient {
   private token: string = "";
   private connectionPoolTimers: Map<string, NodeJS.Timeout> = new Map();
@@ -180,7 +190,6 @@ class ApiClient {
       this.token = "";
     }
   }
-
   // Store user data with retry and resilience
   async storeUser(userData: any): Promise<any> {
     try {
@@ -193,6 +202,18 @@ class ApiClient {
       console.warn("User storage error (non-critical):", error);
       // Return a mock success response as this should be non-blocking
       return { success: true, message: "User data will sync later" };
+    }
+  }
+  // Fetch student progress data
+  async fetchStudentProgress(userId: number): Promise<StudentProgress> {
+    try {
+      return await this.request<StudentProgress>(
+        `/quests/student-progress/${userId}`,
+        "GET"
+      );
+    } catch (error) {
+      console.error("Student progress fetch error:", error);
+      throw error;
     }
   }
 }

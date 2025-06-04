@@ -1,24 +1,63 @@
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import { QuestBoard } from "@/components/dashboard/quest-board"
-import { VirtualPet } from "@/components/dashboard/virtual-pet"
-import { Card } from "@/components/ui/card"
-import { useStudentProtection } from "@/hooks/use-role-protection"
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { QuestBoard } from "@/components/dashboard/quest-board";
+import { VirtualPet } from "@/components/dashboard/virtual-pet";
+import { Card } from "@/components/ui/card";
+import { useStudentProtection } from "@/hooks/use-role-protection";
+import { useCurrentUser } from "@/hooks/useCurrentMoodleUser";
+import { apiClient, type StudentProgress } from "@/lib/api-client";
 
 export default function DashboardPage() {
   // Protect this route for students - teachers will be redirected to /teacher/dashboard
   useStudentProtection("/teacher/dashboard");
-  
+
+  const { user, loading: userLoading } = useCurrentUser();
+  // console.log("Current user:", user);
+  const [studentProgress, setStudentProgress] =
+    useState<StudentProgress | null>(null);
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState<string | null>(null);
+
+  // Fetch student progress data
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (!user?.id) {
+        setProgressLoading(false);
+        return;
+      }
+
+      try {
+        setProgressLoading(true);
+        const progress = await apiClient.fetchStudentProgress(user.id);
+        setStudentProgress(progress);
+        setProgressError(null);
+      } catch (error) {
+        console.error("Failed to fetch student progress:", error);
+        setProgressError("Failed to load progress data");
+      } finally {
+        setProgressLoading(false);
+      }
+    };
+
+    if (!userLoading && user) {
+      fetchProgress();
+    }
+  }, [user, userLoading]);
+
+  // Calculate current level based on XP (simple formula: level = floor(xp / 100) + 1)
+  const calculateLevel = (xp: number) => Math.floor(xp / 100) + 1;
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
-  }
+        staggerChildren: 0.1,
+      },
+    },
+  };
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -27,10 +66,10 @@ export default function DashboardPage() {
       opacity: 1,
       transition: {
         type: "spring",
-        stiffness: 100
-      }
-    }
-  }
+        stiffness: 100,
+      },
+    },
+  };
 
   const hoverVariants = {
     hover: {
@@ -38,71 +77,93 @@ export default function DashboardPage() {
       transition: {
         type: "spring",
         stiffness: 400,
-        damping: 10
-      }
-    }
-  }
+        damping: 10,
+      },
+    },
+  };
 
   return (
-    <motion.div 
+    <motion.div
       initial="hidden"
       animate="visible"
       variants={containerVariants}
       className="container max-w-7xl mx-auto px-4 py-8"
     >
+      {" "}
       {/* Welcome Section */}
-      <motion.div 
-        variants={itemVariants}
-        className="mb-8"
-      >
-        <h1 className="text-4xl font-bold tracking-tight mb-2">Welcome back! 👋</h1>
+      <motion.div variants={itemVariants} className="mb-8">
+        <h1 className="text-4xl font-bold tracking-tight mb-2">
+          Welcome back! 👋
+        </h1>
         <p className="text-muted-foreground">
-          Track your progress, complete quests, and level up your learning journey.
+          Track your progress, complete quests, and level up your learning
+          journey.
         </p>
+        {progressError && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">
+              ⚠️ {progressError} - Showing default values
+            </p>
+          </div>
+        )}
       </motion.div>
-
       <div className="grid gap-6 md:grid-cols-12">
         {/* Main Content Area - Left Side */}
-        <motion.div 
-          variants={itemVariants}
-          className="md:col-span-8 space-y-6"
-        >
+        <motion.div variants={itemVariants} className="md:col-span-8 space-y-6">
+          {" "}
           {/* Quick Stats */}
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-            <motion.div 
+            <motion.div
               variants={hoverVariants}
               whileHover="hover"
               className="bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl p-4 text-white"
             >
               <h3 className="text-sm font-medium text-violet-100">Total XP</h3>
-              <p className="text-2xl font-bold">2,450</p>
+              <p className="text-2xl font-bold">
+                {progressLoading ? "..." : studentProgress?.total_exp || 0}
+              </p>
             </motion.div>
-            <motion.div 
+            <motion.div
               variants={hoverVariants}
               whileHover="hover"
               className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white"
             >
-              <h3 className="text-sm font-medium text-amber-100">Current Level</h3>
-              <p className="text-2xl font-bold">15</p>
+              <h3 className="text-sm font-medium text-amber-100">
+                Current Level
+              </h3>
+              <p className="text-2xl font-bold">
+                {progressLoading
+                  ? "..."
+                  : calculateLevel(studentProgress?.total_exp || 0)}
+              </p>
             </motion.div>
-            <motion.div 
+            <motion.div
               variants={hoverVariants}
               whileHover="hover"
               className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white"
             >
-              <h3 className="text-sm font-medium text-emerald-100">Quests Done</h3>
-              <p className="text-2xl font-bold">24</p>
+              <h3 className="text-sm font-medium text-emerald-100">
+                Overall Quests Done
+              </h3>
+              <p className="text-2xl font-bold">
+                {progressLoading
+                  ? "..."
+                  : studentProgress?.quests_completed || 0}
+              </p>
             </motion.div>
-            <motion.div 
+            <motion.div
               variants={hoverVariants}
               whileHover="hover"
               className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white"
             >
-              <h3 className="text-sm font-medium text-blue-100">Achievements</h3>
-              <p className="text-2xl font-bold">8</p>
+              <h3 className="text-sm font-medium text-blue-100">
+                Achievements
+              </h3>
+              <p className="text-2xl font-bold">
+                {progressLoading ? "..." : studentProgress?.badges_earned || 0}
+              </p>
             </motion.div>
           </div>
-
           {/* Quest Board Section */}
           <motion.div
             variants={hoverVariants}
@@ -117,10 +178,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Sidebar - Right Side */}
-        <motion.div 
-          variants={itemVariants}
-          className="md:col-span-4 space-y-6"
-        >
+        <motion.div variants={itemVariants} className="md:col-span-4 space-y-6">
           {/* Virtual Pet Card */}
           <motion.div
             variants={hoverVariants}
@@ -168,5 +226,5 @@ export default function DashboardPage() {
         </motion.div>
       </div>
     </motion.div>
-  )
+  );
 }
