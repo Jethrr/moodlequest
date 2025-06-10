@@ -49,6 +49,47 @@ export interface JwtToken {
   };
 }
 
+// Daily Quest Types
+export interface DailyQuest {
+  quest_id: number;
+  quest_type: string;
+  title: string;
+  description: string;
+  xp_reward: number;
+}
+
+export interface UserDailyQuest {
+  id: number;
+  user_id: number;
+  daily_quest_id: number;
+  quest_date: string;
+  status: "available" | "completed" | "expired";
+  current_progress: number;
+  target_progress: number;
+  started_at?: string;
+  completed_at?: string;
+  expires_at: string;
+  xp_awarded: number;
+  quest_metadata: any;
+  daily_quest: DailyQuest;
+}
+
+export interface DailyQuestSummary {
+  date: string;
+  total_quests: number;
+  completed_quests: number;
+  completion_percentage: number;
+  total_xp_earned: number;
+  quests: UserDailyQuest[];
+}
+
+export interface QuestCompletionResponse {
+  success: boolean;
+  message: string;
+  xp_awarded: number;
+  quest?: UserDailyQuest;
+}
+
 export interface StudentProgress {
   user_id: number;
   total_exp: number;
@@ -203,8 +244,7 @@ class ApiClient {
       // Return a mock success response as this should be non-blocking
       return { success: true, message: "User data will sync later" };
     }
-  }
-  // Fetch student progress data
+  } // Fetch student progress data
   async fetchStudentProgress(userId: number): Promise<StudentProgress> {
     try {
       return await this.request<StudentProgress>(
@@ -213,6 +253,44 @@ class ApiClient {
       );
     } catch (error) {
       console.error("Student progress fetch error:", error);
+      throw error;
+    }
+  }
+
+  // Daily Quest Methods
+  async getDailyQuestSummary(userId: number): Promise<DailyQuestSummary> {
+    try {
+      return await this.request<DailyQuestSummary>(
+        `/daily-quests/user/${userId}`,
+        "GET"
+      );
+    } catch (error) {
+      console.error("Daily quest summary fetch error:", error);
+      throw error;
+    }
+  }
+
+  async completeDailyQuest(
+    userId: number,
+    questType: string
+  ): Promise<QuestCompletionResponse> {
+    try {
+      return await this.request<QuestCompletionResponse>(
+        `/daily-quests/user/${userId}/complete`,
+        "POST",
+        { quest_type: questType }
+      );
+    } catch (error) {
+      console.error("Daily quest completion error:", error);
+      throw error;
+    }
+  }
+
+  async seedDailyQuests(): Promise<any> {
+    try {
+      return await this.request<any>("/daily-quests/seed", "POST");
+    } catch (error) {
+      console.error("Daily quest seed error:", error);
       throw error;
     }
   }

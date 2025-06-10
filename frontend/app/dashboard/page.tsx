@@ -4,17 +4,22 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { QuestBoard } from "@/components/dashboard/quest-board";
 import { VirtualPet } from "@/components/dashboard/virtual-pet";
+import { DailyQuests } from "@/components/dashboard/daily-quests";
 import { Card } from "@/components/ui/card";
 import { useStudentProtection } from "@/hooks/use-role-protection";
 import { useCurrentUser } from "@/hooks/useCurrentMoodleUser";
+import { useDailyLoginQuest } from "@/hooks/use-daily-login-quest";
 import { apiClient, type StudentProgress } from "@/lib/api-client";
 
 export default function DashboardPage() {
   // Protect this route for students - teachers will be redirected to /teacher/dashboard
   useStudentProtection("/teacher/dashboard");
-
   const { user, loading: userLoading } = useCurrentUser();
   // console.log("Current user:", user);
+
+  // Initialize daily login quest auto-completion
+  useDailyLoginQuest();
+
   const [studentProgress, setStudentProgress] =
     useState<StudentProgress | null>(null);
   const [progressLoading, setProgressLoading] = useState(true);
@@ -189,38 +194,15 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-semibold mb-4">Your Pet</h2>
               <VirtualPet />
             </div>
-          </motion.div>
-
-          {/* Daily Tasks */}
+          </motion.div>{" "}
+          {/* Daily Quests */}
           <motion.div
             variants={hoverVariants}
             whileHover="hover"
             className="bg-card rounded-xl border shadow-sm overflow-hidden"
           >
             <div className="p-6">
-              <h2 className="text-2xl font-semibold mb-4">Daily Tasks</h2>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Complete 3 quests</p>
-                    <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                      <div className="bg-green-500 h-1.5 rounded-full w-2/3"></div>
-                    </div>
-                  </div>
-                  <span className="text-sm text-muted-foreground">2/3</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Earn 100 XP</p>
-                    <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                      <div className="bg-blue-500 h-1.5 rounded-full w-1/4"></div>
-                    </div>
-                  </div>
-                  <span className="text-sm text-muted-foreground">25/100</span>
-                </div>
-              </div>
+              <DailyQuests />
             </div>
           </motion.div>
         </motion.div>

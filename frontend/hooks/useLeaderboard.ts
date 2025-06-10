@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { leaderboardService } from '@/lib/leaderboard-service';
-import { LeaderboardUser, TimeFrameOption, MetricType } from '@/types/gamification';
+import { useState, useEffect, useCallback } from "react";
+import { leaderboardService } from "@/lib/leaderboard-service";
+import {
+  LeaderboardUser,
+  TimeFrameOption,
+  MetricType,
+} from "@/types/gamification";
 
 export interface UseLeaderboardOptions {
   courseId?: number;
@@ -32,77 +36,88 @@ export interface UseLeaderboardReturn {
   hasMore: boolean;
 }
 
-export function useLeaderboard(options: UseLeaderboardOptions = {}): UseLeaderboardReturn {
+export function useLeaderboard(
+  options: UseLeaderboardOptions = {}
+): UseLeaderboardReturn {
   const {
     courseId,
-    initialTimeframe = 'weekly',
-    initialMetricType = 'exp',
-    autoFetch = true
+    initialTimeframe = "weekly",
+    initialMetricType = "exp",
+    autoFetch = true,
   } = options;
 
   // State
   const [data, setData] = useState<LeaderboardData>({
     topUsers: [],
     otherUsers: [],
-    totalParticipants: 0
+    totalParticipants: 0,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<TimeFrameOption>(initialTimeframe);
   const [metricType, setMetricType] = useState<MetricType>(initialMetricType);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LeaderboardUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [currentLimit, setCurrentLimit] = useState(50);
 
   // Fetch leaderboard data
-  const fetchLeaderboardData = useCallback(async (limit: number = 50) => {
-    setLoading(true);
-    setError(null);
+  const fetchLeaderboardData = useCallback(
+    async (limit: number = 50) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const result = await leaderboardService.getFormattedLeaderboardData(
-        courseId,
-        timeframe,
-        metricType,
-        limit
-      );
-      
-      setData(result);
-      setHasMore(result.totalParticipants > limit);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch leaderboard data';
-      setError(errorMessage);
-      console.error('Error fetching leaderboard:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [courseId, timeframe, metricType]);
+      try {
+        const result = await leaderboardService.getFormattedLeaderboardData(
+          courseId,
+          timeframe,
+          metricType,
+          limit
+        );
+
+        setData(result);
+        setHasMore(result.totalParticipants > limit);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch leaderboard data";
+        setError(errorMessage);
+        console.error("Error fetching leaderboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [courseId, timeframe, metricType]
+  );
 
   // Search functionality
-  const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
+  const performSearch = useCallback(
+    async (query: string) => {
+      if (!query.trim()) {
+        setSearchResults([]);
+        return;
+      }
 
-    setSearchLoading(true);
-    try {
-      const results = await leaderboardService.searchLeaderboardUsers(
-        query,
-        courseId,
-        timeframe,
-        20
-      );
-      setSearchResults(results);
-    } catch (err) {
-      console.error('Error searching leaderboard:', err);
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, [courseId, timeframe]);
+      setSearchLoading(true);
+      try {
+        const results = await leaderboardService.searchLeaderboardUsers(
+          query,
+          courseId,
+          timeframe,
+          20
+        );
+        setSearchResults(results);
+      } catch (err) {
+        console.error("Error searching leaderboard:", err);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [courseId, timeframe]
+  );
 
   // Debounced search
   useEffect(() => {
@@ -133,7 +148,7 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}): UseLeaderbo
   // Load more data
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return;
-    
+
     const newLimit = currentLimit + 20;
     setCurrentLimit(newLimit);
     await fetchLeaderboardData(newLimit);
@@ -168,6 +183,6 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}): UseLeaderbo
     setSearchQuery: handleSearchQueryChange,
     refresh,
     loadMore,
-    hasMore
+    hasMore,
   };
-} 
+}

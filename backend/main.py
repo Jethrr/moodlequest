@@ -89,11 +89,13 @@ async def errors_handling(request: Request, call_next):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
+from app.routes import daily_quests
 app.include_router(quests.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(enrollment.router, prefix="/api")
 app.include_router(webhooks.router, prefix="/api")
 app.include_router(leaderboard.router, prefix="/api")
+app.include_router(daily_quests.router, prefix="/api")
 
 @app.get("/")
 async def root():

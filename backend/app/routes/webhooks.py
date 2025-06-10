@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from sqlalchemy.orm import Session
 from fastapi import Depends
@@ -37,7 +37,7 @@ def log_and_ack(event_type: str, data: dict, msg: str):
 # Placeholder handlers
 # ------------------------
 
-def handle_user_created(data: dict, db: Session):
+# def handle_user_created(data: dict, db: Session):
     """
     Handle user creation webhook from Moodle.
     Creates a new user in the local database if they don't exist.
@@ -827,8 +827,90 @@ def handle_lesson_completed(data: dict, db: Session):
             raise
 
 def handle_lesson_viewed(data: dict, db: Session):
-    logger.info(f"Lesson viewed: {data}")
-    # TODO: Implement lesson view tracking/XP
+    """
+    Handle lesson view webhook from Moodle.
+    Awards small XP for lesson engagement and viewing activities.
+    """
+    moodle_course_id = data.get("course_id")
+    moodle_activity_id = data.get("lesson_id") or data.get("activity_id")
+    moodle_user_id = data.get("user_id")
+    page_id = data.get("page_id")  # Specific lesson page viewed
+    
+    if not (moodle_course_id and moodle_activity_id and moodle_user_id):
+        logger.error("Missing required fields in lesson viewed webhook payload: %s", data)
+        return
+
+    # Find the course
+    course = db.query(Course).filter(Course.moodle_course_id == moodle_course_id).first()
+    if not course:
+        logger.error(f"No local course found for moodle_course_id={moodle_course_id}")
+        return
+    course_id = course.id
+
+    # Find the user
+    user = db.query(User).filter(User.moodle_user_id == moodle_user_id).first()
+    if not user:
+        logger.error(f"No local user found for moodle_user_id={moodle_user_id}")
+        return
+    user_id = user.id
+
+    # Award small XP for lesson viewing/engagement
+    now = datetime.utcnow()
+    xp_amount = 3  # Small XP for viewing activities (less than completion)
+    
+    # Use page_id if available for more granular tracking, otherwise use lesson_id
+    source_id = page_id if page_id else moodle_activity_id
+    
+    # Check for duplicate XP (prevent XP farming by repeatedly viewing same content)
+    # Use a time window to allow re-awarding after some time (e.g., 1 hour)
+    time_window = now - timedelta(hours=1)
+    existing_xp = db.query(ExperiencePoints).filter(
+        ExperiencePoints.user_id == user_id,
+        ExperiencePoints.course_id == course_id,
+        ExperiencePoints.source_type == "lesson_view",
+        ExperiencePoints.source_id == source_id,
+        ExperiencePoints.awarded_at >= time_window
+    ).first()
+    
+    if existing_xp:
+        logger.debug(f"XP already awarded recently for lesson view {source_id} by user {user_id}")
+        return    # Update student progress
+    sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+    if sp:
+        sp.total_exp += xp_amount
+        sp.last_activity = now
+    else:
+        sp = StudentProgress(
+            user_id=user_id,
+            course_id=course_id,
+            total_exp=xp_amount,
+            quests_completed=0,
+            last_activity=now
+        )
+        db.add(sp)
+
+    # Record experience points
+    ep = ExperiencePoints(
+        user_id=user_id,
+        course_id=course_id,
+        amount=xp_amount,
+        source_type="lesson_view",
+        source_id=source_id,
+        awarded_at=now,
+        notes=f"Lesson viewing engagement XP (lesson_id={moodle_activity_id}, page_id={page_id})"
+    )
+    db.add(ep)
+    
+    try:
+        db.commit()
+        logger.info(f"Awarded {xp_amount} XP for lesson view to user {user_id} in course {course_id}")
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"Database integrity error processing lesson view: {e}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error processing lesson view: {e}")
+        raise
 
 def handle_feedback_submitted(data: dict, db: Session):
     """
@@ -1089,10 +1171,10 @@ def handle_chat_message_sent(data: dict, db: Session):
 # ------------------------
 
 EVENT_HANDLERS = {
-    "user-created": {
-        "message": "User created webhook received and logged",
-        "handler": handle_user_created
-    },
+    # "user-created": {
+    #     "message": "User created webhook received and logged",
+    #     "handler": handle_user_created
+    # },
     "quiz/attempt-submitted": {
         "message": "Quiz attempt submitted webhook received and logged",
         "handler": handle_quiz_attempt_submitted
