@@ -9,5 +9,7 @@ from app.models.enrollment import CourseEnrollment
 from app.models.auth import Token, MoodleConfig
 from app.models.quest import Quest, StudentProgress, ExperiencePoints
 from app.models.leaderboard import Leaderboard, LeaderboardEntry, StudentProgress, ExperiencePoint
+from app.models.daily_quest import DailyQuest, UserDailyQuest, DailyQuestProgress, QuestTypeEnum, QuestStatusEnum
+from app.models.streak import UserStreak
 
 # This file ensures proper loading order of models when using relationships

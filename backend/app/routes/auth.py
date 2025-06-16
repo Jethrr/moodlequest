@@ -49,8 +49,7 @@ def sync_user_from_moodle(user: User, moodle_user: dict) -> None:
     
     Args:
         user: User model to update
-        moodle_user: Moodle user data dictionary
-    """
+        moodle_user: Moodle user data dictionary    """
     # Update basic user information
     if "id" in moodle_user:
         user.moodle_user_id = int(moodle_user["id"])
@@ -60,6 +59,10 @@ def sync_user_from_moodle(user: User, moodle_user: dict) -> None:
         user.first_name = moodle_user["firstname"]
     if "lastname" in moodle_user:
         user.last_name = moodle_user["lastname"]
+    if "profileimageurl" in moodle_user:
+        user.profile_image_url = moodle_user["profileimageurl"]
+    if "profileimageurl" in moodle_user:
+        user.profile_image_url = moodle_user["profileimageurl"]
     
     # Update role based on Moodle roles
     roles = moodle_user.get("roles", [])
@@ -619,7 +622,6 @@ async def store_moodle_user(
     try:
         # Check if user already exists by Moodle ID
         user = db.query(User).filter(User.moodle_user_id == user_data.moodleId).first()
-        
         if not user:
             # Also check by username
             user = db.query(User).filter(User.username == user_data.username).first()
@@ -633,6 +635,10 @@ async def store_moodle_user(
             user.moodle_user_id = user_data.moodleId
             user.user_token = user_data.token
             user.role = user_data.role or "student"  # Default to student if no role provided
+            
+            # Update profile image if provided
+            if user_data.profileImageUrl:
+                user.profile_image_url = user_data.profileImageUrl
             
             # Update last login time
             user.last_login = datetime.utcnow()
@@ -648,6 +654,7 @@ async def store_moodle_user(
                 moodle_user_id=user_data.moodleId,
                 user_token=user_data.token,
                 role=user_data.role,  # Default role
+                profile_image_url=user_data.profileImageUrl,  # Set profile image
                 is_active=True,
                 password_hash="moodle_user",  # Placeholder as we use Moodle auth
                 created_at=datetime.utcnow()  # Explicitly set creation time
@@ -669,8 +676,7 @@ async def store_moodle_user(
         refresh_token = create_refresh_token(
             data={"sub": user.username}
         )
-        
-        # Store token
+          # Store token
         store_token(
             db=db,
             token=access_token,
@@ -689,6 +695,7 @@ async def store_moodle_user(
             last_name=user.last_name,
             is_active=user.is_active,
             moodle_user_id=user.moodle_user_id,
+            profile_image_url=user.profile_image_url,
             created_at=user.created_at or datetime.utcnow()
         )
         

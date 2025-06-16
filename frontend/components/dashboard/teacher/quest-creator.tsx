@@ -463,15 +463,16 @@ export function QuestCreator() {
       tasks: (quest.tasks as Task[]) || [],
       rewards: (quest.rewards as Reward[]) || [],
     };
-
+    console.log("Submitting quest:", completeQuest);
     try {
-      // Send to backend with correct difficulty type
+      // Send to backend with correct difficulty type and field mapping
       const response: QuestCreationResponse = await createQuest({
         ...completeQuest,
         difficulty: difficultyInt,
+        course_id: selectedActivity.course, // Map moodleCourse to course_id for backend
         moodle_course_id: selectedActivity.course,
         moodle_user_id: user?.id ?? 0,
-        moodleActivityId: selectedActivity.id,
+        moodle_activity_id: selectedActivity.id, // Map moodleActivityId to moodle_activity_id
       });
 
       if (!response || response.success === false) {

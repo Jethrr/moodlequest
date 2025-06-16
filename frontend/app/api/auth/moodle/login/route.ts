@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
         console.log("Successfully retrieved user information");
         const moodleUser = userData[0];
-        console.log("Moodle user data:", moodleUser);
+        // console.log("Moodle user data:", moodleUser);
 
         // Step 1: Get user's enrolled courses
         let detectedRole = "student";
@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
                 token: token,
                 privateToken: tokenData.privatetoken || "",
                 role: detectedRole, // include the detected role
+                profileImageUrl: moodleUser.profileimageurl || "", // include profile image
               }),
               signal: controller.signal,
             }

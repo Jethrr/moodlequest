@@ -1,7 +1,15 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { apiClient } from '@/lib/api-client'
+import { useState, useEffect } from "react";
+import {
+  apiClient,
+  type DailyQuestSummary,
+  type UserDailyQuest,
+} from "@/lib/api-client";
+import { useCurrentUser } from "@/hooks/useCurrentMoodleUser";
+import { useGlobalXPReward } from "@/contexts/xp-reward-context";
+import { toast } from "@/hooks/use-toast";
+
 // Define Quest interface locally until it's properly exported from api-client
 interface Quest {
   id: string;
@@ -14,15 +22,15 @@ interface Quest {
   deadline: string;
   status: "not-started" | "in-progress" | "completed";
 }
-import Image from 'next/image'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Trophy, 
-  Star, 
-  Medal, 
-  BookOpen, 
-  ChevronRight, 
+import Image from "next/image";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Trophy,
+  Star,
+  Medal,
+  BookOpen,
+  ChevronRight,
   Play,
   Gift,
   Flag,
@@ -31,12 +39,22 @@ import {
   Sparkles,
   Crown,
   ArrowUp,
-  Lock
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+  Lock,
+  Zap,
+  Heart,
+  Target,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface MiniGame {
   id: string;
@@ -56,20 +74,30 @@ interface LeaderboardUser {
 }
 
 export default function StudentQuestsPage() {
-  const [quests, setQuests] = useState<Quest[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedGame, setSelectedGame] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const { user: currentUser } = useCurrentUser();
+  const { showXPReward, createRewardData } = useGlobalXPReward();
+
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Daily Quest State
+  const [questSummary, setQuestSummary] = useState<DailyQuestSummary | null>(
+    null
+  );
+  const [loadingDailyQuests, setLoadingDailyQuests] = useState(true);
+  const [completingQuest, setCompletingQuest] = useState<string | null>(null);
 
   // Handle client-side mounting
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
-  // Mock user data (would come from auth in real app)
-  const user = {
-    name: "M. Rafif Atmaka",
+  // Mock user data (would come from auth in real app) - fallback for UI components
+  const mockUser = {
+    name: currentUser?.first_name || currentUser?.username || "User",
     likes: 140,
     followers: 8402,
     expLevel: 14,
@@ -77,44 +105,153 @@ export default function StudentQuestsPage() {
     maxExp: 4200,
     rank: "MASTER",
     rankPoints: 1200,
-    streak: 7
-  }
+    streak: 7,
+  };
+
+  // Use current user data where available, fall back to mock for missing fields
+  const user = {
+    name: currentUser
+      ? `${currentUser.first_name || ""} ${
+          currentUser.last_name || ""
+        }`.trim() || currentUser.username
+      : mockUser.name,
+    likes: mockUser.likes,
+    followers: mockUser.followers,
+    expLevel: mockUser.expLevel,
+    currentExp: mockUser.currentExp,
+    maxExp: mockUser.maxExp,
+    rank: mockUser.rank,
+    rankPoints: mockUser.rankPoints,
+    streak: mockUser.streak,
+  };
 
   // Mock mini games data
   const miniGames: MiniGame[] = [
     {
-      id: 'history-heroes',
-      title: 'History Heroes',
+      id: "history-heroes",
+      title: "History Heroes",
       playersCount: 742,
-      image: '/games/history-hero.png',
-      color: 'from-purple-500 to-purple-700',
-      badge: '🏛️'
+      image: "/games/history-hero.png",
+      color: "from-purple-500 to-purple-700",
+      badge: "🏛️",
     },
     {
-      id: 'language-war',
-      title: 'Language War',
+      id: "language-war",
+      title: "Language War",
       playersCount: 82,
-      image: '/games/language.png',
-      color: 'from-blue-500 to-blue-700',
-      badge: '🌍'
+      image: "/games/language.png",
+      color: "from-blue-500 to-blue-700",
+      badge: "🌍",
     },
     {
-      id: 'questopia',
-      title: 'Questopia',
+      id: "questopia",
+      title: "Questopia",
       playersCount: 218,
-      image: '/games/quest.png',
-      color: 'from-primary to-primary/80',
-      badge: '🧩'
+      image: "/games/quest.png",
+      color: "from-primary to-primary/80",
+      badge: "🧩",
     },
     {
-      id: 'math-master',
-      title: 'Math Master',
+      id: "math-master",
+      title: "Math Master",
       playersCount: 145,
-      image: '/games/math.png',
-      color: 'from-amber-500 to-amber-700',
-      badge: '🔢'
+      image: "/games/math.png",
+      color: "from-amber-500 to-amber-700",
+      badge: "🔢",
+    },
+  ];
+
+  // Fetch daily quests
+  useEffect(() => {
+    const fetchDailyQuests = async () => {
+      if (!currentUser?.id) return;
+
+      try {
+        setLoadingDailyQuests(true);
+        const summary = await apiClient.getDailyQuestSummary(currentUser.id);
+        setQuestSummary(summary);
+      } catch (error) {
+        console.error("Failed to fetch daily quests:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load daily quests",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDailyQuests(false);
+      }
+    };
+
+    fetchDailyQuests();
+  }, [currentUser?.id]);
+
+  // Handle quest completion
+  const handleCompleteQuest = async (quest: UserDailyQuest) => {
+    if (!currentUser?.id || quest.status === "completed") return;
+
+    try {
+      setCompletingQuest(quest.daily_quest.quest_type);
+      const result = await apiClient.completeDailyQuest(
+        currentUser.id,
+        quest.daily_quest.quest_type
+      );
+      if (result.success) {
+        // Show XP reward popup with current progress
+        try {
+          const progress = await apiClient.fetchStudentProgress(currentUser.id);
+          const questTitle = `${quest.daily_quest.title} Completed! 🎉`;
+          const rewardData = createRewardData(
+            result.xp_awarded,
+            questTitle,
+            progress.total_exp
+          );
+          showXPReward(rewardData);
+        } catch (error) {
+          console.error("Failed to fetch progress for XP reward:", error);
+          // Fallback to toast if progress fetch fails
+          toast({
+            title: "Quest Completed! 🎉",
+            description: `You earned ${result.xp_awarded} XP!`,
+          });
+        }
+
+        // Refresh quest summary
+        const updatedSummary = await apiClient.getDailyQuestSummary(
+          currentUser.id
+        );
+        setQuestSummary(updatedSummary);
+      } else {
+        toast({
+          title: "Quest Already Completed",
+          description: result.message,
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to complete quest:", error);
+      toast({
+        title: "Error",
+        description: "Failed to complete quest",
+        variant: "destructive",
+      });
+    } finally {
+      setCompletingQuest(null);
     }
-  ]
+  };
+
+  // Get quest icon based on type
+  const getQuestIcon = (questType: string) => {
+    switch (questType) {
+      case "daily_login":
+        return <CheckCircle2 className="h-5 w-5" />;
+      case "feed_pet":
+        return <Heart className="h-5 w-5" />;
+      case "earn_xp":
+        return <Target className="h-5 w-5" />;
+      default:
+        return <Zap className="h-5 w-5" />;
+    }
+  };
 
   // Enhanced leaderboard data
   const leaderboard: LeaderboardUser[] = [
@@ -123,41 +260,23 @@ export default function StudentQuestsPage() {
       name: "Salsabila P",
       points: 9220,
       rank: "Grand Master",
-      avatar: "/avatars/salsabila.png"
+      avatar: "/avatars/salsabila.png",
     },
     {
       id: 2,
       name: "Syahru M",
       points: 10520,
       rank: "Grand Master",
-      avatar: "/avatars/syahru.png"
+      avatar: "/avatars/syahru.png",
     },
     {
       id: 3,
       name: "Aditya A",
       points: 8900,
       rank: "Master",
-      avatar: "/avatars/aditya.png"
-    }
-  ]
-
-  // Mock daily quests
-  const dailyQuests = [
-    {
-      id: 1,
-      title: "Complete 2 Course From Your Class",
-      exp: 140,
-      progress: 50, // percentage
-      icon: "📚"
+      avatar: "/avatars/aditya.png",
     },
-    {
-      id: 2,
-      title: "Challenge 2 Friends",
-      exp: 250,
-      progress: 0,
-      icon: "🤝"
-    }
-  ]
+  ];
 
   useEffect(() => {
     async function fetchQuests() {
@@ -167,74 +286,75 @@ export default function StudentQuestsPage() {
         // const fetchedQuests = await apiClient.getQuests()
         const mockQuests: Quest[] = [
           {
-            id: '1',
-            title: 'Complete Your Profile',
-            description: 'Update your profile details and add a profile picture',
+            id: "1",
+            title: "Complete Your Profile",
+            description:
+              "Update your profile details and add a profile picture",
             xp: 50,
             progress: 75,
-            difficulty: 'Easy',
-            category: 'Onboarding',
+            difficulty: "Easy",
+            category: "Onboarding",
             deadline: new Date(Date.now() + 86400000).toISOString(),
-            status: 'in-progress'
+            status: "in-progress",
           },
           {
-            id: '2',
-            title: 'Welcome to MoodleQuest',
-            description: 'Learn how to navigate the platform',
+            id: "2",
+            title: "Welcome to MoodleQuest",
+            description: "Learn how to navigate the platform",
             xp: 30,
             progress: 100,
-            difficulty: 'Easy',
-            category: 'Tutorial',
+            difficulty: "Easy",
+            category: "Tutorial",
             deadline: new Date(Date.now() + 86400000).toISOString(),
-            status: 'completed'
-          }
-        ]
-        setQuests(mockQuests)
-        setLoading(false)
+            status: "completed",
+          },
+        ];
+        setQuests(mockQuests);
+        setLoading(false);
       } catch (err) {
-        console.error('Error fetching quests:', err)
-        setError('Failed to load quests')
-        setLoading(false)
+        console.error("Error fetching quests:", err);
+        setError("Failed to load quests");
+        setLoading(false);
       }
     }
-    
-    fetchQuests()
-  }, [])
+
+    fetchQuests();
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { 
+    visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
-  }
+        staggerChildren: 0.1,
+      },
+    },
+  };
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
+    visible: {
+      y: 0,
       opacity: 1,
       transition: {
         type: "spring",
-        stiffness: 100
-      }
-    }
-  }
+        stiffness: 100,
+      },
+    },
+  };
 
   const pulseAnimation = {
     initial: { scale: 1 },
-    animate: { 
+    animate: {
       scale: [1, 1.05, 1],
       transition: {
         duration: 2,
         repeat: Infinity,
-        repeatType: "reverse" as const
-      }
-    }
-  }
-  
+        repeatType: "reverse" as const,
+      },
+    },
+  };
+
   const floatAnimation = {
     initial: { y: 0 },
     animate: {
@@ -242,20 +362,20 @@ export default function StudentQuestsPage() {
       transition: {
         duration: 3,
         repeat: Infinity,
-        repeatType: "reverse" as const
-      }
-    }
-  }
+        repeatType: "reverse" as const,
+      },
+    },
+  };
 
   return (
-    <motion.div 
+    <motion.div
       initial="hidden"
       animate="visible"
       variants={containerVariants}
       className="container max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-6 md:space-y-8"
     >
       {/* Hero Section */}
-      <motion.div 
+      <motion.div
         variants={itemVariants}
         className="bg-background/95 backdrop-blur-lg rounded-2xl md:rounded-3xl border shadow-lg overflow-hidden"
       >
@@ -263,77 +383,106 @@ export default function StudentQuestsPage() {
           {/* Background pattern */}
           <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-purple-500/20 to-blue-500/20">
             {/* Floating particles */}
-            {mounted && [...Array(15)].map((_, i) => (
-              <motion.div 
-                key={i}
-                className="absolute rounded-full bg-white"
-                style={{
-                  width: Math.random() * 8 + 2 + 'px',
-                  height: Math.random() * 8 + 2 + 'px',
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  opacity: Math.random() * 0.5 + 0.2
-                }}
-                animate={{
-                  y: [0, -15, 0],
-                  opacity: [0.5, 1, 0.5]
-                }}
-                transition={{
-                  duration: Math.random() * 3 + 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              />
-            ))}
+            {mounted &&
+              [...Array(15)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full bg-white"
+                  style={{
+                    width: Math.random() * 8 + 2 + "px",
+                    height: Math.random() * 8 + 2 + "px",
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    opacity: Math.random() * 0.5 + 0.2,
+                  }}
+                  animate={{
+                    y: [0, -15, 0],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: Math.random() * 3 + 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
 
             {/* Path pattern */}
-            <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path d="M0,50 Q25,30 50,50 T100,50" stroke="white" strokeWidth="2" fill="none" />
-              <path d="M0,60 Q35,40 70,60 T100,60" stroke="white" strokeWidth="1.5" fill="none" />
-              <path d="M0,40 Q45,20 90,40 T100,40" stroke="white" strokeWidth="1" fill="none" />
+            <svg
+              className="absolute inset-0 w-full h-full opacity-10"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0,50 Q25,30 50,50 T100,50"
+                stroke="white"
+                strokeWidth="2"
+                fill="none"
+              />
+              <path
+                d="M0,60 Q35,40 70,60 T100,60"
+                stroke="white"
+                strokeWidth="1.5"
+                fill="none"
+              />
+              <path
+                d="M0,40 Q45,20 90,40 T100,40"
+                stroke="white"
+                strokeWidth="1"
+                fill="none"
+              />
             </svg>
           </div>
 
           {/* Content */}
           <div className="relative z-10 h-full flex flex-col md:flex-row items-center md:justify-between p-6 md:p-8 gap-4 md:gap-6">
             <div className="text-center md:text-left">
-              <motion.div 
+              <motion.div
                 className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium mb-3 md:mb-4"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <Flame className="h-3 w-3 md:h-4 md:w-4" /> {user.streak} Day Streak
+                <Flame className="h-3 w-3 md:h-4 md:w-4" /> {user.streak} Day
+                Streak
               </motion.div>
-              
-              <motion.h1 
-                variants={itemVariants} 
+
+              <motion.h1
+                variants={itemVariants}
                 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-2"
               >
                 Ready for New <span className="text-primary">Quests?</span>
               </motion.h1>
-              
-              <motion.p 
-                variants={itemVariants} 
+
+              <motion.p
+                variants={itemVariants}
                 className="text-sm md:text-base lg:text-lg text-muted-foreground md:max-w-md"
               >
-                Challenge yourself with fun quests, earn experience points and climb the ranks!
+                Challenge yourself with fun quests, earn experience points and
+                climb the ranks!
               </motion.p>
-              
-              <motion.div 
+
+              <motion.div
                 variants={itemVariants}
                 className="flex flex-wrap gap-3 md:gap-4 mt-3 md:mt-4 justify-center md:justify-start"
               >
-                <Button size="sm" className="rounded-full bg-primary hover:bg-primary/90 gap-2 text-xs md:text-sm">
+                <Button
+                  size="sm"
+                  className="rounded-full bg-primary hover:bg-primary/90 gap-2 text-xs md:text-sm"
+                >
                   <Play className="h-3 w-3 md:h-4 md:w-4" /> Start Challenge
                 </Button>
-                <Button size="sm" variant="outline" className="rounded-full gap-2 text-xs md:text-sm">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full gap-2 text-xs md:text-sm"
+                >
                   Daily Rewards <Gift className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>
               </motion.div>
             </div>
 
-            <motion.div 
+            <motion.div
               variants={itemVariants}
               className="hidden md:block relative"
             >
@@ -347,30 +496,30 @@ export default function StudentQuestsPage() {
                   <div className="relative z-10 h-full w-full flex items-center justify-center">
                     <div className="relative w-24 h-24">
                       <div className="absolute bottom-0 w-full h-3/5 bg-amber-800 rounded-md"></div>
-                      
-                      <motion.div 
+
+                      <motion.div
                         className="absolute top-0 w-full h-2/5 bg-amber-700 rounded-t-md origin-bottom"
                         animate={{ rotateX: [0, -30, 0] }}
-                        transition={{ 
+                        transition={{
                           duration: 3,
                           repeat: Infinity,
                           repeatDelay: 3,
-                          ease: "easeInOut" 
+                          ease: "easeInOut",
                         }}
                       >
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-4 h-4 bg-yellow-600 rounded-sm border-2 border-yellow-800"></div>
                       </motion.div>
-                      
+
                       <motion.div
                         className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-                        animate={{ 
+                        animate={{
                           scale: [1, 1.2, 1],
-                          opacity: [0.7, 1, 0.7]
+                          opacity: [0.7, 1, 0.7],
                         }}
                         transition={{
                           duration: 3,
                           repeat: Infinity,
-                          repeatType: "reverse"
+                          repeatType: "reverse",
                         }}
                       >
                         <div className="flex gap-1">
@@ -379,32 +528,38 @@ export default function StudentQuestsPage() {
                           <div className="h-4 w-4 bg-primary rounded-full shadow-lg shadow-primary/50"></div>
                         </div>
                       </motion.div>
-                      
+
                       {[...Array(5)].map((_, i) => (
                         <motion.div
                           key={i}
                           className="absolute top-1/3 left-1/2"
-                          initial={{ 
+                          initial={{
                             x: Math.random() * 20 - 10,
                             y: 0,
                             opacity: 0,
-                            scale: 0
+                            scale: 0,
                           }}
-                          animate={{ 
+                          animate={{
                             y: -30,
                             opacity: [0, 1, 0],
-                            scale: [0, 1, 0]
+                            scale: [0, 1, 0],
                           }}
                           transition={{
                             duration: 2,
                             repeat: Infinity,
                             delay: i * 0.6,
-                            repeatDelay: Math.random() * 2
+                            repeatDelay: Math.random() * 2,
                           }}
                         >
-                          <Sparkles className={`h-3 w-3 ${
-                            ['text-yellow-400', 'text-primary', 'text-blue-400'][Math.floor(Math.random() * 3)]
-                          }`} />
+                          <Sparkles
+                            className={`h-3 w-3 ${
+                              [
+                                "text-yellow-400",
+                                "text-primary",
+                                "text-blue-400",
+                              ][Math.floor(Math.random() * 3)]
+                            }`}
+                          />
                         </motion.div>
                       ))}
                     </div>
@@ -412,7 +567,7 @@ export default function StudentQuestsPage() {
                 </div>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 animate={floatAnimation.animate}
                 initial={floatAnimation.initial}
                 className="absolute -top-4 -right-4 bg-amber-500/10 backdrop-blur-sm rounded-full p-3 shadow-lg border border-amber-500/20"
@@ -425,16 +580,21 @@ export default function StudentQuestsPage() {
       </motion.div>
 
       {/* User Overview Section */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"
+      >
         {/* Player Card */}
-        <motion.div 
+        <motion.div
           whileHover={{ scale: 1.02, y: -5 }}
           className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6 flex items-center gap-3 md:gap-4"
         >
           <div className="relative">
             <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center relative">
-              <span className="text-base md:text-xl font-bold text-white">{user.name.charAt(0)}</span>
-              <motion.div 
+              <span className="text-base md:text-xl font-bold text-white">
+                {user.name.charAt(0)}
+              </span>
+              <motion.div
                 className="absolute inset-0 rounded-full border-2 border-primary/30"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
@@ -444,26 +604,33 @@ export default function StudentQuestsPage() {
               {user.expLevel}
             </div>
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-center flex-wrap">
-              <h3 className="font-semibold text-sm md:text-base truncate">{user.name}</h3>
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs whitespace-nowrap">
+              <h3 className="font-semibold text-sm md:text-base truncate">
+                {user.name}
+              </h3>
+              <Badge
+                variant="outline"
+                className="bg-primary/10 text-primary border-primary/20 text-xs whitespace-nowrap"
+              >
                 {user.rank}
               </Badge>
             </div>
-            
+
             <div className="mt-2">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-muted-foreground">Level Progress</span>
-                <span className="font-medium">{user.currentExp}/{user.maxExp} XP</span>
+                <span className="font-medium">
+                  {user.currentExp}/{user.maxExp} XP
+                </span>
               </div>
-              <Progress 
-                value={(user.currentExp / user.maxExp) * 100} 
+              <Progress
+                value={(user.currentExp / user.maxExp) * 100}
                 className="h-1.5"
               />
             </div>
-            
+
             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3" /> {user.followers}
@@ -474,21 +641,23 @@ export default function StudentQuestsPage() {
             </div>
           </div>
         </motion.div>
-        
+
         {/* Streak Card */}
-        <motion.div 
+        <motion.div
           whileHover={{ scale: 1.02, y: -5 }}
           className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6"
         >
           <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm md:text-base">
             <Flame className="h-4 w-4 text-red-500" /> Your Streak
           </h3>
-          
+
           <div className="flex justify-between mb-3">
             {[...Array(7)].map((_, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
-                className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${index < user.streak ? 'bg-amber-500 text-white' : 'bg-muted'}`}
+                className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${
+                  index < user.streak ? "bg-amber-500 text-white" : "bg-muted"
+                }`}
                 whileHover={{ scale: 1.1 }}
               >
                 {index < user.streak ? (
@@ -499,45 +668,62 @@ export default function StudentQuestsPage() {
               </motion.div>
             ))}
           </div>
-          
+
           <div className="text-center">
-            <p className="text-xs md:text-sm text-muted-foreground">You're on a {user.streak} day streak!</p>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              You're on a {user.streak} day streak!
+            </p>
             <Button variant="ghost" size="sm" className="mt-2 gap-1 text-xs">
               <Flag className="h-3 w-3" /> Keep going
             </Button>
           </div>
         </motion.div>
-        
+
         {/* Rank Card */}
-        <motion.div 
+        <motion.div
           whileHover={{ scale: 1.02, y: -5 }}
           className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6 sm:col-span-2 md:col-span-1"
         >
           <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm md:text-base">
             <Trophy className="h-4 w-4 text-amber-500" /> Your Rank
           </h3>
-          
+
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="flex flex-col items-center">
-              <motion.div 
+              <motion.div
                 className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-primary/10 flex items-center justify-center"
                 animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                }}
               >
                 <Trophy className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               </motion.div>
-              <div className="text-xs mt-1 text-muted-foreground text-center">Your Position</div>
+              <div className="text-xs mt-1 text-muted-foreground text-center">
+                Your Position
+              </div>
             </div>
-            
+
             <div className="text-2xl md:text-3xl font-bold text-primary">
-              {leaderboard.findIndex(l => l.name === user.name) + 1 || 4}
+              {leaderboard.findIndex((l) => l.name === user.name) + 1 || 4}
             </div>
           </div>
-          
+
           <div className="text-center">
-            <p className="text-xs md:text-sm text-muted-foreground">Rank points: <span className="font-medium text-foreground">{user.rankPoints}</span></p>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              Rank points:{" "}
+              <span className="font-medium text-foreground">
+                {user.rankPoints}
+              </span>
+            </p>
             <Link href="/dashboard/leaderboard">
-              <Button variant="outline" size="sm" className="mt-3 gap-1 rounded-full text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 gap-1 rounded-full text-xs"
+              >
                 View Leaderboard <ChevronRight className="h-3 w-3" />
               </Button>
             </Link>
@@ -549,14 +735,18 @@ export default function StudentQuestsPage() {
       <motion.div variants={itemVariants}>
         <div className="flex justify-between items-center mb-4 md:mb-6">
           <h2 className="text-xl md:text-2xl font-bold">Interactive Games</h2>
-          <Button variant="ghost" size="sm" className="gap-1 text-xs md:text-sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-xs md:text-sm"
+          >
             Browse All <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {miniGames.map((game, index) => (
-            <motion.div 
+            <motion.div
               key={game.id}
               variants={itemVariants}
               whileHover={{ scale: 1.03, y: -5 }}
@@ -564,72 +754,82 @@ export default function StudentQuestsPage() {
             >
               <div className="h-36 md:h-44 relative p-4 md:p-6 text-white">
                 {/* Game badge */}
-                <motion.div 
+                <motion.div
                   className="text-3xl md:text-4xl absolute top-4 right-4"
-                  animate={{ 
+                  animate={{
                     y: [0, -5, 0],
-                    rotate: [0, 5, 0]
+                    rotate: [0, 5, 0],
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 2,
                     repeat: Infinity,
-                    delay: index * 0.2 
+                    delay: index * 0.2,
                   }}
                 >
                   {game.badge}
                 </motion.div>
-                
+
                 <div className="absolute inset-0 overflow-hidden">
-                  {mounted && [...Array(5)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-2 h-2 bg-white rounded-full opacity-20"
-                      style={{
-                        left: `${Math.random() * 100}%`, 
-                        top: `${Math.random() * 100}%`
-                      }}
-                      animate={{
-                        y: [0, -20],
-                        opacity: [0.2, 0]
-                      }}
-                      transition={{
-                        duration: Math.random() * 2 + 1,
-                        repeat: Infinity,
-                        repeatType: "loop"
-                      }}
-                    />
-                  ))}
+                  {mounted &&
+                    [...Array(5)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-2 h-2 bg-white rounded-full opacity-20"
+                        style={{
+                          left: `${Math.random() * 100}%`,
+                          top: `${Math.random() * 100}%`,
+                        }}
+                        animate={{
+                          y: [0, -20],
+                          opacity: [0.2, 0],
+                        }}
+                        transition={{
+                          duration: Math.random() * 2 + 1,
+                          repeat: Infinity,
+                          repeatType: "loop",
+                        }}
+                      />
+                    ))}
                 </div>
 
                 {/* Overlay - locked state */}
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-20">
                   <Lock className="h-8 w-8 text-white/80 mb-2" />
-                  <div className="text-white font-semibold text-lg">Coming Soon</div>
-                  <div className="text-white/70 text-xs mt-1">Future Update</div>
+                  <div className="text-white font-semibold text-lg">
+                    Coming Soon
+                  </div>
+                  <div className="text-white/70 text-xs mt-1">
+                    Future Update
+                  </div>
                 </div>
-                
+
                 <div className="relative z-10">
-                  <h3 className="text-lg md:text-xl font-bold mb-1">{game.title}</h3>
+                  <h3 className="text-lg md:text-xl font-bold mb-1">
+                    {game.title}
+                  </h3>
                   <div className="flex items-center text-xs md:text-sm space-x-1 mb-3">
-                    <Users className="h-3 w-3" /> 
+                    <Users className="h-3 w-3" />
                     <span>{game.playersCount} playing now</span>
                   </div>
-                  
+
                   <AnimatePresence>
                     {selectedGame === game.id && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
+                        animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                         className="text-xs md:text-sm"
                       >
-                        <p className="mb-2">Quick match with other players in a fun, educational game.</p>
+                        <p className="mb-2">
+                          Quick match with other players in a fun, educational
+                          game.
+                        </p>
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  
-                  <Button 
-                    size="sm" 
+
+                  <Button
+                    size="sm"
                     className="mt-2 bg-white/20 hover:bg-white/30 text-white border-white/10 rounded-full text-xs"
                     disabled
                   >
@@ -648,61 +848,145 @@ export default function StudentQuestsPage() {
         <motion.div variants={itemVariants}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <Flag className="h-4 w-4 md:h-5 md:w-5 text-primary" /> Daily Quests
+              <Flag className="h-4 w-4 md:h-5 md:w-5 text-primary" /> Daily
+              Quests
             </h2>
-            <Button variant="outline" size="sm" className="rounded-full text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs"
+            >
               Claim All
             </Button>
           </div>
-          
           <div className="space-y-4">
-            {dailyQuests.map(quest => (
-              <motion.div
-                key={quest.id}
-                whileHover={{ scale: 1.02, y: -2 }}
-                className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-5 transition-all"
-              >
-                <div className="flex items-center gap-3 md:gap-4 mb-3">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center text-xl md:text-2xl">
-                    {quest.icon}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-sm md:text-base truncate">{quest.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Sparkles className="h-3 w-3 text-amber-500" />
-                      <span className="text-xs md:text-sm text-amber-500 font-medium">+{quest.exp} XP</span>
+            {loadingDailyQuests ? (
+              // Loading state
+              [...Array(3)].map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-5 animate-pulse"
+                >
+                  <div className="flex items-center gap-3 md:gap-4 mb-3">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-muted"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                      <div className="h-3 bg-muted rounded w-1/2"></div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span>{quest.progress}%</span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="h-2 bg-muted rounded"></div>
                     </div>
-                    <Progress value={quest.progress} className="h-1.5" />
+                    <div className="w-16 h-8 bg-muted rounded-full"></div>
                   </div>
-                  
-                  <Button 
-                    size="sm"
-                    disabled={quest.progress < 100}
-                    className={`rounded-full px-3 md:px-4 text-xs ${quest.progress < 100 ? 'opacity-70' : ''}`}
-                  >
-                    Claim
-                  </Button>
                 </div>
-              </motion.div>
-            ))}
-            
-            <motion.div 
+              ))
+            ) : questSummary?.quests && questSummary.quests.length > 0 ? (
+              // Real quest data
+              questSummary.quests.map((quest) => (
+                <motion.div
+                  key={quest.daily_quest.quest_type}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-5 transition-all"
+                >
+                  <div className="flex items-center gap-3 md:gap-4 mb-3">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      {getQuestIcon(quest.daily_quest.quest_type)}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm md:text-base truncate">
+                        {quest.daily_quest.title}
+                      </h3>
+                      <p className="text-xs md:text-sm text-muted-foreground truncate">
+                        {quest.daily_quest.description}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Sparkles className="h-3 w-3 text-amber-500" />
+                        <span className="text-xs md:text-sm text-amber-500 font-medium">
+                          +{quest.daily_quest.xp_reward} XP
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      {" "}
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span>
+                          {quest.current_progress}/{quest.target_progress}
+                        </span>
+                      </div>
+                      <Progress
+                        value={
+                          (quest.current_progress / quest.target_progress) * 100
+                        }
+                        className="h-1.5"
+                      />
+                    </div>
+
+                    <Button
+                      size="sm"
+                      onClick={() => handleCompleteQuest(quest)}
+                      disabled={
+                        quest.status === "completed" ||
+                        completingQuest === quest.daily_quest.quest_type
+                      }
+                      className={`rounded-full px-3 md:px-4 text-xs ${
+                        quest.status === "completed"
+                          ? "bg-green-500 hover:bg-green-600"
+                          : ""
+                      }`}
+                    >
+                      {completingQuest === quest.daily_quest.quest_type ? (
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>...</span>
+                        </div>
+                      ) : quest.status === "completed" ? (
+                        <div className="flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Done</span>
+                        </div>
+                      ) : quest.current_progress >= quest.target_progress ? (
+                        "Claim"
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Pending</span>
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              // Empty state
+              <div className="bg-background/95 backdrop-blur-lg rounded-xl border p-6 md:p-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                  <BookOpen className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="font-medium text-base mb-2">
+                  No Daily Quests Available
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Check back tomorrow for new daily quests!
+                </p>
+              </div>
+            )}
+
+            <motion.div
               whileHover={{ scale: 1.02 }}
               className="bg-gradient-to-r from-primary/20 to-primary/5 rounded-xl p-4 md:p-5 flex justify-between items-center"
             >
               <div className="flex items-center gap-2 md:gap-3">
                 <BookOpen className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                <span className="font-medium text-sm md:text-base">More quests coming soon!</span>
+                <span className="font-medium text-sm md:text-base">
+                  More quests coming soon!
+                </span>
               </div>
               <span className="text-xs text-muted-foreground">Tomorrow</span>
             </motion.div>
@@ -713,7 +997,8 @@ export default function StudentQuestsPage() {
         <motion.div variants={itemVariants}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <Trophy className="h-4 w-4 md:h-5 md:w-5 text-amber-500" /> Leaderboard
+              <Trophy className="h-4 w-4 md:h-5 md:w-5 text-amber-500" />{" "}
+              Leaderboard
             </h2>
             <Link href="/dashboard/leaderboard">
               <Button variant="ghost" size="sm" className="gap-1 text-xs">
@@ -721,15 +1006,15 @@ export default function StudentQuestsPage() {
               </Button>
             </Link>
           </div>
-          
+
           <div className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6 relative overflow-hidden">
             {/* Background decoration */}
             <div className="absolute -right-20 -top-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl"></div>
             <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-amber-500/5 rounded-full blur-3xl"></div>
-            
+
             {/* Animated trophy or crown at top */}
             {mounted && (
-              <motion.div 
+              <motion.div
                 className="absolute top-4 right-4 opacity-10"
                 animate={{ rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 8, repeat: Infinity }}
@@ -737,15 +1022,17 @@ export default function StudentQuestsPage() {
                 <Crown className="h-16 w-16 text-amber-500" />
               </motion.div>
             )}
-            
+
             <div className="relative z-10">
               {/* Leaderboard header */}
               <div className="flex items-center justify-between py-2 px-2 mb-3 text-xs md:text-sm border-b border-muted">
                 <div className="w-8 md:w-12 font-semibold text-center">#</div>
                 <div className="flex-1 font-semibold">Player</div>
-                <div className="w-16 md:w-24 font-semibold text-right">Points</div>
+                <div className="w-16 md:w-24 font-semibold text-right">
+                  Points
+                </div>
               </div>
-              
+
               <div className="space-y-2">
                 {/* Leaderboard entries */}
                 {leaderboard.map((player, index) => (
@@ -756,14 +1043,14 @@ export default function StudentQuestsPage() {
                   >
                     <div className="w-8 md:w-12 flex justify-center">
                       {index === 0 && (
-                        <motion.div 
-                          animate={{ 
+                        <motion.div
+                          animate={{
                             scale: [1, 1.1, 1],
                             boxShadow: [
                               "0 0 0 rgba(245, 158, 11, 0.4)",
                               "0 0 20px rgba(245, 158, 11, 0.7)",
-                              "0 0 0 rgba(245, 158, 11, 0.4)"
-                            ]
+                              "0 0 0 rgba(245, 158, 11, 0.4)",
+                            ],
                           }}
                           transition={{ duration: 2, repeat: Infinity }}
                           className="bg-amber-500 text-white w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center"
@@ -782,30 +1069,37 @@ export default function StudentQuestsPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
                         <span className="text-base md:text-lg font-medium text-primary">
                           {player.name.charAt(0)}
                         </span>
                       </div>
-                      
+
                       <div className="flex flex-col min-w-0">
-                        <h3 className="font-medium text-sm md:text-base truncate">{player.name}</h3>
+                        <h3 className="font-medium text-sm md:text-base truncate">
+                          {player.name}
+                        </h3>
                         <div className="flex items-center gap-1">
-                          <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs px-1">
+                          <Badge
+                            variant="outline"
+                            className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs px-1"
+                          >
                             {player.rank}
                           </Badge>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="w-16 md:w-24 text-right">
                       <div className="text-base md:text-lg font-bold text-primary flex items-center justify-end gap-1">
                         {player.points.toLocaleString()}
-                        <span className="text-xs text-muted-foreground ml-1">pts</span>
+                        <span className="text-xs text-muted-foreground ml-1">
+                          pts
+                        </span>
                       </div>
-                      
+
                       {/* Trending indicator */}
                       <div className="flex items-center justify-end gap-0.5 text-xs text-emerald-500">
                         <ArrowUp className="h-3 w-3" />
@@ -814,7 +1108,7 @@ export default function StudentQuestsPage() {
                     </div>
                   </motion.div>
                 ))}
-                
+
                 {/* Current user position */}
                 <motion.div
                   whileHover={{ scale: 1.02, x: 5 }}
@@ -825,15 +1119,15 @@ export default function StudentQuestsPage() {
                       4
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <motion.div 
+                    <motion.div
                       animate={{
                         boxShadow: [
                           "0 0 0 rgba(124, 58, 237, 0)",
                           "0 0 8px rgba(124, 58, 237, 0.5)",
-                          "0 0 0 rgba(124, 58, 237, 0)"
-                        ]
+                          "0 0 0 rgba(124, 58, 237, 0)",
+                        ],
                       }}
                       transition={{ duration: 2, repeat: Infinity }}
                       className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center"
@@ -842,33 +1136,45 @@ export default function StudentQuestsPage() {
                         {user.name.charAt(0)}
                       </span>
                     </motion.div>
-                    
+
                     <div className="flex flex-col min-w-0">
-                      <h3 className="font-medium text-sm md:text-base truncate">You</h3>
+                      <h3 className="font-medium text-sm md:text-base truncate">
+                        You
+                      </h3>
                       <div className="flex items-center gap-1">
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs px-1">
+                        <Badge
+                          variant="outline"
+                          className="bg-primary/10 text-primary border-primary/20 text-xs px-1"
+                        >
                           {user.rank}
                         </Badge>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="w-16 md:w-24 text-right">
                     <div className="text-base md:text-lg font-bold text-primary flex items-center justify-end gap-1">
                       {user.rankPoints.toLocaleString()}
-                      <span className="text-xs text-muted-foreground ml-1">pts</span>
+                      <span className="text-xs text-muted-foreground ml-1">
+                        pts
+                      </span>
                     </div>
-                    
+
                     {/* Need more points indicator */}
                     <div className="flex items-center justify-end gap-0.5 text-xs text-amber-500">
-                      <span>{(leaderboard[2].points - user.rankPoints).toLocaleString()} to rank up</span>
+                      <span>
+                        {(
+                          leaderboard[2].points - user.rankPoints
+                        ).toLocaleString()}{" "}
+                        to rank up
+                      </span>
                     </div>
                   </div>
                 </motion.div>
               </div>
-              
+
               {/* Encouraging message */}
-              <motion.div 
+              <motion.div
                 whileHover={{ scale: 1.02 }}
                 className="mt-4 text-center bg-primary/5 rounded-lg py-2 text-xs md:text-sm"
               >
@@ -879,5 +1185,5 @@ export default function StudentQuestsPage() {
         </motion.div>
       </div>
     </motion.div>
-  )
-} 
+  );
+}

@@ -96,12 +96,11 @@ async def get_courses(db: Session = Depends(get_db)):
     try:
         # Query all courses
         courses = db.query(CourseModel).filter(CourseModel.is_active == True).all()
-        
-        # Format the response
+          # Format the response
         course_list = []
         for course in courses:
             course_data = {
-                "id": course.course_id,
+                "id": course.id,
                 "title": course.title,
                 "description": course.description,
                 "course_code": course.course_code,
@@ -124,6 +123,87 @@ async def get_courses(db: Session = Depends(get_db)):
             status_code=500,
             detail=f"Error fetching courses: {str(e)}"
         )
+
+# @router.post("/create-quest", status_code=201)
+# def create_quest_from_frontend(
+#     payload: Dict[str, Any] = Body(...),
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Create a quest from frontend payload.
+#     This endpoint handles the specific payload structure from the frontend.
+#     """
+#     try:
+#         # Extract quest data from payload
+#         quest_data = {
+#             "title": payload.get("title"),
+#             "description": payload.get("description"),
+#             "course_id": payload.get("course_id"),
+#             "creator_id": payload.get("creator_id", 1),  # Default to user ID 1 if not provided
+#             "exp_reward": payload.get("exp_reward", 100),
+#             "quest_type": payload.get("quest_type", "assignment"),
+#             "validation_method": payload.get("validation_method", "manual"),
+#             "validation_criteria": payload.get("validation_criteria", {}),
+#             "is_active": payload.get("is_active", True),
+#             "difficulty_level": payload.get("difficulty_level", 1),
+#             "moodle_activity_id": payload.get("moodle_activity_id"),            "start_date": datetime.utcnow(),
+#             "end_date": datetime.utcnow() + timedelta(days=30)  # Default 30 days from now
+#         }
+        
+#         # Validate required fields
+#         if not quest_data["title"]:
+#             raise HTTPException(status_code=400, detail="Title is required")
+#         if not quest_data["description"]:
+#             raise HTTPException(status_code=400, detail="Description is required")
+#         if not quest_data["course_id"]:
+#             raise HTTPException(status_code=400, detail="Course ID is required")
+        
+#         # Verify course exists (match by moodle_course_id instead of id)
+#         course = db.query(CourseModel).filter(CourseModel.moodle_course_id == quest_data["course_id"]).first()
+#         if not course:
+#             raise HTTPException(status_code=404, detail="Course not found")
+        
+#         # Verify user exists
+#         user = db.query(UserModel).filter(UserModel.id == quest_data["creator_id"]).first()
+#         if not user:
+#             raise HTTPException(status_code=404, detail="Creator user not found")
+        
+#         # Update quest_data to use local course ID instead of moodle course ID
+#         quest_data["course_id"] = course.id
+        
+#         # Create the quest
+#         db_quest = Quest(**quest_data)
+#         db.add(db_quest)
+#         db.commit()
+#         db.refresh(db_quest)
+        
+#         return {
+#             "message": "Quest created successfully",
+#             "quest_id": db_quest.quest_id,
+#             "quest": {
+#                 "quest_id": db_quest.quest_id,
+#                 "title": db_quest.title,
+#                 "description": db_quest.description,
+#                 "course_id": db_quest.course_id,
+#                 "creator_id": db_quest.creator_id,
+#                 "exp_reward": db_quest.exp_reward,
+#                 "quest_type": db_quest.quest_type,
+#                 "validation_method": db_quest.validation_method,
+#                 "is_active": db_quest.is_active,
+#                 "difficulty_level": db_quest.difficulty_level,
+#                 "moodle_activity_id": db_quest.moodle_activity_id,
+#                 "created_at": db_quest.created_at.isoformat() if db_quest.created_at else None
+#             }
+#         }
+        
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         import traceback
+#         error_details = traceback.format_exc()
+#         print(f"Error creating quest: {str(e)}")
+#         print(error_details)
+#         raise HTTPException(status_code=500, detail=f"Error creating quest: {str(e)}")
 
 @router.post("/create-quest", status_code=201)
 def create_quest_from_frontend(
@@ -159,16 +239,17 @@ def create_quest_from_frontend(
             raise HTTPException(status_code=400, detail="Description is required")
         if not quest_data["course_id"]:
             raise HTTPException(status_code=400, detail="Course ID is required")
-        
-        # Verify course exists
-        course = db.query(CourseModel).filter(CourseModel.course_id == quest_data["course_id"]).first()
+          # Verify course exists (search by moodle_course_id since frontend sends Moodle course ID)
+        course = db.query(CourseModel).filter(CourseModel.moodle_course_id == quest_data["course_id"]).first()
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
-        
-        # Verify user exists
+          # Verify user exists
         user = db.query(UserModel).filter(UserModel.id == quest_data["creator_id"]).first()
         if not user:
             raise HTTPException(status_code=404, detail="Creator user not found")
+        
+        # Update quest_data to use local course ID instead of moodle course ID
+        quest_data["course_id"] = course.id
         
         # Create the quest
         db_quest = Quest(**quest_data)
