@@ -213,6 +213,27 @@ export async function POST(request: NextRequest) {
           // Continue with login process even if backend storage fails
         }
 
+        if (detectedRole === "student") {
+          try {
+            await fetch(`${API_BASE_URL}/activity-log/login`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify({
+                user_id: finalUserData.moodleId,
+                action_type: "login",
+                action_details: { method: "moodle" },
+                ip_address: request.headers.get("x-forwarded-for") || null,
+                user_agent: request.headers.get("user-agent") || null,
+              }),
+            });
+          } catch (logError) {
+            console.error("Failed to log login activity:", logError);
+          }
+        }
+
         // --- SYNC ENROLLMENTS TO BACKEND ---
         try {
           const syncEnrollmentsResponse = await fetch(

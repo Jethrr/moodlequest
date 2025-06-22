@@ -58,7 +58,7 @@ class SSENotificationService:
         queue = asyncio.Queue()
         self.active_connections[user_id].append(queue)
         
-        logger.info(f"User {user_id} connected to SSE notifications")
+        # logger.info(f"User {user_id} connected to SSE notifications")
         return queue
     
     async def disconnect_user(self, user_id: int, queue: asyncio.Queue):
@@ -68,7 +68,7 @@ class SSENotificationService:
                 self.active_connections[user_id].remove(queue)
                 if not self.active_connections[user_id]:
                     del self.active_connections[user_id]
-                logger.info(f"User {user_id} disconnected from SSE notifications")
+                # logger.info(f"User {user_id} disconnected from SSE notifications")
             except ValueError:
                 # Queue not in list, already removed
                 pass

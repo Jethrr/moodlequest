@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { QuestCreator } from "@/components/dashboard/teacher/quest-creator";
 import { StudentProgressAnalytics } from "@/components/dashboard/teacher/student-progress-analytics";
 import { ClassLeaderboard } from "@/components/dashboard/teacher/class-leaderboard";
+import { BadgeCreator } from "@/components/teacher/badge-creator";
+import { Badge as BadgeType } from "@/types/badges";
 import { Plus, Award, BarChart3 } from "lucide-react";
 import {
   Dialog,
@@ -36,6 +38,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 export function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showQuestCreator, setShowQuestCreator] = useState(false);
+  const [showBadgeCreator, setShowBadgeCreator] = useState(false);
+
+  const handleBadgeCreated = (badge: BadgeType) => {
+    console.log("Badge created:", badge);
+    setShowBadgeCreator(false);
+    // TODO: Refresh badge list or show success message
+  };
 
   return (
     <div className="space-y-6">
@@ -47,7 +56,6 @@ export function TeacherDashboard() {
           Create quests, manage achievements, and view student reports
         </p>
       </div>
-
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-sm">
           <CardHeader className="pb-2">
@@ -95,8 +103,7 @@ export function TeacherDashboard() {
             </p>
           </CardContent>
         </Card>
-      </div>
-
+      </div>{" "}
       {showQuestCreator ? (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
@@ -111,6 +118,13 @@ export function TeacherDashboard() {
             </Button>
           </div>
           <QuestCreator />
+        </div>
+      ) : showBadgeCreator ? (
+        <div className="space-y-4">
+          <BadgeCreator
+            onBadgeCreated={handleBadgeCreated}
+            onCancel={() => setShowBadgeCreator(false)}
+          />
         </div>
       ) : (
         <Tabs
@@ -149,115 +163,22 @@ export function TeacherDashboard() {
           </div>
 
           <TabsContent value="overview" className="mt-6 space-y-6">
+            {" "}
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Achievements Button with Dialog */}
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-auto flex flex-col items-center p-6 space-y-2 w-full bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-100 hover:from-amber-100 hover:to-yellow-100 shadow-sm group transition-all duration-200"
-                  >
-                    <Award className="h-10 w-10 mb-2 text-amber-600 group-hover:scale-110 transition-transform" />
-                    <span className="text-lg font-medium text-amber-700">
-                      Achievements
-                    </span>
-                    <span className="text-sm text-amber-600/80 text-center">
-                      Create and assign custom badges
-                    </span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[625px] dark:bg-slate-900 bg-white">
-                  <DialogHeader>
-                    <DialogTitle>Badge Customization</DialogTitle>
-                    <DialogDescription>
-                      Create and customize achievement badges for your students.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="col-span-4">
-                        <Label htmlFor="badge-name">Badge Name</Label>
-                        <Input
-                          id="badge-name"
-                          placeholder="Enter badge name"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div className="col-span-4">
-                        <Label htmlFor="badge-description">Description</Label>
-                        <Input
-                          id="badge-description"
-                          placeholder="Enter badge description"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <Label htmlFor="badge-type">Badge Type</Label>
-                        <Select defaultValue="achievement">
-                          <SelectTrigger className="w-full mt-1">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="achievement">
-                              Achievement
-                            </SelectItem>
-                            <SelectItem value="progress">Progress</SelectItem>
-                            <SelectItem value="participation">
-                              Participation
-                            </SelectItem>
-                            <SelectItem value="special">Special</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2">
-                        <Label htmlFor="badge-value">XP Value</Label>
-                        <Input
-                          id="badge-value"
-                          type="number"
-                          defaultValue="100"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div className="col-span-4">
-                        <Label>Award Conditions</Label>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox id="quest-completion" />
-                            <label
-                              htmlFor="quest-completion"
-                              className="text-sm"
-                            >
-                              Quest Completion
-                            </label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox id="streak-days" />
-                            <label htmlFor="streak-days" className="text-sm">
-                              Activity Streak
-                            </label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox id="skill-mastery" />
-                            <label htmlFor="skill-mastery" className="text-sm">
-                              Skill Mastery
-                            </label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox id="manual-award" />
-                            <label htmlFor="manual-award" className="text-sm">
-                              Manual Award
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline">Cancel</Button>
-                    <Button>Create Badge</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              {/* Achievements Button */}
+              <Button
+                variant="outline"
+                onClick={() => setShowBadgeCreator(true)}
+                className="h-auto flex flex-col items-center p-6 space-y-2 w-full bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-100 hover:from-amber-100 hover:to-yellow-100 shadow-sm group transition-all duration-200"
+              >
+                <Award className="h-10 w-10 mb-2 text-amber-600 group-hover:scale-110 transition-transform" />
+                <span className="text-lg font-medium text-amber-700">
+                  Create Badges
+                </span>
+                <span className="text-sm text-amber-600/80 text-center">
+                  Create and assign custom achievement badges
+                </span>
+              </Button>
 
               {/* Reports Button with Dialog */}
               <Dialog>
@@ -395,7 +316,6 @@ export function TeacherDashboard() {
                 </DialogContent>
               </Dialog>
             </div>
-
             <Card className="bg-gradient-to-br from-background to-muted/20 border-border/50 shadow-sm">
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>

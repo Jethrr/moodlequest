@@ -25,6 +25,9 @@ interface Quest {
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { BadgeCollection } from "@/components/student/badge-collection";
+import { useBadgeCollection } from "@/hooks/use-badge-collection";
+import { useSSENotifications } from "@/hooks/use-sse-notifications";
 import {
   Trophy,
   Star,
@@ -76,6 +79,12 @@ interface LeaderboardUser {
 export default function StudentQuestsPage() {
   const { user: currentUser } = useCurrentUser();
   const { showXPReward, createRewardData } = useGlobalXPReward();
+  
+  // Add badge collection hook to get refetch function
+  const { refetch: refetchBadges } = useBadgeCollection(currentUser?.id);
+
+  // Add SSE notifications for real-time updates
+  const { addNotificationHandler, removeNotificationHandler } = useSSENotifications();
 
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,10 +189,42 @@ export default function StudentQuestsPage() {
       } finally {
         setLoadingDailyQuests(false);
       }
+    };    fetchDailyQuests();
+  }, [currentUser?.id]);
+
+  // Set up SSE notification handler for quest completion events
+  useEffect(() => {
+    const handleQuestCompletion = async (notification: any) => {
+      console.log("Quest completion notification received:", notification);
+      
+      // Refresh badge data when a quest is completed via webhook
+      try {
+        await refetchBadges();
+        
+        // Also refresh daily quest summary in case it was a daily quest
+        if (currentUser?.id) {
+          const updatedSummary = await apiClient.getDailyQuestSummary(currentUser.id);
+          setQuestSummary(updatedSummary);
+        }
+        
+        // Show a toast notification
+        toast({
+          title: notification.title || "Quest Completed! 🎉",
+          description: notification.message || "You may have earned new badges!",
+        });
+      } catch (error) {
+        console.error("Failed to refresh data after quest completion:", error);
+      }
     };
 
-    fetchDailyQuests();
-  }, [currentUser?.id]);
+    // Add the handler
+    addNotificationHandler("quest_completion", handleQuestCompletion);
+
+    // Cleanup
+    return () => {
+      removeNotificationHandler("quest_completion");
+    };
+  }, [currentUser?.id, refetchBadges, addNotificationHandler, removeNotificationHandler]);
 
   // Handle quest completion
   const handleCompleteQuest = async (quest: UserDailyQuest) => {
@@ -213,13 +254,19 @@ export default function StudentQuestsPage() {
             title: "Quest Completed! 🎉",
             description: `You earned ${result.xp_awarded} XP!`,
           });
-        }
-
-        // Refresh quest summary
+        }        // Refresh quest summary
         const updatedSummary = await apiClient.getDailyQuestSummary(
           currentUser.id
         );
         setQuestSummary(updatedSummary);
+        
+        // Refresh badge data to show any newly earned badges
+        try {
+          await refetchBadges();
+        } catch (badgeError) {
+          console.error("Failed to refresh badge data:", badgeError);
+          // Don't show error to user as quest was completed successfully
+        }
       } else {
         toast({
           title: "Quest Already Completed",
@@ -838,8 +885,7 @@ export default function StudentQuestsPage() {
                 </div>
               </div>
             </motion.div>
-          ))}
-        </div>
+          ))}        </div>
       </motion.div>
 
       {/* Daily Quests & Leaderboard Section */}
@@ -990,198 +1036,11 @@ export default function StudentQuestsPage() {
               </div>
               <span className="text-xs text-muted-foreground">Tomorrow</span>
             </motion.div>
-          </div>
-        </motion.div>
+          </div>        </motion.div>
 
-        {/* Enhanced Leaderboard */}
+        {/* Achievements & Badges */}
         <motion.div variants={itemVariants}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <Trophy className="h-4 w-4 md:h-5 md:w-5 text-amber-500" />{" "}
-              Leaderboard
-            </h2>
-            <Link href="/dashboard/leaderboard">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                View All <ChevronRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-
-          <div className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6 relative overflow-hidden">
-            {/* Background decoration */}
-            <div className="absolute -right-20 -top-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl"></div>
-            <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-amber-500/5 rounded-full blur-3xl"></div>
-
-            {/* Animated trophy or crown at top */}
-            {mounted && (
-              <motion.div
-                className="absolute top-4 right-4 opacity-10"
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 8, repeat: Infinity }}
-              >
-                <Crown className="h-16 w-16 text-amber-500" />
-              </motion.div>
-            )}
-
-            <div className="relative z-10">
-              {/* Leaderboard header */}
-              <div className="flex items-center justify-between py-2 px-2 mb-3 text-xs md:text-sm border-b border-muted">
-                <div className="w-8 md:w-12 font-semibold text-center">#</div>
-                <div className="flex-1 font-semibold">Player</div>
-                <div className="w-16 md:w-24 font-semibold text-right">
-                  Points
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {/* Leaderboard entries */}
-                {leaderboard.map((player, index) => (
-                  <motion.div
-                    key={player.id}
-                    whileHover={{ scale: 1.02, x: 5 }}
-                    className="flex items-center gap-2 md:gap-4 p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="w-8 md:w-12 flex justify-center">
-                      {index === 0 && (
-                        <motion.div
-                          animate={{
-                            scale: [1, 1.1, 1],
-                            boxShadow: [
-                              "0 0 0 rgba(245, 158, 11, 0.4)",
-                              "0 0 20px rgba(245, 158, 11, 0.7)",
-                              "0 0 0 rgba(245, 158, 11, 0.4)",
-                            ],
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="bg-amber-500 text-white w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center"
-                        >
-                          <Crown className="h-3 w-3 md:h-4 md:w-4" />
-                        </motion.div>
-                      )}
-                      {index === 1 && (
-                        <div className="bg-zinc-400 text-white w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center">
-                          2
-                        </div>
-                      )}
-                      {index === 2 && (
-                        <div className="bg-amber-700 text-white w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center">
-                          3
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
-                        <span className="text-base md:text-lg font-medium text-primary">
-                          {player.name.charAt(0)}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col min-w-0">
-                        <h3 className="font-medium text-sm md:text-base truncate">
-                          {player.name}
-                        </h3>
-                        <div className="flex items-center gap-1">
-                          <Badge
-                            variant="outline"
-                            className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs px-1"
-                          >
-                            {player.rank}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="w-16 md:w-24 text-right">
-                      <div className="text-base md:text-lg font-bold text-primary flex items-center justify-end gap-1">
-                        {player.points.toLocaleString()}
-                        <span className="text-xs text-muted-foreground ml-1">
-                          pts
-                        </span>
-                      </div>
-
-                      {/* Trending indicator */}
-                      <div className="flex items-center justify-end gap-0.5 text-xs text-emerald-500">
-                        <ArrowUp className="h-3 w-3" />
-                        <span>2%</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-
-                {/* Current user position */}
-                <motion.div
-                  whileHover={{ scale: 1.02, x: 5 }}
-                  className="flex items-center gap-2 md:gap-4 p-2 md:p-3 rounded-lg border border-dashed border-primary/20 bg-primary/5"
-                >
-                  <div className="w-8 md:w-12 flex justify-center">
-                    <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs md:text-sm">
-                      4
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <motion.div
-                      animate={{
-                        boxShadow: [
-                          "0 0 0 rgba(124, 58, 237, 0)",
-                          "0 0 8px rgba(124, 58, 237, 0.5)",
-                          "0 0 0 rgba(124, 58, 237, 0)",
-                        ],
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center"
-                    >
-                      <span className="text-base md:text-lg font-medium text-white">
-                        {user.name.charAt(0)}
-                      </span>
-                    </motion.div>
-
-                    <div className="flex flex-col min-w-0">
-                      <h3 className="font-medium text-sm md:text-base truncate">
-                        You
-                      </h3>
-                      <div className="flex items-center gap-1">
-                        <Badge
-                          variant="outline"
-                          className="bg-primary/10 text-primary border-primary/20 text-xs px-1"
-                        >
-                          {user.rank}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="w-16 md:w-24 text-right">
-                    <div className="text-base md:text-lg font-bold text-primary flex items-center justify-end gap-1">
-                      {user.rankPoints.toLocaleString()}
-                      <span className="text-xs text-muted-foreground ml-1">
-                        pts
-                      </span>
-                    </div>
-
-                    {/* Need more points indicator */}
-                    <div className="flex items-center justify-end gap-0.5 text-xs text-amber-500">
-                      <span>
-                        {(
-                          leaderboard[2].points - user.rankPoints
-                        ).toLocaleString()}{" "}
-                        to rank up
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Encouraging message */}
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="mt-4 text-center bg-primary/5 rounded-lg py-2 text-xs md:text-sm"
-              >
-                <p>Complete daily quests to earn more points!</p>
-              </motion.div>
-            </div>
-          </div>
+          <BadgeCollection />
         </motion.div>
       </div>
     </motion.div>

@@ -8,6 +8,7 @@ from app.models.daily_quest import DailyQuest, UserDailyQuest, DailyQuestProgres
 from app.models.user import User
 from app.models.quest import ExperiencePoints, StudentProgress
 from app.models.streak import UserStreak
+from app.services.badge_service import BadgeService
 
 logger = logging.getLogger(__name__)
 
@@ -237,14 +238,16 @@ class DailyQuestService:
             awarded_at=datetime.utcnow(),
             notes=f"Daily quest: {user_quest.daily_quest.title}"
         )
-        self.db.add(xp_record)
-
-        # Update student progress
+        self.db.add(xp_record)        # Update student progress
         self._update_student_progress(user_id, user_quest.daily_quest.xp_reward)
 
         try:
             self.db.commit()
             logger.info(f"Completed daily login quest for user {user_id}, awarded {user_quest.daily_quest.xp_reward} XP")
+            
+            # Check for badge achievements after quest completion
+            self._check_badges_after_quest_completion(user_id)
+            
             return {
                 "success": True,
                 "message": "Daily login quest completed successfully!",
@@ -481,14 +484,16 @@ class DailyQuestService:
         try:
             # Award XP to user
             self._award_xp_to_user(user_id, user_quest.daily_quest.xp_reward)
-            
-            # Update streak if it's a login quest
+              # Update streak if it's a login quest
             if quest_type == QuestTypeEnum.DAILY_LOGIN.value:
                 self._update_user_streak(user_id)
             
             self.db.commit()
             
             logger.info(f"User {user_id} completed {quest_type} quest and earned {user_quest.daily_quest.xp_reward} XP")
+            
+            # Check for badge achievements after quest completion
+            self._check_badges_after_quest_completion(user_id)
             
             return {
                 "success": True,
@@ -545,15 +550,16 @@ class DailyQuestService:
         if user_quest.progress >= user_quest.target_count:
             user_quest.status = QuestStatusEnum.COMPLETED.value
             user_quest.completed_at = datetime.utcnow()
-            user_quest.xp_awarded = user_quest.daily_quest.xp_reward
-
-            # Award quest completion XP (separate from the XP that counted toward the quest)
+            user_quest.xp_awarded = user_quest.daily_quest.xp_reward            # Award quest completion XP (separate from the XP that counted toward the quest)
             self._award_xp_to_user(user_id, user_quest.daily_quest.xp_reward)
             
             try:
                 self.db.commit()
                 
                 logger.info(f"User {user_id} completed earn XP quest and earned {user_quest.daily_quest.xp_reward} bonus XP")
+                
+                # Check for badge achievements after quest completion
+                self._check_badges_after_quest_completion(user_id)
                 
                 return {
                     "success": True,
@@ -687,6 +693,22 @@ class DailyQuestService:
         # self.db.query(UserDailyQuest).filter(
         #     UserDailyQuest.status == QuestStatusEnum.EXPIRED.value
         # ).delete(synchronize_session=False)
-        
-        self.db.commit()
-        logger.info(f"Cleaned up {len(expired_quests)} expired quests")
+
+    def _check_badges_after_quest_completion(self, user_id: int):
+        """
+        Check for badge achievements after a quest completion.
+        This integrates badge checking into the quest completion flow.
+        """
+        try:
+            badge_service = BadgeService(self.db)
+            awarded_badges = badge_service.check_all_badges_for_user(user_id)
+            
+            if awarded_badges:
+                logger.info(f"User {user_id} earned {len(awarded_badges)} badges after quest completion")
+                for badge_award in awarded_badges:
+                    logger.info(f"Awarded badge '{badge_award['badge'].name}' to user {user_id}")
+            
+            return awarded_badges
+        except Exception as e:
+            logger.error(f"Error checking badges for user {user_id}: {e}")
+            return []

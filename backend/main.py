@@ -95,7 +95,10 @@ async def errors_handling(request: Request, call_next):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
-from app.routes import daily_quests, pets
+from app.routes import daily_quests
+from app.routes.badges import router as badges_router 
+from app.routes.activity_log import router as activity_log_router
+
 app.include_router(quests.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(enrollment.router, prefix="/api")
@@ -103,7 +106,8 @@ app.include_router(webhooks.router, prefix="/api")
 app.include_router(leaderboard.router, prefix="/api")
 app.include_router(daily_quests.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
-app.include_router(pets.router, prefix="/api")
+app.include_router(badges_router, prefix="/api")
+app.include_router(activity_log_router, prefix="/api")
 
 @app.get("/")
 async def root():
@@ -112,4 +116,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting MoodleQuest API server")
-    uvicorn.run(app, host="0.0.0.0", port=8002) 
+    uvicorn.run(app, host="0.0.0.0", port=8002)

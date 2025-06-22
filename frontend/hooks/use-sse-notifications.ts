@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useCurrentUser } from "./useCurrentMoodleUser";
 
 // API URL from environment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
 
 export interface SSENotificationData {
   id: string;
@@ -31,80 +32,152 @@ export interface SSEConnectionState {
   lastHeartbeat: Date | null;
 }
 
-export function useSSENotifications() {
-  const { user, isAuthenticated } = useCurrentUser();
-  const [connectionState, setConnectionState] = useState<SSEConnectionState>({
-    isConnected: false,
-    isConnecting: false,
-    error: null,
-    lastHeartbeat: null,
-  });
-  
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-  const baseReconnectDelay = 1000; // 1 second
-  
-  // Event handlers
-  const [notificationHandlers, setNotificationHandlers] = useState<{
-    [key: string]: (notification: SSENotificationData) => void;
-  }>({});
+// Global SSE manager to ensure only one connection per user
+class SSEManager {
+  private static instance: SSEManager;
+  private connections: Map<
+    number,
+    {
+      eventSource: EventSource;
+      handlers: Map<string, Set<(data: SSENotificationData) => void>>;
+      connectionState: SSEConnectionState;
+      subscribers: Set<(state: SSEConnectionState) => void>;
+      reconnectAttempts: number;
+      reconnectTimeout: NodeJS.Timeout | null;
+    }
+  > = new Map();
 
-  // Add notification handler
-  const addNotificationHandler = useCallback(
-    (type: string, handler: (notification: SSENotificationData) => void) => {
-      setNotificationHandlers(prev => ({
-        ...prev,
-        [type]: handler,
-      }));
-    },
-    []
-  );
+  private maxReconnectAttempts = 5;
+  private baseReconnectDelay = 2000; // Increased to 2 seconds
 
-  // Remove notification handler
-  const removeNotificationHandler = useCallback((type: string) => {
-    setNotificationHandlers(prev => {
-      const { [type]: removed, ...rest } = prev;
-      return rest;
+  static getInstance(): SSEManager {
+    if (!SSEManager.instance) {
+      SSEManager.instance = new SSEManager();
+    }
+    return SSEManager.instance;
+  }
+
+  subscribe(
+    userId: number,
+    onStateChange: (state: SSEConnectionState) => void
+  ) {
+    const connection = this.connections.get(userId);
+    if (connection) {
+      connection.subscribers.add(onStateChange);
+      // Immediately notify with current state
+      onStateChange(connection.connectionState);
+    } else {
+      // Initialize connection if it doesn't exist
+      this.initializeConnection(userId);
+      const newConnection = this.connections.get(userId);
+      if (newConnection) {
+        newConnection.subscribers.add(onStateChange);
+        onStateChange(newConnection.connectionState);
+      }
+    }
+  }
+
+  unsubscribe(
+    userId: number,
+    onStateChange: (state: SSEConnectionState) => void
+  ) {
+    const connection = this.connections.get(userId);
+    if (connection) {
+      connection.subscribers.delete(onStateChange);
+
+      // If no more subscribers, close the connection after a delay
+      if (connection.subscribers.size === 0) {
+        setTimeout(() => {
+          const stillEmpty =
+            this.connections.get(userId)?.subscribers.size === 0;
+          if (stillEmpty) {
+            this.disconnect(userId);
+          }
+        }, 10000); // 10 second delay before closing
+      }
+    }
+  }
+
+  addNotificationHandler(
+    userId: number,
+    type: string,
+    handler: (data: SSENotificationData) => void
+  ) {
+    const connection = this.connections.get(userId);
+    if (connection) {
+      if (!connection.handlers.has(type)) {
+        connection.handlers.set(type, new Set());
+      }
+      connection.handlers.get(type)!.add(handler);
+    }
+  }
+
+  removeNotificationHandler(
+    userId: number,
+    type: string,
+    handler?: (data: SSENotificationData) => void
+  ) {
+    const connection = this.connections.get(userId);
+    if (connection && connection.handlers.has(type)) {
+      if (handler) {
+        connection.handlers.get(type)!.delete(handler);
+      } else {
+        connection.handlers.delete(type);
+      }
+    }
+  }
+
+  private initializeConnection(userId: number) {
+    if (this.connections.has(userId)) {
+      return; // Connection already exists
+    }
+
+    console.log(`SSE: Initializing connection for user ${userId}`);
+
+    const connectionData = {
+      eventSource: null as any,
+      handlers: new Map<string, Set<(data: SSENotificationData) => void>>(),
+      connectionState: {
+        isConnected: false,
+        isConnecting: true,
+        error: null,
+        lastHeartbeat: null,
+      } as SSEConnectionState,
+      subscribers: new Set<(state: SSEConnectionState) => void>(),
+      reconnectAttempts: 0,
+      reconnectTimeout: null as NodeJS.Timeout | null,
+    };
+
+    this.connections.set(userId, connectionData);
+    this.connect(userId);
+  }
+
+  private connect(userId: number) {
+    const connection = this.connections.get(userId);
+    if (!connection) return;
+
+    // Don't reconnect if already connected or connecting
+    if (
+      connection.connectionState.isConnected ||
+      connection.connectionState.isConnecting
+    ) {
+      return;
+    }
+
+    this.updateConnectionState(userId, {
+      isConnecting: true,
+      error: null,
     });
-  }, []);
-
-  // Clear all handlers
-  const clearNotificationHandlers = useCallback(() => {
-    setNotificationHandlers({});
-  }, []);
-
-  // Calculate reconnect delay with exponential backoff
-  const getReconnectDelay = useCallback(() => {
-    return Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempts.current), 30000);
-  }, []);
-
-  // Connect to SSE endpoint
-  const connect = useCallback(() => {
-    if (!isAuthenticated || !user?.id) {
-      console.log("SSE: User not authenticated, skipping connection");
-      return;
-    }
-
-    if (eventSourceRef.current?.readyState === EventSource.OPEN) {
-      console.log("SSE: Already connected");
-      return;
-    }
-
-    setConnectionState(prev => ({ ...prev, isConnecting: true, error: null }));
 
     try {
-      const url = `${API_BASE_URL}/notifications/events/${user.id}`;
-      console.log("SSE: Connecting to", url);
-      
+      const url = `${API_BASE_URL}/notifications/events/${userId}`;
       const eventSource = new EventSource(url);
-      eventSourceRef.current = eventSource;
+      connection.eventSource = eventSource;
 
       eventSource.onopen = () => {
-        console.log("SSE: Connection opened");
-        reconnectAttempts.current = 0;
-        setConnectionState({
+        console.log(`SSE: Connection opened for user ${userId}`);
+        connection.reconnectAttempts = 0;
+        this.updateConnectionState(userId, {
           isConnected: true,
           isConnecting: false,
           error: null,
@@ -113,144 +186,180 @@ export function useSSENotifications() {
       };
 
       eventSource.onmessage = (event) => {
-        console.log("SSE: Received message", event.data);
-        
         try {
           const data = JSON.parse(event.data);
-          
-          // Handle heartbeat
+
+          // Handle heartbeat quietly
           if (data.type === "heartbeat") {
-            setConnectionState(prev => ({
-              ...prev,
+            this.updateConnectionState(userId, {
               lastHeartbeat: new Date(),
-            }));
+            });
             return;
           }
 
           // Handle notifications
-          if (data.type && notificationHandlers[data.type]) {
-            notificationHandlers[data.type](data as SSENotificationData);
-          } else {
-            console.log("SSE: No handler for notification type:", data.type);
+          if (data.type && connection.handlers.has(data.type)) {
+            const handlers = connection.handlers.get(data.type)!;
+            handlers.forEach((handler) => {
+              try {
+                handler(data as SSENotificationData);
+              } catch (error) {
+                console.error(
+                  `SSE: Error in notification handler for ${data.type}:`,
+                  error
+                );
+              }
+            });
           }
         } catch (error) {
           console.error("SSE: Error parsing message", error);
         }
       };
 
-      eventSource.onerror = (error) => {
-        console.error("SSE: Connection error", error);
-        
-        setConnectionState(prev => ({
-          ...prev,
+      eventSource.onerror = () => {
+        this.updateConnectionState(userId, {
           isConnected: false,
           isConnecting: false,
           error: "Connection error",
-        }));
+        });
 
         // Attempt reconnection if we haven't exceeded max attempts
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = getReconnectDelay();
-          console.log(`SSE: Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
-            connect();
+        if (connection.reconnectAttempts < this.maxReconnectAttempts) {
+          const delay = this.getReconnectDelay(connection.reconnectAttempts);
+          console.log(
+            `SSE: Reconnecting user ${userId} in ${delay}ms (attempt ${
+              connection.reconnectAttempts + 1
+            }/${this.maxReconnectAttempts})`
+          );
+
+          connection.reconnectTimeout = setTimeout(() => {
+            connection.reconnectAttempts++;
+            this.connect(userId);
           }, delay);
         } else {
-          console.error("SSE: Max reconnection attempts reached");
-          setConnectionState(prev => ({
-            ...prev,
+          console.error(
+            `SSE: Max reconnection attempts reached for user ${userId}`
+          );
+          this.updateConnectionState(userId, {
             error: "Max reconnection attempts reached",
-          }));
+          });
         }
       };
     } catch (error) {
-      console.error("SSE: Failed to create EventSource", error);
-      setConnectionState(prev => ({
-        ...prev,
+      console.error(
+        `SSE: Failed to create EventSource for user ${userId}:`,
+        error
+      );
+      this.updateConnectionState(userId, {
         isConnecting: false,
         error: "Failed to create connection",
-      }));
+      });
     }
-  }, [isAuthenticated, user?.id, notificationHandlers, getReconnectDelay]);
+  }
 
-  // Disconnect from SSE
-  const disconnect = useCallback(() => {
-    console.log("SSE: Disconnecting");
-    
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
+  private disconnect(userId: number) {
+    const connection = this.connections.get(userId);
+    if (!connection) return;
 
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    console.log(`SSE: Disconnecting user ${userId}`);
+
+    if (connection.reconnectTimeout) {
+      clearTimeout(connection.reconnectTimeout);
+      connection.reconnectTimeout = null;
     }
 
-    reconnectAttempts.current = 0;
-    setConnectionState({
-      isConnected: false,
-      isConnecting: false,
-      error: null,
-      lastHeartbeat: null,
+    if (connection.eventSource) {
+      connection.eventSource.close();
+    }
+
+    this.connections.delete(userId);
+  }
+
+  private updateConnectionState(
+    userId: number,
+    updates: Partial<SSEConnectionState>
+  ) {
+    const connection = this.connections.get(userId);
+    if (!connection) return;
+
+    connection.connectionState = { ...connection.connectionState, ...updates };
+
+    // Notify all subscribers
+    connection.subscribers.forEach((subscriber) => {
+      try {
+        subscriber(connection.connectionState);
+      } catch (error) {
+        console.error("SSE: Error in state subscriber:", error);
+      }
     });
-  }, []);
+  }
 
-  // Force reconnect
-  const reconnect = useCallback(() => {
-    console.log("SSE: Force reconnecting");
-    disconnect();
-    setTimeout(() => connect(), 1000);
-  }, [disconnect, connect]);
+  private getReconnectDelay(attempts: number): number {
+    // Exponential backoff with jitter
+    const baseDelay = this.baseReconnectDelay * Math.pow(1.5, attempts);
+    const jitter = Math.random() * 1000; // Add randomness to prevent thundering herd
+    return Math.min(baseDelay + jitter, 30000); // Max 30 seconds
+  }
 
-  // Auto-connect when user is authenticated
+  // Force reconnect for a user
+  reconnect(userId: number) {
+    console.log(`SSE: Force reconnecting user ${userId}`);
+    this.disconnect(userId);
+    setTimeout(() => this.initializeConnection(userId), 1000);
+  }
+}
+
+export function useSSENotifications() {
+  const { user, isAuthenticated } = useCurrentUser();
+  const [connectionState, setConnectionState] = useState<SSEConnectionState>({
+    isConnected: false,
+    isConnecting: false,
+    error: null,
+    lastHeartbeat: null,
+  });
+
+  const sseManager = SSEManager.getInstance();
+
+  // Subscribe to connection state changes
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      connect();
-    } else {
-      disconnect();
-    }
-
-    return () => {
-      disconnect();
-    };
-  }, [isAuthenticated, user?.id, connect, disconnect]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      disconnect();
-    };
-  }, [disconnect]);
-
-  // Monitor connection health
-  useEffect(() => {
-    if (!connectionState.isConnected || !connectionState.lastHeartbeat) {
+    if (!isAuthenticated || !user?.id) {
       return;
     }
 
-    const healthCheckInterval = setInterval(() => {
-      const now = new Date();
-      const lastHeartbeat = connectionState.lastHeartbeat;
-      
-      if (lastHeartbeat && now.getTime() - lastHeartbeat.getTime() > 35000) {
-        console.warn("SSE: No heartbeat received for 35 seconds, reconnecting");
-        reconnect();
+    sseManager.subscribe(user.id, setConnectionState);
+
+    return () => {
+      sseManager.unsubscribe(user.id, setConnectionState);
+    };
+  }, [isAuthenticated, user?.id, sseManager]);
+
+  const addNotificationHandler = useCallback(
+    (type: string, handler: (data: SSENotificationData) => void) => {
+      if (user?.id) {
+        sseManager.addNotificationHandler(user.id, type, handler);
       }
-    }, 10000); // Check every 10 seconds
+    },
+    [user?.id, sseManager]
+  );
 
-    return () => clearInterval(healthCheckInterval);
-  }, [connectionState.isConnected, connectionState.lastHeartbeat, reconnect]);
+  const removeNotificationHandler = useCallback(
+    (type: string, handler?: (data: SSENotificationData) => void) => {
+      if (user?.id) {
+        sseManager.removeNotificationHandler(user.id, type, handler);
+      }
+    },
+    [user?.id, sseManager]
+  );
 
+  const reconnect = useCallback(() => {
+    if (user?.id) {
+      sseManager.reconnect(user.id);
+    }
+  }, [user?.id, sseManager]);
   return {
     connectionState,
     addNotificationHandler,
     removeNotificationHandler,
-    clearNotificationHandlers,
-    connect,
-    disconnect,
     reconnect,
   };
 }

@@ -3,6 +3,14 @@
  */
 
 import { User } from "./auth-context";
+import type {
+  Badge,
+  UserBadge,
+  BadgeSystemResponse,
+  BadgeCreate,
+  BadgeUpdate,
+  BadgeCheckResult,
+} from "@/types/badges";
 
 // Update to match your actual backend URL
 const API_BASE_URL =
@@ -348,6 +356,201 @@ class ApiClient {
       );
     } catch (error) {
       console.error("Earn XP quest completion error:", error);
+      throw error;
+    }
+  }
+  // Badge Methods
+  async getAllBadges(activeOnly: boolean = true): Promise<Badge[]> {
+    try {
+      // Use longer timeout for badges endpoint as it might be slower
+      return await this.request<Badge[]>(
+        `/badges?active_only=${activeOnly}`,
+        "GET",
+        undefined,
+        3, // More retries for badges
+        15000 // Longer timeout (15 seconds)
+      );
+    } catch (error) {
+      console.error("Get all badges error:", error);
+      throw error;
+    }
+  }
+
+  async getBadge(badgeId: number): Promise<Badge> {
+    try {
+      return await this.request<Badge>(`/badges/${badgeId}`, "GET");
+    } catch (error) {
+      console.error("Get badge error:", error);
+      throw error;
+    }
+  }
+
+  async createBadge(badgeData: BadgeCreate): Promise<Badge> {
+    try {
+      return await this.request<Badge>("/badges", "POST", badgeData);
+    } catch (error) {
+      console.error("Create badge error:", error);
+      throw error;
+    }
+  }
+
+  async seedBadges(): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>("/badges/seed", "POST");
+    } catch (error) {
+      console.error("Seed badges error:", error);
+      throw error;
+    }
+  }
+
+  async updateBadge(badgeId: number, badgeData: BadgeUpdate): Promise<Badge> {
+    try {
+      return await this.request<Badge>(`/badges/${badgeId}`, "PUT", badgeData);
+    } catch (error) {
+      console.error("Update badge error:", error);
+      throw error;
+    }
+  }
+  async getUserBadges(userId: number): Promise<UserBadge[]> {
+    try {
+      return await this.request<UserBadge[]>(`/badges/user/${userId}`, "GET");
+    } catch (error) {
+      console.error("Get user badges error:", error);
+      throw error;
+    }
+  }
+
+  async getUserBadgeSystem(userId: number): Promise<BadgeSystemResponse> {
+    try {
+      return await this.request<BadgeSystemResponse>(
+        `/badges/user/${userId}/system`,
+        "GET"
+      );
+    } catch (error) {
+      console.error("Get user badge system error:", error);
+      throw error;
+    }
+  }
+  async getUserBadgeProgress(userId: number): Promise<{
+    earned_badges: any[];
+    available_badges: any[];
+    stats: {
+      total_badges: number;
+      earned_count: number;
+      available_count: number;
+      completion_percentage: number;
+    };
+  }> {
+    try {
+      return await this.request(`/badges/user/${userId}/progress`, "GET");
+    } catch (error) {
+      console.error("Get user badge progress error:", error);
+      throw error;
+    }
+  }
+
+  async getMyBadgeSystem(): Promise<BadgeSystemResponse> {
+    try {
+      return await this.request<BadgeSystemResponse>(
+        "/badges/me/system",
+        "GET"
+      );
+    } catch (error) {
+      console.error("Get my badge system error:", error);
+      throw error;
+    }
+  }
+
+  async getMyBadges(): Promise<UserBadge[]> {
+    try {
+      return await this.request<UserBadge[]>("/badges/me/earned", "GET");
+    } catch (error) {
+      console.error("Get my badges error:", error);
+      throw error;
+    }
+  }
+
+  async awardBadge(userId: number, badgeId: number): Promise<UserBadge> {
+    try {
+      return await this.request<UserBadge>(
+        `/badges/user/${userId}/award/${badgeId}`,
+        "POST"
+      );
+    } catch (error) {
+      console.error("Award badge error:", error);
+      throw error;
+    }
+  }
+
+  async checkAndAwardBadges(userId: number): Promise<UserBadge[]> {
+    try {
+      return await this.request<UserBadge[]>(
+        `/badges/user/${userId}/check`,
+        "POST"
+      );
+    } catch (error) {
+      console.error("Check and award badges error:", error);
+      throw error;
+    }
+  }
+
+  // Badge Checking Methods
+  async checkAllBadgesForUser(
+    userId: number,
+    courseId?: number,
+    awardedBy?: number
+  ): Promise<BadgeCheckResult> {
+    try {
+      const url = `/badges/check-all/${userId}${
+        courseId ? `?course_id=${courseId}` : ""
+      }${awardedBy ? `&awarded_by=${awardedBy}` : ""}`;
+      return await this.request<BadgeCheckResult>(url, "POST");
+    } catch (error) {
+      console.error("Check all badges error:", error);
+      throw error;
+    }
+  }
+
+  async triggerBadgeCheck(eventData: {
+    user_id: number;
+    event_type:
+      | "quest_completed"
+      | "login"
+      | "xp_earned"
+      | "daily_quest_completed";
+    course_id?: number;
+    metadata?: any;
+  }): Promise<BadgeCheckResult> {
+    try {
+      return await this.request<BadgeCheckResult>(
+        "/badges/trigger-check",
+        "POST",
+        eventData
+      );
+    } catch (error) {
+      console.error("Trigger badge check error:", error);
+      throw error;
+    }
+  }
+
+  async checkSpecificBadgeCriteria(
+    userId: number,
+    badgeId: number
+  ): Promise<{
+    badge_id: number;
+    badge_name: string;
+    user_id: number;
+    meets_criteria: boolean;
+    progress: any;
+    criteria: any;
+  }> {
+    try {
+      return await this.request(
+        `/badges/check-criteria/${userId}/${badgeId}`,
+        "GET"
+      );
+    } catch (error) {
+      console.error("Check specific badge criteria error:", error);
       throw error;
     }
   }

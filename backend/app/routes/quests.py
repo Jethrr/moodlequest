@@ -1,13 +1,16 @@
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from app.database.connection import get_db
 from app.models.quest import Quest, QuestProgress, StudentProgress
 from app.schemas.quest import QuestCreate, QuestUpdate, Quest as QuestSchema
 from app.models.course import Course as CourseModel
 from app.models.user import User as UserModel
 from app.models.enrollment import CourseEnrollment
+from app.services.badge_service import BadgeService
+from app.services.activity_log_service import log_activity
+from datetime import datetime
 import random
 from datetime import datetime, timedelta
 
@@ -83,6 +86,125 @@ def delete_quest(quest_id: int, db: Session = Depends(get_db)):
     
     db.delete(quest)
     db.commit()
+
+@router.post("/{quest_id}/complete")
+async def complete_quest(
+    quest_id: int,
+    user_id: int = Body(..., description="Moodle user ID of the user completing the quest"),
+    db: Session = Depends(get_db)
+):
+    """
+    Manual quest completion endpoint (for testing or special cases).
+    In production, quest completion is typically handled via Moodle webhooks.
+    This endpoint simulates the webhook completion process.
+    """
+    try:
+        # Verify user exists - look up by moodle_user_id
+        user = db.query(UserModel).filter(UserModel.moodle_user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Verify quest exists
+        quest = db.query(Quest).filter(Quest.quest_id == quest_id).first()
+        if not quest:
+            raise HTTPException(status_code=404, detail="Quest not found")
+        
+        # Check if quest progress already exists
+        quest_progress = db.query(QuestProgress).filter(
+            and_(
+                QuestProgress.user_id == user.id,
+                QuestProgress.quest_id == quest_id
+            )
+        ).first()
+        
+        if quest_progress:
+            if quest_progress.status == "completed":
+                return {
+                    "success": False,
+                    "message": "Quest already completed",
+                    "quest_id": quest_id,
+                    "user_id": user_id
+                }
+            # Update existing progress
+            quest_progress.status = "completed"
+            quest_progress.progress_percent = 100
+            quest_progress.completed_at = datetime.utcnow()
+        else:
+            # Create new quest progress
+            quest_progress = QuestProgress(
+                user_id=user.id,
+                quest_id=quest_id,
+                status="completed",
+                progress_percent=100,
+                started_at=datetime.utcnow(),
+                completed_at=datetime.utcnow()
+            )
+            db.add(quest_progress)
+        
+        # Update student progress
+        student_progress = db.query(StudentProgress).filter(
+            StudentProgress.user_id == user.id
+        ).first()
+        
+        if student_progress:
+            student_progress.total_exp += quest.exp_reward
+            student_progress.quests_completed += 1
+        else:
+            # Create new student progress
+            student_progress = StudentProgress(
+                user_id=user.id,
+                total_exp=quest.exp_reward,
+                quests_completed=1,
+                current_level=1
+            )
+            db.add(student_progress)
+        
+        db.commit()
+        
+        # Check for badge achievements after quest completion
+        badge_service = BadgeService(db)
+        awarded_badges = badge_service.check_all_badges_for_user(user.id)
+        
+        # After awarding exp and badges, log quest completion
+        log_activity(
+            db=db,
+            user_id=user.id,
+            action_type="quest_completed",
+            action_details={
+                "quest_id": quest.quest_id,
+                "quest_name": quest.name,
+                "exp_awarded": quest.exp_reward
+            },
+            related_entity_type="quest",
+            related_entity_id=quest.quest_id,
+            exp_change=quest.exp_reward
+        )
+        
+        return {
+            "success": True,
+            "message": "Quest completed successfully",
+            "quest_id": quest_id,
+            "user_id": user_id,
+            "exp_awarded": quest.exp_reward,
+            "badges_earned": len(awarded_badges),
+            "badge_details": [
+                {
+                    "badge_id": badge_award["badge"].badge_id,
+                    "name": badge_award["badge"].name,
+                    "exp_bonus": badge_award["exp_bonus"]
+                }
+                for badge_award in awarded_badges
+            ]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to complete quest: {str(e)}"
+        )
 
 @router.get("/creator/{creator_id}", response_model=List[QuestSchema])
 def get_quests_by_creator(creator_id: int, db: Session = Depends(get_db)):
@@ -475,15 +597,13 @@ def get_student_progress(user_id: int, db: Session = Depends(get_db)):
         # Find the local user by moodle_user_id
         user = db.query(UserModel).filter(UserModel.moodle_user_id == user_id).first()
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Get all student progress records for this user and aggregate the data
+            raise HTTPException(status_code=404, detail="User not found")        # Get all student progress records for this user and aggregate the data
         from sqlalchemy import func
+        from app.models.badge import UserBadge
         
         progress_aggregates = db.query(
             func.sum(StudentProgress.total_exp).label('total_exp_sum'),
-            func.count(StudentProgress.quests_completed).label('total_records'),
-            func.sum(StudentProgress.badges_earned).label('total_badges'),
+            func.sum(StudentProgress.quests_completed).label('total_quests_completed'),
             func.sum(StudentProgress.study_hours).label('total_study_hours'),
             func.max(StudentProgress.streak_days).label('max_streak'),
             func.max(StudentProgress.last_activity).label('latest_activity')
@@ -491,13 +611,16 @@ def get_student_progress(user_id: int, db: Session = Depends(get_db)):
             StudentProgress.user_id == user.id
         ).first()
         
-        # If no progress records exist, return default values
+        # Get badges count from UserBadge table instead of StudentProgress
+        badges_count = db.query(func.count(UserBadge.badge_id)).filter(
+            UserBadge.user_id == user.id
+        ).scalar() or 0        # If no progress records exist, return default values
         if not progress_aggregates or progress_aggregates.total_exp_sum is None:
             return {
                 "user_id": user_id,
                 "total_exp": 0,
                 "quests_completed": 0,
-                "badges_earned": 0,
+                "badges_earned": badges_count,
                 "study_hours": 0.0,
                 "streak_days": 0,
                 "last_activity": None
@@ -506,8 +629,8 @@ def get_student_progress(user_id: int, db: Session = Depends(get_db)):
         return {
             "user_id": user_id,
             "total_exp": int(progress_aggregates.total_exp_sum or 0),
-            "quests_completed": int(progress_aggregates.total_records or 0),
-            "badges_earned": int(progress_aggregates.total_badges or 0),
+            "quests_completed": int(progress_aggregates.total_quests_completed or 0),
+            "badges_earned": badges_count,
             "study_hours": float(progress_aggregates.total_study_hours or 0.0),
             "streak_days": int(progress_aggregates.max_streak or 0),
             "last_activity": progress_aggregates.latest_activity.isoformat() if progress_aggregates.latest_activity else None
