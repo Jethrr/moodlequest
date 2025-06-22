@@ -1,5 +1,4 @@
 "use client";
-"use client";
 
 import { useState } from "react";
 import {
@@ -56,22 +55,10 @@ export function TeacherDashboard() {
         <p className="text-muted-foreground">
           Create quests, manage achievements, and view student reports
         </p>
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
-          Teacher Dashboard
-        </h2>
-        <p className="text-muted-foreground">
-          Create quests, manage achievements, and view student reports
-        </p>
       </div>
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-blue-700">
-              Active Students
-            </CardTitle>
-            <CardDescription className="text-blue-600/80">
-              Students online now
-            </CardDescription>
             <CardTitle className="text-lg text-blue-700">
               Active Students
             </CardTitle>
@@ -84,19 +71,10 @@ export function TeacherDashboard() {
             <p className="text-sm text-blue-600/80">
               43% of your class is currently active
             </p>
-            <p className="text-sm text-blue-600/80">
-              43% of your class is currently active
-            </p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-100 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-emerald-700">
-              Quest Completion
-            </CardTitle>
-            <CardDescription className="text-emerald-600/80">
-              Average completion rate
-            </CardDescription>
             <CardTitle className="text-lg text-emerald-700">
               Quest Completion
             </CardTitle>
@@ -117,18 +95,9 @@ export function TeacherDashboard() {
             <CardDescription className="text-purple-600/80">
               Class participation level
             </CardDescription>
-            <CardTitle className="text-lg text-purple-700">
-              Engagement Score
-            </CardTitle>
-            <CardDescription className="text-purple-600/80">
-              Class participation level
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-purple-700">8.4 / 10</div>
-            <p className="text-sm text-purple-600/80">
-              Based on activity and quest completion
-            </p>
             <p className="text-sm text-purple-600/80">
               Based on activity and quest completion
             </p>
@@ -138,13 +107,6 @@ export function TeacherDashboard() {
       {showQuestCreator ? (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold">
-              Assign Gamification to Moodle Activities
-            </h3>
-            <Button
-              variant="outline"
-              onClick={() => setShowQuestCreator(false)}
-            >
             <h3 className="text-xl font-bold">
               Assign Gamification to Moodle Activities
             </h3>
@@ -170,11 +132,6 @@ export function TeacherDashboard() {
           value={activeTab}
           onValueChange={setActiveTab}
         >
-        <Tabs
-          defaultValue="overview"
-          value={activeTab}
-          onValueChange={setActiveTab}
-        >
           <div className="flex justify-between items-center">
             <TabsList className="bg-muted/50">
               <TabsTrigger
@@ -195,29 +152,7 @@ export function TeacherDashboard() {
               >
                 Analytics
               </TabsTrigger>
-              <TabsTrigger
-                value="overview"
-                className="data-[state=active]:bg-background"
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="students"
-                className="data-[state=active]:bg-background"
-              >
-                Leaderboards
-              </TabsTrigger>
-              <TabsTrigger
-                value="analytics"
-                className="data-[state=active]:bg-background"
-              >
-                Analytics
-              </TabsTrigger>
             </TabsList>
-            <Button
-              onClick={() => setShowQuestCreator(true)}
-              className="bg-primary hover:bg-primary/90"
-            >
             <Button
               onClick={() => setShowQuestCreator(true)}
               className="bg-primary hover:bg-primary/90"
@@ -259,12 +194,6 @@ export function TeacherDashboard() {
                     <span className="text-sm text-blue-600/80 text-center">
                       Generate detailed progress reports
                     </span>
-                    <span className="text-lg font-medium text-blue-700">
-                      Reports
-                    </span>
-                    <span className="text-sm text-blue-600/80 text-center">
-                      Generate detailed progress reports
-                    </span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[625px] dark:bg-slate-900 bg-white">
@@ -295,18 +224,6 @@ export function TeacherDashboard() {
                             <SelectItem value="custom">
                               Custom Report
                             </SelectItem>
-                            <SelectItem value="progress">
-                              Progress Report
-                            </SelectItem>
-                            <SelectItem value="achievement">
-                              Achievement Summary
-                            </SelectItem>
-                            <SelectItem value="engagement">
-                              Engagement Metrics
-                            </SelectItem>
-                            <SelectItem value="custom">
-                              Custom Report
-                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -322,9 +239,6 @@ export function TeacherDashboard() {
                             <SelectItem value="quarter">
                               Last Quarter
                             </SelectItem>
-                            <SelectItem value="quarter">
-                              Last Quarter
-                            </SelectItem>
                             <SelectItem value="custom">Custom Range</SelectItem>
                           </SelectContent>
                         </Select>
@@ -337,24 +251,15 @@ export function TeacherDashboard() {
                             <label htmlFor="quest-metrics" className="text-sm">
                               Quest Completion
                             </label>
-                            <label htmlFor="quest-metrics" className="text-sm">
-                              Quest Completion
-                            </label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox id="xp-metrics" defaultChecked />
                             <label htmlFor="xp-metrics" className="text-sm">
                               XP Earned
                             </label>
-                            <label htmlFor="xp-metrics" className="text-sm">
-                              XP Earned
-                            </label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox id="badge-metrics" defaultChecked />
-                            <label htmlFor="badge-metrics" className="text-sm">
-                              Badges Earned
-                            </label>
                             <label htmlFor="badge-metrics" className="text-sm">
                               Badges Earned
                             </label>
@@ -367,30 +272,15 @@ export function TeacherDashboard() {
                             >
                               Activity Levels
                             </label>
-                            <label
-                              htmlFor="activity-metrics"
-                              className="text-sm"
-                            >
-                              Activity Levels
-                            </label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox id="time-metrics" />
                             <label htmlFor="time-metrics" className="text-sm">
                               Time Spent
                             </label>
-                            <label htmlFor="time-metrics" className="text-sm">
-                              Time Spent
-                            </label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox id="comparison-metrics" />
-                            <label
-                              htmlFor="comparison-metrics"
-                              className="text-sm"
-                            >
-                              Class Comparison
-                            </label>
                             <label
                               htmlFor="comparison-metrics"
                               className="text-sm"
@@ -408,12 +298,6 @@ export function TeacherDashboard() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pdf">PDF Document</SelectItem>
-                            <SelectItem value="excel">
-                              Excel Spreadsheet
-                            </SelectItem>
-                            <SelectItem value="online">
-                              Online Dashboard
-                            </SelectItem>
                             <SelectItem value="excel">
                               Excel Spreadsheet
                             </SelectItem>
@@ -438,21 +322,12 @@ export function TeacherDashboard() {
                 <CardDescription>
                   Latest student interactions and completions
                 </CardDescription>
-                <CardDescription>
-                  Latest student interactions and completions
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-2 border-b">
                     <div>
                       <div className="font-medium">Sarah Johnson</div>
-                      <div className="text-sm text-muted-foreground">
-                        Completed "Algebra Basics" quest
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      10 minutes ago
                       <div className="text-sm text-muted-foreground">
                         Completed "Algebra Basics" quest
                       </div>
@@ -470,23 +345,11 @@ export function TeacherDashboard() {
                     </div>
                     <div className="text-sm text-muted-foreground">
                       25 minutes ago
-                      <div className="text-sm text-muted-foreground">
-                        Started "Chemical Reactions" quest
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      25 minutes ago
                     </div>
                   </div>
                   <div className="flex items-center justify-between p-2 border-b">
                     <div>
                       <div className="font-medium">Emily Chen</div>
-                      <div className="text-sm text-muted-foreground">
-                        Earned "Science Explorer" badge
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      1 hour ago
                       <div className="text-sm text-muted-foreground">
                         Earned "Science Explorer" badge
                       </div>
@@ -505,19 +368,10 @@ export function TeacherDashboard() {
                     <div className="text-sm text-muted-foreground">
                       2 hours ago
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      2 hours ago
-                    </div>
                   </div>
                   <div className="flex items-center justify-between p-2">
                     <div>
                       <div className="font-medium">David Chen</div>
-                      <div className="text-sm text-muted-foreground">
-                        Reached Level 5
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      3 hours ago
                       <div className="text-sm text-muted-foreground">
                         Reached Level 5
                       </div>
