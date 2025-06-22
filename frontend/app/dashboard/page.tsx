@@ -27,6 +27,9 @@ export default function DashboardPage() {
   // Initialize daily login quest auto-completion
   useDailyLoginQuest();
 
+  // Initialize daily login quest auto-completion
+  useDailyLoginQuest();
+
   const [studentProgress, setStudentProgress] =
     useState<StudentProgress | null>(null);
   const [progressLoading, setProgressLoading] = useState(true);

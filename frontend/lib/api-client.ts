@@ -267,6 +267,7 @@ class ApiClient {
       return { success: true, message: "User data will sync later" };
     }
   } // Fetch student progress data
+  } // Fetch student progress data
   async fetchStudentProgress(userId: number): Promise<StudentProgress> {
     try {
       return await this.request<StudentProgress>(
