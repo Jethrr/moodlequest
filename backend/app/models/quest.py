@@ -50,7 +50,7 @@ class StudentProgress(Base):
     __tablename__ = "student_progress"
     progress_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False)
-    course_id = Column(Integer, nullable=False)
+    course_id = Column(Integer, nullable=True)  # Allow NULL for global progress
     total_exp = Column(Integer, nullable=False, default=0)
     quests_completed = Column(Integer, nullable=False, default=0)
     badges_earned = Column(Integer, nullable=False, default=0)

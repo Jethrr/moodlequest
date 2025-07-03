@@ -1,20 +1,40 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { SSETestingPanel } from "@/components/dev/sse-testing-panel";
 import { QuestDemoControls } from "@/components/dashboard/quest-demo-controls";
-import { useAuth } from '@/lib/auth-context';
-import { ChevronRight, Settings, InfoIcon, LayersIcon, BookOpen, Sparkles, HelpCircle, Award, Flag } from "lucide-react";
-import Link from 'next/link';
+import { BadgeSeederPanel } from "@/components/dev/badge-seeder-panel";
+import { BadgeCheckerPanel } from "@/components/dev/badge-checker-panel";
+import { useAuth } from "@/lib/auth-context";
+import {
+  ChevronRight,
+  Settings,
+  InfoIcon,
+  LayersIcon,
+  BookOpen,
+  Sparkles,
+  HelpCircle,
+  Award,
+  Flag,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function DevDashboard() {
   const { user } = useAuth();
   const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
-    setIsDev(process.env.NODE_ENV === 'development');
+    setIsDev(process.env.NODE_ENV === "development");
   }, []);
 
   if (!isDev) {
@@ -47,12 +67,16 @@ export default function DevDashboard() {
             <InfoIcon className="h-4 w-4" />
             <AlertTitle>Development Mode Active</AlertTitle>
             <AlertDescription>
-              Authentication is currently bypassed. You are automatically logged in as:
+              Authentication is currently bypassed. You are automatically logged
+              in as:
               <div className="mt-2 p-2 bg-muted rounded-md">
                 <div className="font-mono text-sm">
-                  Username: {user?.username || 'dev-teacher'}<br />
-                  Role: {user?.role || 'teacher'}<br />
-                  User ID: {user?.id || '1'}<br />
+                  Username: {user?.username || "dev-teacher"}
+                  <br />
+                  Role: {user?.role || "teacher"}
+                  <br />
+                  User ID: {user?.id || "1"}
+                  <br />
                   Token: {user?.token?.substring(0, 10)}...
                 </div>
               </div>
@@ -68,19 +92,31 @@ export default function DevDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button asChild variant="outline" className="w-full justify-between">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-between"
+                >
                   <Link href="/dashboard/teacher">
                     Teacher Dashboard
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="w-full justify-between">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-between"
+                >
                   <Link href="/dashboard/teacher/quests">
                     Quest Management
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="w-full justify-between">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-between"
+                >
                   <Link href="/dashboard/teacher/students">
                     Student Management
                     <ChevronRight className="h-4 w-4" />
@@ -97,19 +133,31 @@ export default function DevDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button asChild variant="outline" className="w-full justify-between">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-between"
+                >
                   <Link href="/dashboard/quests">
                     Quest Browser
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="w-full justify-between">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-between"
+                >
                   <Link href="/dashboard/profile">
                     Student Profile
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="w-full justify-between">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-between"
+                >
                   <Link href="/dashboard/courses">
                     Courses
                     <ChevronRight className="h-4 w-4" />
@@ -124,16 +172,41 @@ export default function DevDashboard() {
               <Sparkles className="h-5 w-5 text-primary" />
               Test Data Generation
             </h3>
-            <QuestDemoControls 
+            <QuestDemoControls
               onDemoDataCreated={() => {
                 console.log("Demo data created");
               }}
             />
           </div>
-          
+
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Badge System Management
+            </h3>
+            <BadgeSeederPanel />
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Badge Criteria Testing
+            </h3>
+            <BadgeCheckerPanel />
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Real-time Notifications Testing
+            </h3>
+            <SSETestingPanel />
+          </div>
+
           <div className="flex justify-between items-center border-t pt-4 mt-6">
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium">Note:</span> To restore authentication, revert changes in:
+              <span className="font-medium">Note:</span> To restore
+              authentication, revert changes in:
               <ul className="list-disc pl-5 mt-1">
                 <li>backend/app/utils/auth.py</li>
                 <li>frontend/lib/auth-context.tsx</li>

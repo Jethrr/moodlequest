@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
         console.log("Successfully retrieved user information");
         const moodleUser = userData[0];
-        console.log("Moodle user data:", moodleUser);
+        // console.log("Moodle user data:", moodleUser);
 
         // Step 1: Get user's enrolled courses
         let detectedRole = "student";
@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
                 token: token,
                 privateToken: tokenData.privatetoken || "",
                 role: detectedRole, // include the detected role
+                profileImageUrl: moodleUser.profileimageurl || "", // include profile image
               }),
               signal: controller.signal,
             }
@@ -210,6 +211,27 @@ export async function POST(request: NextRequest) {
             storageError
           );
           // Continue with login process even if backend storage fails
+        }
+
+        if (detectedRole === "student") {
+          try {
+            await fetch(`${API_BASE_URL}/activity-log/login`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify({
+                user_id: finalUserData.moodleId,
+                action_type: "login",
+                action_details: { method: "moodle" },
+                ip_address: request.headers.get("x-forwarded-for") || null,
+                user_agent: request.headers.get("user-agent") || null,
+              }),
+            });
+          } catch (logError) {
+            console.error("Failed to log login activity:", logError);
+          }
         }
 
         // --- SYNC ENROLLMENTS TO BACKEND ---

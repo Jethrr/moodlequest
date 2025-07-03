@@ -15,6 +15,7 @@ from app.schemas.auth import (
     StoreUserRequest
 )
 from app.services.moodle import MoodleService
+from app.services.activity_log_service import log_activity
 from app.utils.auth import (
     get_password_hash, 
     create_access_token, 
@@ -43,14 +44,13 @@ CORS_HEADERS = {
 }
 
 
-def sync_user_from_moodle(user: User, moodle_user: dict) -> None:
+def sync_user_from_moodle(user: User, moodle_user: dict, db: Session = None) -> None:
     """
     Synchronize user data from Moodle to our database.
     
     Args:
         user: User model to update
-        moodle_user: Moodle user data dictionary
-    """
+        moodle_user: Moodle user data dictionary    """
     # Update basic user information
     if "id" in moodle_user:
         user.moodle_user_id = int(moodle_user["id"])
@@ -60,6 +60,10 @@ def sync_user_from_moodle(user: User, moodle_user: dict) -> None:
         user.first_name = moodle_user["firstname"]
     if "lastname" in moodle_user:
         user.last_name = moodle_user["lastname"]
+    if "profileimageurl" in moodle_user:
+        user.profile_image_url = moodle_user["profileimageurl"]
+    if "profileimageurl" in moodle_user:
+        user.profile_image_url = moodle_user["profileimageurl"]
     
     # Update role based on Moodle roles
     roles = moodle_user.get("roles", [])
@@ -100,8 +104,17 @@ def sync_user_from_moodle(user: User, moodle_user: dict) -> None:
         user.role = "teacher"
     else:
         user.role = "student"
-    
     logger.info(f"Synchronized user {user.username} with Moodle data, role: {user.role}")
+    # Log login activity for students if db is provided
+    if db is not None and user.role == "student":
+        log_activity(
+            db=db,
+            user_id=user.id,
+            action_type="login",
+            action_details={"method": "moodle_sync"},
+            related_entity_type="user",
+            related_entity_id=user.id
+        )
     
 
 @router.options("/moodle/login", status_code=200)
@@ -223,7 +236,7 @@ async def moodle_login(
                 else:
                     # Update user info with the latest from Moodle
                     moodle_user = user_info_result["user"]
-                    sync_user_from_moodle(user, moodle_user)
+                    sync_user_from_moodle(user, moodle_user, db)
                     db.commit()
                     
                     # Generate JWT tokens for our API
@@ -309,7 +322,7 @@ async def moodle_login(
         if user:
             # Update existing user with new token and info
             user.user_token = token_result.token
-            sync_user_from_moodle(user, moodle_user)
+            sync_user_from_moodle(user, moodle_user, db)
         else:
             # Create new user with all Moodle data
             role = "student"  # Default role
@@ -390,6 +403,17 @@ async def moodle_login(
             success=True,
             token=token_result.token,
             user=user_response
+        )
+    
+    # After successful login (dev or real), log activity
+    if user:
+        log_activity(
+            db=db,
+            user_id=user.id,
+            action_type="login",
+            action_details={"method": "moodle"},
+            related_entity_type="user",
+            related_entity_id=user.id
         )
 
 
@@ -490,7 +514,7 @@ async def read_users_me(
                     if user_info_result["success"]:
                         # Update user with latest Moodle data
                         moodle_user = user_info_result["user"]
-                        sync_user_from_moodle(current_user, moodle_user)
+                        sync_user_from_moodle(current_user, moodle_user, db)
                         db.commit()
                         logger.info(f"Refreshed user data for {current_user.username} from /me endpoint")
         except Exception as e:
@@ -569,7 +593,7 @@ async def refresh_moodle_token(
             if user_info_result["success"]:
                 # Update user with latest Moodle data
                 moodle_user = user_info_result["user"]
-                sync_user_from_moodle(current_user, moodle_user)
+                sync_user_from_moodle(current_user, moodle_user, db)
                 db.commit()
                 logger.info(f"Refreshed user data for {current_user.username} from Moodle")
             
@@ -619,7 +643,6 @@ async def store_moodle_user(
     try:
         # Check if user already exists by Moodle ID
         user = db.query(User).filter(User.moodle_user_id == user_data.moodleId).first()
-        
         if not user:
             # Also check by username
             user = db.query(User).filter(User.username == user_data.username).first()
@@ -633,6 +656,10 @@ async def store_moodle_user(
             user.moodle_user_id = user_data.moodleId
             user.user_token = user_data.token
             user.role = user_data.role or "student"  # Default to student if no role provided
+            
+            # Update profile image if provided
+            if user_data.profileImageUrl:
+                user.profile_image_url = user_data.profileImageUrl
             
             # Update last login time
             user.last_login = datetime.utcnow()
@@ -648,6 +675,7 @@ async def store_moodle_user(
                 moodle_user_id=user_data.moodleId,
                 user_token=user_data.token,
                 role=user_data.role,  # Default role
+                profile_image_url=user_data.profileImageUrl,  # Set profile image
                 is_active=True,
                 password_hash="moodle_user",  # Placeholder as we use Moodle auth
                 created_at=datetime.utcnow()  # Explicitly set creation time
@@ -669,8 +697,7 @@ async def store_moodle_user(
         refresh_token = create_refresh_token(
             data={"sub": user.username}
         )
-        
-        # Store token
+          # Store token
         store_token(
             db=db,
             token=access_token,
@@ -689,6 +716,7 @@ async def store_moodle_user(
             last_name=user.last_name,
             is_active=user.is_active,
             moodle_user_id=user.moodle_user_id,
+            profile_image_url=user.profile_image_url,
             created_at=user.created_at or datetime.utcnow()
         )
         
@@ -866,7 +894,8 @@ async def get_activities(
     """
     Fetch all available activities (assignments, quizzes, lessons, forums, etc.) from Moodle using core_course_get_contents.
     Each activity will include an 'is_assigned' boolean indicating if it is already tied to a quest.
-    This allows the frontend to filter for assigned, unassigned, or all activities.
+    Activities are categorized into 'Active' (not yet due) and 'Due/Overdue' (past due date) sections.
+    This allows the frontend to filter for assigned, unassigned, or all activities with clear categorization.
     """
     import requests
     token = request.cookies.get("moodleToken")
@@ -919,12 +948,29 @@ async def get_activities(
     from app.models.quest import Quest
     assigned_ids = set(row[0] for row in db.query(Quest.moodle_activity_id).filter(Quest.moodle_activity_id != None).all())
 
+    # Initialize activity lists
     activities = []
     assignments = []
     quizzes = []
     lessons = []
     forums = []
     others = []
+    
+    # Initialize categorized lists for active vs due activities
+    active_activities = []
+    due_activities = []
+    
+    # Get current timestamp for comparison
+    from datetime import datetime
+    current_timestamp = int(datetime.now().timestamp())
+
+    # Categorized activities
+    active_activities = []
+    due_activities = []
+
+    # Get current timestamp for comparison
+    from datetime import datetime
+    current_timestamp = datetime.utcnow().timestamp()
 
     for course_id in course_id_list:
         params = {
@@ -949,6 +995,32 @@ async def get_activities(
             if not isinstance(section, dict):
                 continue
             for mod in section.get("modules", []):
+                # Extract due date from various sources
+                due_timestamp = None
+                is_overdue = False
+                
+                # Check for due date in dates array
+                dates = mod.get("dates", [])
+                for date_info in dates:
+                    if date_info.get("dataid") == "duedate":
+                        due_timestamp = date_info.get("timestamp")
+                        break
+                
+                # Check for due date in customdata (JSON string)
+                if not due_timestamp:
+                    customdata = mod.get("customdata", "")
+                    if customdata:
+                        try:
+                            import json
+                            data = json.loads(customdata)
+                            due_timestamp = data.get("duedate")
+                        except:
+                            pass
+                
+                # Determine if activity is overdue
+                if due_timestamp:
+                    is_overdue = current_timestamp >= due_timestamp
+                
                 activity = {
                     "id": mod.get("id"),
                     "name": mod.get("name"),
@@ -958,9 +1030,24 @@ async def get_activities(
                     "description": mod.get("description", ""),
                     "type": mod.get("modname"),
                     "is_assigned": mod.get("id") in assigned_ids,
+                    "due_timestamp": due_timestamp if due_timestamp else 0,
+                    "is_overdue": is_overdue,
                     "raw": mod
                 }
+                
                 activities.append(activity)
+                
+                # Categorize by due status (only for assigned activities with due dates)
+                if activity["is_assigned"] and due_timestamp:
+                    if is_overdue:
+                        due_activities.append(activity)
+                    else:
+                        active_activities.append(activity)
+                elif activity["is_assigned"] and not due_timestamp:
+                    # Activities without due dates go to active by default
+                    active_activities.append(activity)
+                
+                # Categorize by type
                 if mod.get("modname") == "assign":
                     assignments.append(activity)
                 elif mod.get("modname") == "quiz":
@@ -972,15 +1059,25 @@ async def get_activities(
                 else:
                     others.append(activity)
 
+    # Sort due activities by due date (most overdue first)
+    due_activities.sort(key=lambda x: x.get("due_timestamp", 0))
+    
+    # Sort active activities by due date (earliest due first, but activities without due dates go last)
+    active_activities.sort(key=lambda x: x.get("due_timestamp", 0) if x.get("due_timestamp", 0) > 0 else float('inf'))
+
     return {
         "success": True,
+        "active_activities": active_activities,
+        "due_activities": due_activities,
         "assignments": assignments,
         "quizzes": quizzes,
         "lessons": lessons,
         "forums": forums,
         "others": others,
         "activities": activities,
-        "count": len(activities)
+        "count": len(activities),
+        "active_count": len(active_activities),
+        "due_count": len(due_activities)
     }
 
 

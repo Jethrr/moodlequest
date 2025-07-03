@@ -29,7 +29,7 @@ class User(Base):
             name='users_role_check'
         ),
     )
-    
-    # Add relationships
+      # Add relationships
     tokens = relationship("Token", back_populates="user", cascade="all, delete-orphan")
-    enrollments = relationship("CourseEnrollment", back_populates="user", cascade="all, delete-orphan", lazy="dynamic") 
+    enrollments = relationship("CourseEnrollment", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
+    earned_badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan", foreign_keys="UserBadge.user_id")

@@ -1,8 +1,14 @@
-"use client"
+"use client";
 
-import { Leaderboard } from "./leaderboard"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Leaderboard } from "./leaderboard";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /**
  * Example component showing different leaderboard configurations
@@ -25,31 +31,37 @@ export function LeaderboardExamples() {
               <TabsTrigger value="course">Course Leaderboard</TabsTrigger>
               <TabsTrigger value="multiple">Multiple Courses</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="global" className="space-y-4">
               <div>
-                <h3 className="text-lg font-semibold mb-2">Global Leaderboard</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  Global Leaderboard
+                </h3>
                 <p className="text-muted-foreground mb-4">
                   Shows top students across all courses in the platform
                 </p>
                 <Leaderboard />
               </div>
             </TabsContent>
-            
+
             <TabsContent value="course" className="space-y-4">
               <div>
-                <h3 className="text-lg font-semibold mb-2">Course-Specific Leaderboard</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  Course-Specific Leaderboard
+                </h3>
                 <p className="text-muted-foreground mb-4">
                   Shows top students for a specific course (course ID: 1)
                 </p>
                 <Leaderboard courseId={1} />
               </div>
             </TabsContent>
-            
+
             <TabsContent value="multiple" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Mathematics Course</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Mathematics Course
+                  </h3>
                   <Leaderboard courseId={1} className="h-fit" />
                 </div>
                 <div>
@@ -62,7 +74,7 @@ export function LeaderboardExamples() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 /**
@@ -70,7 +82,7 @@ export function LeaderboardExamples() {
  * Use this for the main dashboard
  */
 export function GlobalLeaderboard() {
-  return <Leaderboard />
+  return <Leaderboard />;
 }
 
 /**
@@ -78,7 +90,7 @@ export function GlobalLeaderboard() {
  * Use this within course pages
  */
 export function CourseLeaderboard({ courseId }: { courseId: number }) {
-  return <Leaderboard courseId={courseId} />
+  return <Leaderboard courseId={courseId} />;
 }
 
 /**
@@ -91,15 +103,12 @@ export function CompactLeaderboard({ courseId }: { courseId?: number }) {
       <CardHeader className="pb-4">
         <CardTitle className="text-lg">Top Players</CardTitle>
         <CardDescription>
-          {courseId ? 'Course leaderboard' : 'Global rankings'}
+          {courseId ? "Course leaderboard" : "Global rankings"}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Leaderboard 
-          courseId={courseId} 
-          className="border-none shadow-none"
-        />
+        <Leaderboard courseId={courseId} className="border-none shadow-none" />
       </CardContent>
     </Card>
-  )
-} 
+  );
+}

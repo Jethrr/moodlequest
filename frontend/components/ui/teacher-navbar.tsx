@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
@@ -15,75 +15,75 @@ import {
   Menu,
   ChevronRight,
   Sun,
-  Moon
-} from "lucide-react"
-import { ModeToggle } from "@/components/ui/mode-toggle"
-import { LogoutButton } from "@/components/logout-button"
-import { useAuth } from "@/lib/auth-context"
+  Moon,
+} from "lucide-react";
+import { ModeToggle } from "@/components/ui/mode-toggle";
+import { LogoutButton } from "@/components/logout-button";
+import { useAuth } from "@/lib/auth-context";
 
 const teacherRoutes = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard/teacher",
-    color: "text-purple-500"
+    color: "text-purple-500",
   },
   {
     label: "Students",
     icon: Users,
     href: "/teacher/students",
-    color: "text-blue-500"
+    color: "text-blue-500",
   },
-  {
-    label: "Courses",
-    icon: BookOpen,
-    href: "/teacher/courses",
-    color: "text-emerald-500"
-  },
-  {
-    label: "Create Quest",
-    icon: PlusCircle,
-    href: "/teacher/quests/create",
-    color: "text-orange-500"
-  },
+  // {
+  //   label: "Courses",
+  //   icon: BookOpen,
+  //   href: "/teacher/courses",
+  //   color: "text-emerald-500"
+  // },
+  // {
+  //   label: "Create Quest",
+  //   icon: PlusCircle,
+  //   href: "/teacher/quests/create",
+  //   color: "text-orange-500"
+  // },
   {
     label: "Achievements",
     icon: Award,
     href: "/teacher/achievements",
-    color: "text-amber-500"
+    color: "text-amber-500",
   },
   {
     label: "Profile",
     icon: UserCircle,
     href: "/teacher/profile",
-    color: "text-sky-500"
-  }
-]
+    color: "text-sky-500",
+  },
+];
 
 export function TeacherNavbar() {
-  const pathname = usePathname()
-  const [isExpanded, setIsExpanded] = useState(true)
-  const { user } = useAuth()
+  const pathname = usePathname();
+  const [isExpanded, setIsExpanded] = useState(true);
+  const { user } = useAuth();
 
   // For smaller screens, automatically collapse the navbar to save space
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
-        setIsExpanded(false)
+        setIsExpanded(false);
       } else {
-        setIsExpanded(true)
+        setIsExpanded(true);
       }
-    }
-    
+    };
+
     // Set initial state based on screen size
-    handleResize()
-    
+    handleResize();
+
     // Add event listener
-    window.addEventListener('resize', handleResize)
-    
+    window.addEventListener("resize", handleResize);
+
     // Cleanup
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-6 z-50 pointer-events-none">
@@ -93,23 +93,27 @@ export function TeacherNavbar() {
         transition={{ duration: 0.3 }}
         className="pointer-events-auto"
       >
-        <div className={cn(
-          "flex items-center gap-2 bg-background/95 backdrop-blur-lg rounded-full p-2 shadow-xl border",
-          "transition-all duration-300 ease-in-out",
-          isExpanded ? "pr-6" : "hover:pr-6"
-        )}>
+        <div
+          className={cn(
+            "flex items-center gap-2 bg-background/95 backdrop-blur-lg rounded-full p-2 shadow-xl border",
+            "transition-all duration-300 ease-in-out",
+            isExpanded ? "pr-6" : "hover:pr-6"
+          )}
+        >
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="p-2 hover:bg-accent rounded-full transition"
-            aria-label={isExpanded ? "Collapse navigation" : "Expand navigation"}
+            aria-label={
+              isExpanded ? "Collapse navigation" : "Expand navigation"
+            }
           >
             <Menu className="h-5 w-5" />
           </button>
 
           <nav className="flex items-center gap-1">
             {teacherRoutes.map((route) => {
-              const isActive = pathname === route.href
-              
+              const isActive = pathname === route.href;
+
               return (
                 <Link
                   key={route.href}
@@ -120,12 +124,14 @@ export function TeacherNavbar() {
                     isActive && "bg-accent"
                   )}
                 >
-                  <route.icon className={cn(
-                    "h-5 w-5 transition-colors",
-                    isActive ? route.color : "text-muted-foreground",
-                    "group-hover:text-foreground"
-                  )} />
-                  
+                  <route.icon
+                    className={cn(
+                      "h-5 w-5 transition-colors",
+                      isActive ? route.color : "text-muted-foreground",
+                      "group-hover:text-foreground"
+                    )}
+                  />
+
                   {isExpanded && (
                     <motion.span
                       initial={{ opacity: 0, width: 0 }}
@@ -148,21 +154,21 @@ export function TeacherNavbar() {
                       transition={{
                         type: "spring",
                         stiffness: 350,
-                        damping: 30
+                        damping: 30,
                       }}
                     />
                   )}
                 </Link>
-              )
+              );
             })}
 
             {user && (
               <>
                 <div className="ml-2 pl-2 border-l border-muted">
-                  <LogoutButton 
-                    variant="ghost" 
-                    size="sm" 
-                    showIcon={isExpanded} 
+                  <LogoutButton
+                    variant="ghost"
+                    size="sm"
+                    showIcon={isExpanded}
                     className={cn(
                       "rounded-full transition-all duration-300",
                       "hover:bg-accent group flex items-center",
@@ -183,5 +189,5 @@ export function TeacherNavbar() {
         </div>
       </motion.div>
     </div>
-  )
-} 
+  );
+}

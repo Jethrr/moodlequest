@@ -1,13 +1,17 @@
 import os
 import logging
+import urllib3
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
-from app.routes import quests, auth, enrollment, webhooks, leaderboard
+from app.routes import quests, auth, enrollment, webhooks, leaderboard, notifications
 from app.database.connection import engine, Base, SessionLocal
 from app.database.seed import seed_initial_data
 from app.models.auth import MoodleConfig
+
+# Suppress SSL warnings for localhost development
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ============================================================================
 # ⚠️ DEVELOPMENT WARNING: Authentication is currently DISABLED
@@ -50,6 +54,8 @@ app = FastAPI(title="MoodleQuest API")
 origins = [
     "http://localhost:3000",  # Next.js default
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://localhost:5173",  # Vite default
@@ -89,11 +95,19 @@ async def errors_handling(request: Request, call_next):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
+from app.routes import daily_quests
+from app.routes.badges import router as badges_router 
+from app.routes.activity_log import router as activity_log_router
+
 app.include_router(quests.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(enrollment.router, prefix="/api")
 app.include_router(webhooks.router, prefix="/api")
 app.include_router(leaderboard.router, prefix="/api")
+app.include_router(daily_quests.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
+app.include_router(badges_router, prefix="/api")
+app.include_router(activity_log_router, prefix="/api")
 
 @app.get("/")
 async def root():
@@ -102,4 +116,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting MoodleQuest API server")
-    uvicorn.run(app, host="0.0.0.0", port=8002) 
+    uvicorn.run(app, host="0.0.0.0", port=8002)

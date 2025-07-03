@@ -66,7 +66,6 @@ export function QuestBoard() {
   useEffect(() => {
     async function fetchQuests() {
       if (!user) return;
-
       setIsLoading(true);
       try {
         // Fetch quests for the logged-in user with completion status
@@ -75,23 +74,58 @@ export function QuestBoard() {
           "GET"
         );
 
-        // Update quest statistics
-        setQuestStats({
-          total: response.total_quests,
-          completed: response.completed_quests,
-          incomplete: response.incomplete_quests,
-          completionRate: response.completion_rate,
-        });
+        if (response.success) {
+          // Update quest statistics
+          setQuestStats({
+            total: response.total_quests,
+            completed: response.completed_quests,
+            incomplete: response.incomplete_quests,
+            completionRate: response.completion_rate,
+          });
 
-        // Transform and combine completed and incomplete quests
-        const allQuests = [
-          ...response.quests.completed.map((q: any) => transformQuest(q, true)),
-          ...response.quests.incomplete.map((q: any) =>
-            transformQuest(q, false)
-          ),
-        ];
+          // Combine completed and incomplete quests into a single array
+          const allQuests = [
+            ...response.quests.completed,
+            ...response.quests.incomplete,
+          ];
 
-        setQuests(allQuests);
+          // Map the API response to the Quest interface
+          setQuests(
+            allQuests.map((q: any) => ({
+              id: q.quest_id?.toString() || "",
+              title: q.title,
+              description: q.description,
+              xp: q.exp_reward,
+              progress: q.progress_percent || 0,
+              difficulty:
+                q.difficulty_level === 1
+                  ? "Easy"
+                  : q.difficulty_level === 2
+                  ? "Medium"
+                  : "Hard",
+              category: q.quest_type || "",
+              deadline: q.end_date
+                ? new Date(q.end_date).toLocaleDateString()
+                : "",
+              status: q.status as "not-started" | "in-progress" | "completed",
+              course_title: q.course_title,
+              validation_criteria: q.validation_criteria,
+              is_completed: q.is_completed,
+              started_at: q.started_at,
+              completed_at: q.completed_at,
+              validated_at: q.validated_at,
+              validation_notes: q.validation_notes,
+            }))
+          );
+        } else {
+          setQuests([]);
+          setQuestStats({
+            total: 0,
+            completed: 0,
+            incomplete: 0,
+            completionRate: 0,
+          });
+        }
       } catch (err) {
         console.error("Failed to fetch quests for user", err);
         setQuests([]);
@@ -105,39 +139,6 @@ export function QuestBoard() {
         setIsLoading(false);
       }
     }
-
-    // Helper function to transform quest data
-    function transformQuest(q: any, isCompleted: boolean): Quest {
-      return {
-        id: q.quest_id?.toString() || "",
-        title: q.title,
-        description: q.description,
-        xp: q.exp_reward || 0,
-        progress: q.progress_percent || 0,
-        difficulty:
-          q.difficulty_level === 1
-            ? "Easy"
-            : q.difficulty_level === 2
-            ? "Medium"
-            : "Hard",
-        category: q.quest_type || "",
-        deadline: q.end_date ? new Date(q.end_date).toLocaleDateString() : "",
-        status:
-          q.status === "completed"
-            ? "completed"
-            : q.status === "in_progress" || q.progress_percent > 0
-            ? "in-progress"
-            : "not-started",
-        course_title: q.course_title,
-        validation_criteria: q.validation_criteria,
-        is_completed: isCompleted,
-        started_at: q.started_at,
-        completed_at: q.completed_at,
-        validated_at: q.validated_at,
-        validation_notes: q.validation_notes,
-      };
-    }
-
     fetchQuests();
   }, [user]);
 
@@ -197,17 +198,24 @@ export function QuestBoard() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col gap-2"
       >
-        <h2 className="text-3xl font-bold tracking-tight">Quest Board</h2>
-        <p className="text-muted-foreground">
-          Complete quests to earn XP and level up your learning journey.
-        </p>
-        {questStats.total > 0 && (
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>Total: {questStats.total}</span>
-            <span>Completed: {questStats.completed}</span>
-            <span>Completion Rate: {questStats.completionRate}%</span>
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Quest Board</h2>
+            <p className="text-muted-foreground">
+              Complete quests to earn XP and level up your learning journey.
+            </p>
           </div>
-        )}
+          {questStats.total > 0 && (
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary">
+                {questStats.completionRate}%
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {questStats.completed}/{questStats.total} completed
+              </div>
+            </div>
+          )}
+        </div>
       </motion.div>
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
         <motion.div variants={tabVariants} initial="hidden" animate="visible">
@@ -218,11 +226,7 @@ export function QuestBoard() {
             <TabsTrigger value="not-started">
               Not Started{" "}
               {questStats.total > 0 &&
-                `(${
-                  questStats.total -
-                  questStats.completed -
-                  quests.filter((q) => q.status === "in-progress").length
-                })`}
+                `(${quests.filter((q) => q.status === "not-started").length})`}
             </TabsTrigger>
             <TabsTrigger value="in-progress">
               In Progress{" "}
@@ -230,36 +234,70 @@ export function QuestBoard() {
                 `(${quests.filter((q) => q.status === "in-progress").length})`}
             </TabsTrigger>
             <TabsTrigger value="completed">
-              Completed {questStats.total > 0 && `(${questStats.completed})`}
+              Completed{" "}
+              {questStats.completed > 0 && `(${questStats.completed})`}
             </TabsTrigger>
           </TabsList>
-        </motion.div>
-
+        </motion.div>{" "}
         <TabsContent value={activeTab} className="mt-6">
-          {isLoading ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="h-[300px] bg-muted animate-pulse rounded-lg"
-                />
-              ))}
-            </div>
-          ) : filteredQuests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="text-muted-foreground text-lg font-medium">
-                {activeTab === "all"
-                  ? "No quests available"
-                  : `No ${activeTab.replace("-", " ")} quests`}
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                {activeTab === "all"
-                  ? "Check back later for new quests from your enrolled courses."
-                  : "Try switching to another tab to see more quests."}
-              </p>{" "}
-            </div>
-          ) : (
-            <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="h-[300px] animate-pulse">
+                    <CardHeader>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded"></div>
+                        <div className="h-2 bg-gray-200 rounded"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </motion.div>
+            ) : filteredQuests.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-12"
+              >
+                <div className="mb-4">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {activeTab === "all"
+                    ? "No quests available"
+                    : `No ${activeTab.replace("-", " ")} quests`}
+                </h3>
+                <p className="text-gray-500">
+                  {activeTab === "all"
+                    ? "Check back later for new quests to complete."
+                    : `You don't have any ${activeTab.replace(
+                        "-",
+                        " "
+                      )} quests at the moment.`}
+                </p>
+              </motion.div>
+            ) : (
               <motion.div
                 key={activeTab}
                 variants={containerVariants}
@@ -268,74 +306,82 @@ export function QuestBoard() {
                 exit={{ opacity: 0 }}
                 className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
               >
+                {" "}
                 {filteredQuests.map((quest) => (
                   <motion.div
                     key={quest.id}
                     variants={cardVariants}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                  >                    <Card
+                  >
+                    <Card
                       className={`overflow-hidden h-[300px] flex flex-col relative ${
-                        quest.is_completed
+                        quest.status === "completed"
                           ? "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20"
                           : quest.status === "in-progress"
-                          ? "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20"
-                          : "border-border"
+                          ? "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20"
+                          : "border-gray-200"
                       }`}
-                    >                      <CardHeader className="pb-2">
+                    >
+                      {/* Status indicator */}
+                      <div
+                        className={`absolute top-2 right-2 w-3 h-3 rounded-full ${
+                          quest.status === "completed"
+                            ? "bg-green-500"
+                            : quest.status === "in-progress"
+                            ? "bg-blue-500"
+                            : "bg-gray-300"
+                        }`}
+                      />
+
+                      <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
                           <div className="w-full pr-2">
+                            {" "}
                             <CardTitle
-                              className={`text-lg font-bold hover:text-primary break-words ${
-                                quest.is_completed
-                                  ? "text-green-700 dark:text-green-300"
+                              className={`text-lg font-bold  break-words ${
+                                quest.status === "completed"
+                                  ? "text-green-700"
                                   : ""
                               }`}
                             >
                               {quest.title}
+                              {quest.status === "completed" && (
+                                <svg
+                                  className="inline-block ml-2 h-4 w-4 text-green-600"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  {/* <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  /> */}
+                                </svg>
+                              )}
                             </CardTitle>
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <motion.div whileHover={{ scale: 1.1 }}>
-                              <Badge
-                                variant={
-                                  quest.difficulty === "Easy"
-                                    ? "outline"
-                                    : quest.difficulty === "Medium"
-                                    ? "secondary"
-                                    : "destructive"
-                                }
-                              >
-                                {quest.difficulty}
-                              </Badge>
-                            </motion.div>
-                          </div>
-                        </div>
+                          <motion.div whileHover={{ scale: 1.1 }}>
+                            <Badge
+                              variant={
+                                quest.difficulty === "Easy"
+                                  ? "outline"
+                                  : quest.difficulty === "Medium"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {quest.difficulty}
+                            </Badge>
+                          </motion.div>
+                        </div>{" "}
                         <CardDescription className="line-clamp-2 h-[40px] mt-1">
                           {quest.description}
                         </CardDescription>
-                        {quest.course_title && (
-                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                            </svg>
-                            {quest.course_title}
-                          </div>
-                        )}
-                      </CardHeader>{" "}
+                      </CardHeader>
                       <CardContent className="pb-2 flex-grow">
                         <div className="space-y-2">
+                          {" "}
                           <div className="flex justify-between text-sm">
                             <motion.div
                               className="flex items-center"
@@ -361,146 +407,84 @@ export function QuestBoard() {
                               {quest.deadline}
                             </span>
                           </div>
+                          {/* Status badge */}
+                          <div className="flex justify-between items-center">
+                            {/* <Badge
+                              variant={
+                                quest.status === "completed"
+                                  ? "default"
+                                  : quest.status === "in-progress"
+                                  ? "secondary"
+                                  : "outline"
+                              }
+                              className={`text-xs ${
+                                quest.status === "completed"
+                                  ? "bg-green-100 text-green-800 border-green-200"
+                                  : quest.status === "in-progress"
+                                  ? "bg-blue-100 text-blue-800 border-blue-200"
+                                  : "bg-gray-100 text-gray-800 border-gray-200"
+                              }`}
+                            >
+                              {quest.status === "not-started"
+                                ? "Not Started"
+                                : quest.status === "in-progress"
+                                ? "In Progress"
+                                : "Completed"}
+                            </Badge> */}
+                            {quest.course_title && (
+                              <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                                {quest.course_title}
+                              </span>
+                            )}
+                          </div>
                           <motion.div
                             initial={{ scaleX: 0 }}
                             animate={{ scaleX: quest.progress / 100 }}
                             transition={{ duration: 0.8, ease: "easeOut" }}
-                            className="relative"
                           >
                             <Progress
                               value={quest.progress}
                               className={`h-2 ${
-                                quest.is_completed
-                                  ? "[&>div]:bg-green-500"
-                                  : quest.status === "in-progress"
-                                  ? "[&>div]:bg-blue-500"
-                                  : "[&>div]:bg-gray-400"
+                                quest.status === "completed"
+                                  ? "bg-green-100"
+                                  : ""
                               }`}
                             />
-                          </motion.div>
-                          {quest.is_completed && quest.completed_at && (
-                            <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 16 14" />
-                              </svg>
-                              Completed:{" "}
-                              {new Date(
-                                quest.completed_at
-                              ).toLocaleDateString()}
-                            </div>
-                          )}
-                          {quest.status === "in-progress" &&
-                            quest.started_at && (
-                              <div className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <polyline points="12 6 12 12 16 14" />
-                                </svg>
-                                Started:{" "}
-                                {new Date(
-                                  quest.started_at
-                                ).toLocaleDateString()}
-                              </div>
+                            {quest.progress > 0 && (
+                              <span className="text-xs text-muted-foreground mt-1 block">
+                                {quest.progress}% complete
+                              </span>
                             )}
+                          </motion.div>
                         </div>
-                      </CardContent>{" "}
+                      </CardContent>
                       <CardFooter className="mt-auto pt-2">
                         <motion.div
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           className="w-full"
                         >
+                          {" "}
                           <Button
                             variant={
                               quest.status === "completed"
                                 ? "outline"
+                                : quest.status === "in-progress"
+                                ? "secondary"
                                 : "default"
                             }
                             className={`w-full ${
-                              quest.is_completed
-                                ? "border-green-500 text-green-700 hover:bg-green-50 dark:text-green-300 dark:hover:bg-green-950/20"
+                              quest.status === "completed"
+                                ? "border-green-300 text-green-700 hover:bg-green-50"
                                 : quest.status === "in-progress"
-                                ? "bg-blue-500 hover:bg-blue-600 text-white"
+                                ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
                                 : ""
                             }`}
                             onClick={() => openQuestModal(quest)}
                           >
-                            {quest.is_completed ? (
-                              <div className="flex items-center gap-2">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                                View Completed Quest
-                              </div>
-                            ) : quest.status === "in-progress" ? (
-                              <div className="flex items-center gap-2">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <circle cx="12" cy="12" r="1" />
-                                  <circle cx="19" cy="12" r="1" />
-                                  <circle cx="5" cy="12" r="1" />
-                                </svg>
-                                Continue Quest
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <polygon points="10 8 16 12 10 16 10 8" />
-                                </svg>
-                                Start Quest
-                              </div>
-                            )}
+                            {quest.status === "in-progress"
+                              ? "Continue Quest"
+                              : "View Quest"}
                           </Button>
                         </motion.div>
                       </CardFooter>
@@ -508,8 +492,8 @@ export function QuestBoard() {
                   </motion.div>
                 ))}
               </motion.div>
-            </AnimatePresence>
-          )}
+            )}
+          </AnimatePresence>
         </TabsContent>
       </Tabs>
       {isModalOpen && selectedQuest && (
