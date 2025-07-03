@@ -85,47 +85,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadUserFromStorage = () => {
       try {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           // Check for user data in localStorage
-          let storedUser = localStorage.getItem("moodlequest_user")
-          
+          let storedUser = localStorage.getItem("moodlequest_user");
+
           // Fallback to old key for backward compatibility
           if (!storedUser) {
-            storedUser = localStorage.getItem("moodle_user")
+            storedUser = localStorage.getItem("moodle_user");
             // If found with old key, migrate to new key
             if (storedUser) {
-              localStorage.setItem("moodlequest_user", storedUser)
-              localStorage.removeItem("moodle_user")
+              localStorage.setItem("moodlequest_user", storedUser);
+              localStorage.removeItem("moodle_user");
             }
           }
-          
+
           if (storedUser) {
-            const userData = JSON.parse(storedUser)
-            console.log("Loaded user from storage:", userData)
+            const userData = JSON.parse(storedUser);
+            console.log("Loaded user from storage:", userData);
             // Set the token in the API client
-            apiClient.setToken(userData.token)
-            
+            apiClient.setToken(userData.token);
+
             // Use the stored user data directly
-            setUser(userData)
+            setUser(userData);
           } else {
-            console.log("No user found in storage")
+            console.log("No user found in storage");
           }
         }
       } catch (error) {
-        console.error("Error loading user from storage:", error)
-        localStorage.removeItem("moodlequest_user")
-        localStorage.removeItem("moodle_user")
+        console.error("Error loading user from storage:", error);
+        localStorage.removeItem("moodlequest_user");
+        localStorage.removeItem("moodle_user");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
     if (isMounted) {
-      loadUserFromStorage()
+      loadUserFromStorage();
     } else {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [isMounted])
+  }, [isMounted]);
 
   // Update token in API client whenever user changes
   useEffect(() => {
@@ -139,14 +139,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Redirect unauthenticated users away from protected routes
   useEffect(() => {
     if (!isLoading && isMounted) {
-      const publicRoutes = ["/signin", "/register", "/", "/learn-more", "/faq", "/about"]
-      const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route))
-      
+      const publicRoutes = [
+        "/signin",
+        "/register",
+        "/",
+        "/learn-more",
+        "/faq",
+        "/about",
+      ];
+      const isPublicRoute = publicRoutes.some((route) =>
+        pathname?.startsWith(route)
+      );
+
       if (!user && !isPublicRoute) {
-        router.push("/signin")
+        router.push("/signin");
       }
     }
-  }, [user, isLoading, isMounted, pathname, router])
+  }, [user, isLoading, isMounted, pathname, router]);
 
   const login = async (username: string, password: string) => {
     try {
@@ -167,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           xp: result.user.xp,
           badges: result.user.badges,
         };
-        console.log("Hello");
+        // console.log("Hello");
         // If we have a token, try to get extended user info from Moodle
         if (userData.token) {
           try {

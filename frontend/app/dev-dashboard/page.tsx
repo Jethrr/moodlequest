@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SSETestingPanel } from "@/components/dev/sse-testing-panel";
 import { QuestDemoControls } from "@/components/dashboard/quest-demo-controls";
+import { BadgeSeederPanel } from "@/components/dev/badge-seeder-panel";
+import { BadgeCheckerPanel } from "@/components/dev/badge-checker-panel";
 import { useAuth } from "@/lib/auth-context";
 import {
   ChevronRight,
@@ -175,6 +177,22 @@ export default function DevDashboard() {
                 console.log("Demo data created");
               }}
             />
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Badge System Management
+            </h3>
+            <BadgeSeederPanel />
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Badge Criteria Testing
+            </h3>
+            <BadgeCheckerPanel />
           </div>
 
           <div className="mb-6">

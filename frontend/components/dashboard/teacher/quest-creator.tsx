@@ -48,6 +48,8 @@ interface MoodleActivity {
   instance: number;
   is_assigned?: boolean;
   dates?: MoodleDate[]; // Activity dates (due dates, open/close dates, etc.)
+  due_timestamp?: number; // Due date timestamp from backend
+  is_overdue?: boolean; // Overdue status from backend
   raw?: any; // Raw Moodle data
 }
 
@@ -70,6 +72,16 @@ const stripHtmlTags = (html: string) => {
 
 export function QuestCreator() {
   const [activities, setActivities] = useState<MoodleActivity[]>([]);
+  const [activeActivities, setActiveActivities] = useState<MoodleActivity[]>(
+    []
+  );
+  const [dueActivities, setDueActivities] = useState<MoodleActivity[]>([]);
+  const [filteredActiveActivities, setFilteredActiveActivities] = useState<
+    MoodleActivity[]
+  >([]);
+  const [filteredDueActivities, setFilteredDueActivities] = useState<
+    MoodleActivity[]
+  >([]);
   const [filteredActivities, setFilteredActivities] = useState<
     MoodleActivity[]
   >([]);
@@ -78,6 +90,7 @@ export function QuestCreator() {
     useState<MoodleActivity | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
   const [filterAssigned, setFilterAssigned] = useState<string>("unassigned");
+  const [priorityView, setPriorityView] = useState<string>("all"); // New filter for priority view
   const [searchQuery, setSearchQuery] = useState("");
   const [courseMap, setCourseMap] = useState<{ [id: number]: string }>({});
   const { user } = useCurrentUser();
@@ -184,76 +197,49 @@ export function QuestCreator() {
           );
         };
 
-        // Process each type of activity
-        const assignmentActivities = (activitiesData.assignments || []).map(
-          (a: any) => ({
-            ...a,
-            type: normalizeActivityType(a.modname || a.type),
-            description: extractDescription(a),
-            is_assigned: a.is_assigned ?? false,
-            dates: a.raw?.dates || [],
-          })
+        // Process activities using the new categorized response
+        const processActivities = (activities: any[]) =>
+          activities.map((activity: any) => ({
+            ...activity,
+            type: normalizeActivityType(activity.modname || activity.type),
+            description: extractDescription(activity),
+            is_assigned: activity.is_assigned ?? false,
+            dates: activity.raw?.dates || [],
+          }));
+
+        // Get categorized activities from the new API response
+        const processedActiveActivities = processActivities(
+          activitiesData.active_activities || []
+        );
+        const processedDueActivities = processActivities(
+          activitiesData.due_activities || []
         );
 
-        const quizActivities = (activitiesData.quizzes || []).map((q: any) => ({
-          ...q,
-          type: normalizeActivityType(q.modname || q.type),
-          description: extractDescription(q),
-          is_assigned: q.is_assigned ?? false,
-          dates: q.raw?.dates || [],
-        }));
-
-        const lessonActivities = (activitiesData.lessons || []).map(
-          (l: any) => ({
-            ...l,
-            type: normalizeActivityType(l.modname || l.type),
-            description: extractDescription(l),
-            is_assigned: l.is_assigned ?? false,
-            dates: l.raw?.dates || [],
-          })
-        );
-
-        const forumActivities = (activitiesData.forums || []).map((f: any) => ({
-          ...f,
-          type: normalizeActivityType(f.modname || f.type),
-          description: extractDescription(f),
-          is_assigned: f.is_assigned ?? false,
-          dates: f.raw?.dates || [],
-        }));
-
-        const otherActivities = (activitiesData.others || []).map((o: any) => ({
-          ...o,
-          type: normalizeActivityType(o.modname || o.type),
-          description: extractDescription(o),
-          is_assigned: o.is_assigned ?? false,
-          dates: o.raw?.dates || [],
-        })); // Combine all activities
+        // Combine all activities for backward compatibility
         const allActivities = [
-          ...assignmentActivities,
-          ...quizActivities,
-          ...lessonActivities,
-          ...forumActivities,
-          ...otherActivities,
+          ...processedActiveActivities,
+          ...processedDueActivities,
+          ...(activitiesData.activities || [])
+            .filter(
+              (activity: any) => !activity.is_assigned // Include unassigned activities
+            )
+            .map((activity: any) => ({
+              ...activity,
+              type: normalizeActivityType(activity.modname || activity.type),
+              description: extractDescription(activity),
+              is_assigned: activity.is_assigned ?? false,
+              dates: activity.raw?.dates || [],
+            })),
         ];
 
-        // Log the processed activities for debugging
-        // console.log("Processed activities:", {
-        //   total: allActivities.length,
-        //   byType: allActivities.reduce((acc, curr) => {
-        //     acc[curr.type] = (acc[curr.type] || 0) + 1;
-        //     return acc;
-        //   }, {} as Record<string, number>),
-        // });
+        console.log("Processed categorized activities:", {
+          active: processedActiveActivities.length,
+          due: processedDueActivities.length,
+          total: allActivities.length,
+        });
 
-        // Log the processed activities for debugging
-        // console.log("Processed activities:", {
-        //   total: allActivities.length,
-        //   byType: allActivities.reduce((acc, curr) => {
-        //     acc[curr.type] = (acc[curr.type] || 0) + 1;
-        //     return acc;
-        //   }, {} as Record<string, number>),
-        // });
-
+        setActiveActivities(processedActiveActivities);
+        setDueActivities(processedDueActivities);
         setActivities(allActivities);
         setFilteredActivities(allActivities);
       } catch (error) {
@@ -268,43 +254,88 @@ export function QuestCreator() {
   }, []);
   // Apply filters when they change
   useEffect(() => {
-    // Log current filter state
+    // Apply filters to each category separately
+    const applyFilters = (activityList: MoodleActivity[]) => {
+      let result = [...activityList];
 
-    let result = [...activities];
+      // Filter by activity type
+      if (filterType !== "all") {
+        result = result.filter((activity) => activity.type === filterType);
+      }
 
-    // Log unique activity types in current dataset
-    const uniqueTypes = [...new Set(activities.map((a) => a.type))];
+      // Filter by assignment status
+      if (filterAssigned === "assigned") {
+        result = result.filter((activity) => activity.is_assigned);
+      } else if (filterAssigned === "unassigned") {
+        result = result.filter((activity) => !activity.is_assigned);
+      }
 
-    // Filter by activity type
+      // Filter by search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        result = result.filter(
+          (activity) =>
+            activity.name.toLowerCase().includes(query) ||
+            activity.description?.toLowerCase().includes(query) ||
+            activity.course.toString().toLowerCase().includes(query)
+        );
+      }
+
+      return result;
+    };
+
+    // Apply filters to categorized activities
+    let filteredActive = applyFilters(activeActivities);
+    let filteredDue = applyFilters(dueActivities);
+
+    // Apply priority view filter
+    if (priorityView === "active") {
+      filteredDue = [];
+    } else if (priorityView === "due") {
+      filteredActive = [];
+    }
+
+    // Update state with filtered activities
+    setFilteredActiveActivities(filteredActive);
+    setFilteredDueActivities(filteredDue);
+
+    // For backward compatibility, also update the legacy filteredActivities
+    let legacyResult = [...activities];
     if (filterType !== "all") {
-      result = result.filter((activity) => activity.type === filterType);
+      legacyResult = legacyResult.filter(
+        (activity) => activity.type === filterType
+      );
     }
-
-    // Filter by assignment status
     if (filterAssigned === "assigned") {
-      result = result.filter((activity) => activity.is_assigned);
+      legacyResult = legacyResult.filter((activity) => activity.is_assigned);
     } else if (filterAssigned === "unassigned") {
-      result = result.filter((activity) => !activity.is_assigned);
+      legacyResult = legacyResult.filter((activity) => !activity.is_assigned);
     }
-
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(
+      legacyResult = legacyResult.filter(
         (activity) =>
           activity.name.toLowerCase().includes(query) ||
           activity.description?.toLowerCase().includes(query) ||
           activity.course.toString().toLowerCase().includes(query)
       );
     }
+    setFilteredActivities(legacyResult);
 
-    // console.log("Final filtered activities:", {
-    //   count: result.length,
-    //   types: [...new Set(result.map((a) => a.type))],
-    // });
-
-    setFilteredActivities(result);
-  }, [filterType, filterAssigned, searchQuery, activities]);
+    console.log("Filtered activities:", {
+      active: filteredActive.length,
+      due: filteredDue.length,
+      priorityView,
+    });
+  }, [
+    filterType,
+    filterAssigned,
+    searchQuery,
+    priorityView,
+    activeActivities,
+    dueActivities,
+    activities,
+  ]);
 
   // Handle activity selection
   const handleSelectActivity = (activity: MoodleActivity) => {
@@ -552,13 +583,38 @@ export function QuestCreator() {
           <CardTitle>Assign Gamification to Moodle Activities</CardTitle>
           <CardDescription>
             Select an existing Moodle activity and turn it into a quest by
-            adding XP, badges, and learning objectives
+            adding XP, badges, and learning objectives. Activities are now
+            categorized by due date status.
           </CardDescription>
+
+          {/* Activity Summary */}
+          {(activeActivities.length > 0 || dueActivities.length > 0) && (
+            <div className="flex gap-4 mt-4 p-4 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium">
+                  {activeActivities.length} Active (not yet due)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span className="text-sm font-medium">
+                  {dueActivities.length} Due/Overdue
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                <span className="text-sm font-medium">
+                  {activities.length} Total Activities
+                </span>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {/* Search and filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-2">
                 <Label htmlFor="search">Search Activities</Label>
                 <Input
@@ -575,7 +631,7 @@ export function QuestCreator() {
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
-                  </SelectTrigger>{" "}
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="assignment">Assignments</SelectItem>
@@ -583,6 +639,20 @@ export function QuestCreator() {
                     <SelectItem value="lesson">Lessons</SelectItem>
                     <SelectItem value="forum">Forums</SelectItem>
                     <SelectItem value="other">Other Activities</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Priority View</Label>
+                <Select value={priorityView} onValueChange={setPriorityView}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select view" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Activities</SelectItem>
+                    <SelectItem value="active">Active Only</SelectItem>
+                    <SelectItem value="due">Due/Overdue Only</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -611,62 +681,234 @@ export function QuestCreator() {
               </RadioGroup>
             </div>
 
-            {/* Activity list */}
-            <div className="border rounded-md">
-              {filteredActivities.length === 0 ? (
-                <div className="p-6 text-center">
-                  <p className="text-muted-foreground">
-                    No matching Moodle activities found
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Try changing your search or filters
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {filteredActivities.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className={`p-4 hover:bg-muted/50 cursor-pointer ${
-                        selectedActivity?.id === activity.id
-                          ? "bg-primary/10"
-                          : ""
-                      }`}
-                      onClick={() => handleSelectActivity(activity)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium">{activity.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {activity.description}
-                          </p>
-                          <div className="flex items-center mt-2 gap-2">
-                            <Badge variant="outline">{activity.type}</Badge>{" "}
-                            <span className="text-xs text-muted-foreground">
-                              {courseMap[activity.course] ||
-                                `Course ${activity.course}`}
-                            </span>{" "}
-                            {activity.dates?.map((date, index) => (
-                              <span
-                                key={index}
-                                className="text-xs text-muted-foreground"
-                              >
-                                {date.label}{" "}
-                                {new Date(
-                                  date.timestamp * 1000
-                                ).toLocaleDateString()}
+            {/* Activity list with categorization */}
+            <div className="space-y-4">
+              {/* Active Activities Section */}
+              {filteredActiveActivities.length > 0 && (
+                <div className="border rounded-md">
+                  <div className="bg-green-50 border-b px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <h3 className="font-semibold text-green-800">
+                        Active Activities ({filteredActiveActivities.length})
+                      </h3>
+                      <Badge
+                        variant="outline"
+                        className="text-green-600 border-green-600"
+                      >
+                        Not yet due
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-green-700 mt-1">
+                      These activities are assigned and have upcoming due dates
+                    </p>
+                  </div>
+                  <div className="divide-y">
+                    {filteredActiveActivities.map((activity) => (
+                      <div
+                        key={`active-${activity.id}`}
+                        className={`p-4 hover:bg-green-50/50 cursor-pointer transition-colors ${
+                          selectedActivity?.id === activity.id
+                            ? "bg-primary/10"
+                            : ""
+                        }`}
+                        onClick={() => handleSelectActivity(activity)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{activity.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {activity.description}
+                            </p>
+                            <div className="flex items-center mt-2 gap-2">
+                              <Badge variant="outline">{activity.type}</Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {courseMap[activity.course] ||
+                                  `Course ${activity.course}`}
                               </span>
-                            ))}
+                              {activity.dates?.map((date, index) => (
+                                <span
+                                  key={index}
+                                  className="text-xs text-green-600 font-medium"
+                                >
+                                  {date.label}{" "}
+                                  {new Date(
+                                    date.timestamp * 1000
+                                  ).toLocaleDateString()}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge className="bg-green-500 hover:bg-green-600">
+                              Active
+                            </Badge>
+                            {activity.is_assigned && (
+                              <Badge variant="secondary">Assigned</Badge>
+                            )}
                           </div>
                         </div>
-                        {activity.is_assigned && (
-                          <Badge className="ml-2 bg-green-500">Assigned</Badge>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Due/Overdue Activities Section */}
+              {filteredDueActivities.length > 0 && (
+                <div className="border rounded-md">
+                  <div className="bg-red-50 border-b px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <h3 className="font-semibold text-red-800">
+                        Due/Overdue Activities ({filteredDueActivities.length})
+                      </h3>
+                      <Badge variant="destructive" className="bg-red-600">
+                        Past due date
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-red-700 mt-1">
+                      These activities are assigned and have passed their due
+                      dates
+                    </p>
+                  </div>
+                  <div className="divide-y">
+                    {filteredDueActivities.map((activity) => (
+                      <div
+                        key={`due-${activity.id}`}
+                        className={`p-4 hover:bg-red-50/50 cursor-pointer transition-colors ${
+                          selectedActivity?.id === activity.id
+                            ? "bg-primary/10"
+                            : ""
+                        }`}
+                        onClick={() => handleSelectActivity(activity)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{activity.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {activity.description}
+                            </p>
+                            <div className="flex items-center mt-2 gap-2">
+                              <Badge variant="outline">{activity.type}</Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {courseMap[activity.course] ||
+                                  `Course ${activity.course}`}
+                              </span>
+                              {activity.dates?.map((date, index) => (
+                                <span
+                                  key={index}
+                                  className="text-xs text-red-600 font-medium"
+                                >
+                                  {date.label}{" "}
+                                  {new Date(
+                                    date.timestamp * 1000
+                                  ).toLocaleDateString()}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge
+                              variant="destructive"
+                              className="bg-red-500 hover:bg-red-600"
+                            >
+                              Overdue
+                            </Badge>
+                            {activity.is_assigned && (
+                              <Badge variant="secondary">Assigned</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fallback for filtered activities (backward compatibility) */}
+              {filteredActivities.length > 0 &&
+                filteredActiveActivities.length === 0 &&
+                filteredDueActivities.length === 0 && (
+                  <div className="border rounded-md">
+                    <div className="bg-gray-50 border-b px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                        <h3 className="font-semibold text-gray-800">
+                          All Activities ({filteredActivities.length})
+                        </h3>
+                        <Badge
+                          variant="outline"
+                          className="text-gray-600 border-gray-600"
+                        >
+                          Mixed status
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="divide-y">
+                      {filteredActivities.map((activity) => (
+                        <div
+                          key={`filtered-${activity.id}`}
+                          className={`p-4 hover:bg-muted/50 cursor-pointer ${
+                            selectedActivity?.id === activity.id
+                              ? "bg-primary/10"
+                              : ""
+                          }`}
+                          onClick={() => handleSelectActivity(activity)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium">{activity.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {activity.description}
+                              </p>
+                              <div className="flex items-center mt-2 gap-2">
+                                <Badge variant="outline">{activity.type}</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {courseMap[activity.course] ||
+                                    `Course ${activity.course}`}
+                                </span>
+                                {activity.dates?.map((date, index) => (
+                                  <span
+                                    key={index}
+                                    className="text-xs text-muted-foreground"
+                                  >
+                                    {date.label}{" "}
+                                    {new Date(
+                                      date.timestamp * 1000
+                                    ).toLocaleDateString()}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            {activity.is_assigned && (
+                              <Badge className="ml-2 bg-green-500">
+                                Assigned
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {/* No activities found */}
+              {filteredActivities.length === 0 &&
+                filteredActiveActivities.length === 0 &&
+                filteredDueActivities.length === 0 && (
+                  <div className="border rounded-md p-6 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <BookOpen className="h-12 w-12 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        No matching Moodle activities found
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Try changing your search or filters
+                      </p>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         </CardContent>
