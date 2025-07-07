@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import type {
   VirtualPet as VirtualPetType,
   PetAccessory,
+  AvailableAccessory,
 } from "@/types/gamification";
 import { Heart, Zap, Clock, Plus, Lock, Edit2, Check, X } from "lucide-react";
 import Image from "next/image";
@@ -29,7 +30,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getMyPet, VirtualPetData, updatePetName } from "@/lib/virtual-pet-api";
+import {
+  getMyPet,
+  syncPetLevel,
+  getAvailableAccessories,
+  equipAccessory,
+  getEquippedAccessories,
+  VirtualPetData,
+  updatePetName,
+} from "@/lib/virtual-pet-api";
 
 // Mock pet accessories
 const availableAccessories: PetAccessory[] = [
@@ -121,9 +130,9 @@ const mockPet: VirtualPetType = {
   id: "pet1",
   name: "Derrick",
   species: "Owl",
-  level: 20,
-  experience: 1580,
-  experienceToNextLevel: 2000,
+  level: 20, // Now synchronized with user level
+  experience: 0, // No longer used for pet leveling
+  experienceToNextLevel: 0, // No longer used for pet leveling
   happiness: 10,
   energy: 10,
   lastFed: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
@@ -134,11 +143,16 @@ const mockPet: VirtualPetType = {
 
 export function VirtualPet() {
   const { success, error: showError } = useAppToast();
-  
+
   // State for loading and error handling
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pet, setPet] = useState<VirtualPetType | null>(null);
+  const [availableAccessories, setAvailableAccessories] = useState<
+    AvailableAccessory[]
+  >([]);
+  const [equippedAccessories, setEquippedAccessories] = useState<any[]>([]);
+  const [userLevel, setUserLevel] = useState<number>(1);
 
   const [activeTab, setActiveTab] = useState("interact");
   const [showAccessories, setShowAccessories] = useState(false);
@@ -162,9 +176,9 @@ export function VirtualPet() {
       id: backendPet.pet_id.toString(),
       name: backendPet.name,
       species: backendPet.species,
-      level: 1, // Default level since backend doesn't have this
-      experience: 0, // Default experience since backend doesn't have this
-      experienceToNextLevel: 100, // Default next level requirement
+      level: backendPet.level || 1, // Use synchronized level from backend
+      experience: 0, // No longer used for pet leveling
+      experienceToNextLevel: 0, // No longer used for pet leveling
       happiness: backendPet.happiness,
       energy: backendPet.energy,
       lastFed: backendPet.last_fed,
@@ -174,7 +188,7 @@ export function VirtualPet() {
     };
   };
 
-  // Fetch pet data from API
+  // Fetch pet data and available accessories
   useEffect(() => {
     const fetchPetData = async () => {
       try {
@@ -182,23 +196,46 @@ export function VirtualPet() {
         setError(null);
 
         console.log("VirtualPet: Fetching pet data from API...");
-        const response = await getMyPet();
+        const [petResponse, accessoriesResponse, equippedResponse] =
+          await Promise.all([
+            getMyPet(),
+            getAvailableAccessories(),
+            getEquippedAccessories(),
+          ]);
 
-        console.log("VirtualPet: API response:", response);
+        console.log("VirtualPet: API responses:", {
+          petResponse,
+          accessoriesResponse,
+          equippedResponse,
+        });
 
-        if (response.success && response.has_pet && response.pet) {
+        if (petResponse.success && petResponse.has_pet && petResponse.pet) {
           // Convert backend pet data to frontend format
-          const frontendPet = convertBackendPetToFrontend(response.pet);
+          const frontendPet = convertBackendPetToFrontend(petResponse.pet);
           setPet(frontendPet);
           setNewPetName(frontendPet.name);
           console.log("VirtualPet: Successfully loaded pet:", frontendPet);
-        } else if (response.success && !response.has_pet) {
+        } else if (petResponse.success && !petResponse.has_pet) {
           // User doesn't have a pet - this component shouldn't be shown
           console.log("VirtualPet: No pet found for user");
           setError("No pet found. Please create a pet first.");
         } else {
-          console.error("VirtualPet: Failed to fetch pet:", response.message);
-          setError(response.message || "Failed to load pet data");
+          console.error(
+            "VirtualPet: Failed to fetch pet:",
+            petResponse.message
+          );
+          setError(petResponse.message || "Failed to load pet data");
+        }
+
+        // Set available accessories and user level
+        if (accessoriesResponse.success) {
+          setAvailableAccessories(accessoriesResponse.available_accessories);
+          setUserLevel(accessoriesResponse.user_level);
+        }
+
+        // Set equipped accessories
+        if (equippedResponse.success) {
+          setEquippedAccessories(equippedResponse.equipped_accessories);
         }
       } catch (err) {
         console.error("VirtualPet: Error fetching pet:", err);
@@ -212,6 +249,55 @@ export function VirtualPet() {
 
     fetchPetData();
   }, []);
+
+  // Sync pet level periodically
+  useEffect(() => {
+    const syncLevel = async () => {
+      if (!pet) return;
+
+      try {
+        const syncResponse = await syncPetLevel();
+        if (syncResponse.success) {
+          console.log("Pet level synced:", syncResponse);
+
+          // Update pet level if it changed
+          if (syncResponse.new_level !== pet.level) {
+            setPet((prevPet) => {
+              if (!prevPet) return prevPet;
+              return {
+                ...prevPet,
+                level: syncResponse.new_level,
+              };
+            });
+          }
+
+          // Show notification for level ups
+          if (syncResponse.level_ups > 0) {
+            success(
+              `🎉 Your pet leveled up to level ${syncResponse.new_level}!`
+            );
+          }
+
+          // Show notification for new accessories
+          if (syncResponse.unlocked_accessories.length > 0) {
+            success(
+              `🎁 You unlocked ${syncResponse.unlocked_accessories.length} new accessories!`
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error syncing pet level:", error);
+      }
+    };
+
+    // Sync level every 5 minutes
+    const interval = setInterval(syncLevel, 5 * 60 * 1000);
+
+    // Also sync on component mount
+    syncLevel();
+
+    return () => clearInterval(interval);
+  }, [pet, success]);
 
   // Calculate time since last interaction
   const getTimeSince = (dateString: string) => {
@@ -228,6 +314,7 @@ export function VirtualPet() {
       return `${diffHrs} hours ago`;
     }
   };
+
   // Handle Feed Pet button click
   const handleFeedClick = () => {
     if (!pet || pet.energy >= 100) return; // Don't feed if energy is full or no pet
@@ -242,7 +329,7 @@ export function VirtualPet() {
         ...prevPet,
         energy: Math.min(100, prevPet.energy + 20),
         lastFed: new Date().toISOString(),
-        experience: prevPet.experience + 15, // Gain experience when feeding
+        // No longer gain experience for pet leveling
       };
     });
 
@@ -258,6 +345,7 @@ export function VirtualPet() {
       updatePetState();
     }, 3000);
   };
+
   // Handle Play button click
   const handlePlayClick = () => {
     if (!pet || pet.energy <= 0) return; // Don't play if no energy or no pet
@@ -273,7 +361,7 @@ export function VirtualPet() {
         happiness: Math.min(100, prevPet.happiness + 15),
         energy: Math.max(0, prevPet.energy - 10),
         lastPlayed: new Date().toISOString(),
-        experience: prevPet.experience + 25, // Gain more experience when playing
+        // No longer gain experience for pet leveling
       };
     });
 
@@ -322,7 +410,7 @@ export function VirtualPet() {
             name: response.pet!.name, // Use the name from the API response
           };
         });
-        
+
         console.log("Pet name updated successfully to:", response.pet.name);
         success(`Pet name updated to "${response.pet.name}"`);
         setIsEditingName(false);
@@ -342,39 +430,46 @@ export function VirtualPet() {
     }
   };
 
-  const equipAccessory = (accessory: PetAccessory) => {
+  const handleEquipAccessory = async (
+    accessory: AvailableAccessory,
+    equip: boolean
+  ) => {
     if (!pet) return;
 
-    // Check if the pet level is high enough to use this accessory
-    if (pet.level < accessory.levelRequired) {
-      return; // Can't equip if level requirement isn't met
-    }
-    setPet((prevPet) => {
-      if (!prevPet) return prevPet;
+    try {
+      console.log(`Equipping accessory: ${accessory.name}, equip: ${equip}`);
 
-      // Check if accessory is already equipped
-      const isEquipped = prevPet.accessories.some(
-        (acc) => acc.id === accessory.id
-      );
+      const response = await equipAccessory(accessory.accessory_id, equip);
 
-      if (isEquipped) {
-        // Remove the accessory
-        return {
-          ...prevPet,
-          accessories: prevPet.accessories.filter(
-            (acc) => acc.id !== accessory.id
-          ),
-          happiness: Math.max(0, prevPet.happiness - 5), // Small happiness penalty for removing
-        };
+      if (response.success) {
+        // Update pet stats if provided
+        if (response.pet_stats) {
+          setPet((prevPet) => {
+            if (!prevPet) return prevPet;
+            return {
+              ...prevPet,
+              happiness: response.pet_stats!.happiness,
+              energy: response.pet_stats!.energy,
+            };
+          });
+        }
+
+        // Refresh equipped accessories
+        const equippedResponse = await getEquippedAccessories();
+        if (equippedResponse.success) {
+          setEquippedAccessories(equippedResponse.equipped_accessories);
+        }
+
+        success(response.message);
+        console.log("Accessory equipped successfully:", response);
       } else {
-        // Add the accessory
-        return {
-          ...prevPet,
-          accessories: [...prevPet.accessories, accessory],
-          happiness: Math.min(100, prevPet.happiness + 5), // Small happiness boost for adding
-        };
+        showError(response.message);
+        console.error("Failed to equip accessory:", response.message);
       }
-    });
+    } catch (error) {
+      console.error("Error equipping accessory:", error);
+      showError("Failed to equip accessory");
+    }
   };
 
   // Determine the appropriate pet state based on current conditions
@@ -399,6 +494,11 @@ export function VirtualPet() {
   const getLevelsNeeded = (accessory: PetAccessory) => {
     if (!pet) return accessory.levelRequired;
     return Math.max(0, accessory.levelRequired - pet.level);
+  };
+
+  // Helper to check if accessory is unlocked based on user level
+  const isAccessoryUnlocked = (accessory: AvailableAccessory) => {
+    return userLevel >= accessory.level_required;
   };
 
   // Set up user activity tracking
@@ -460,36 +560,6 @@ export function VirtualPet() {
     }
   }, [pet?.happiness, pet?.energy]);
 
-  // Check for level up when experience changes
-  useEffect(() => {
-    if (!pet) return;
-
-    if (pet.experience >= pet.experienceToNextLevel) {
-      // Level up the pet
-      const newLevel = pet.level + 1;
-      const remainingExp = pet.experience - pet.experienceToNextLevel;
-
-      // Calculate experience needed for next level (increases with each level)
-      const newExpRequired = Math.floor(pet.experienceToNextLevel * 1.2);
-
-      setPet((prevPet) => {
-        if (!prevPet) return prevPet;
-        return {
-          ...prevPet,
-          level: newLevel,
-          experience: remainingExp,
-          experienceToNextLevel: newExpRequired,
-          // Bonus happiness and energy for leveling up
-          happiness: Math.min(100, prevPet.happiness + 20),
-          energy: Math.min(100, prevPet.energy + 20),
-        };
-      });
-
-      // Could add a level up animation or notification here
-      console.log(`${pet.name} leveled up to level ${newLevel}!`);
-    }
-  }, [pet?.experience]);
-
   // Simulate pet stats decreasing over time
   useEffect(() => {
     const interval = setInterval(() => {
@@ -533,6 +603,153 @@ export function VirtualPet() {
         return "/animations/Chilling.gif";
     }
   };
+
+  // Helper function to check if accessory is equipped
+  const isAccessoryEquipped = (accessory: AvailableAccessory) => {
+    return equippedAccessories.some(
+      (equipped) => equipped.accessory_id === accessory.accessory_id
+    );
+  };
+
+  // Accessories tab content
+  const renderAccessoriesTab = () => (
+    <div className="space-y-4">
+      <div className="text-sm text-muted-foreground">
+        Your pet can equip accessories to boost their stats. Unlock new
+        accessories by leveling up!
+      </div>
+
+      {/* Equipped Accessories Summary */}
+      {equippedAccessories.length > 0 && (
+        <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+          <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+            Currently Equipped ({equippedAccessories.length})
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {equippedAccessories.map((accessory) => (
+              <div
+                key={accessory.accessory_id}
+                className="flex items-center gap-2 bg-green-100 dark:bg-green-900 px-2 py-1 rounded text-xs"
+              >
+                <img
+                  src={accessory.icon_url}
+                  alt={accessory.name}
+                  className="w-4 h-4 object-contain"
+                />
+                <span className="text-green-800 dark:text-green-200">
+                  {accessory.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {availableAccessories.map((accessory) => {
+          const isUnlocked = isAccessoryUnlocked(accessory);
+          const isEquipped = isAccessoryEquipped(accessory);
+
+          return (
+            <div
+              key={accessory.name}
+              className={`p-4 rounded-lg border ${
+                isUnlocked
+                  ? isEquipped
+                    ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800"
+                    : "bg-background hover:bg-accent/50"
+                  : "bg-muted/50 opacity-60"
+              } transition-all`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                  <img
+                    src={accessory.icon_url}
+                    alt={accessory.name}
+                    className="w-8 h-8 object-contain"
+                  />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-sm truncate">
+                      {accessory.name}
+                    </h4>
+                    {!isUnlocked && (
+                      <Lock className="h-3 w-3 text-muted-foreground" />
+                    )}
+                    {isEquipped && (
+                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded">
+                        Equipped
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {accessory.description}
+                  </p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground">
+                      {isUnlocked
+                        ? isEquipped
+                          ? "Equipped"
+                          : "Available"
+                        : `Level ${accessory.level_required} required`}
+                    </div>
+                    {isEquipped && (
+                      <div className="text-xs text-green-600 dark:text-green-400">
+                        ✓ Active
+                      </div>
+                    )}
+
+                    {accessory.stats_boost && (
+                      <div className="text-xs">
+                        {Object.entries(accessory.stats_boost).map(
+                          ([key, value]) => (
+                            <span
+                              key={key}
+                              className="inline-block bg-primary/10 text-primary px-1 rounded mr-1"
+                            >
+                              +{String(value)} {key.replace("_", " ")}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {isUnlocked && (
+                    <div className="mt-3">
+                      <Button
+                        size="sm"
+                        variant={isEquipped ? "outline" : "default"}
+                        onClick={() =>
+                          handleEquipAccessory(accessory, !isEquipped)
+                        }
+                        className="w-full"
+                      >
+                        {isEquipped ? "Unequip" : "Equip"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {availableAccessories.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p>No accessories available yet.</p>
+          <p className="text-xs mt-1">
+            Keep learning to unlock accessories for your pet!
+          </p>
+        </div>
+      )}
+    </div>
+  );
 
   // Show loading state
   if (isLoading) {
@@ -617,8 +834,38 @@ export function VirtualPet() {
               className="relative flex items-center justify-center"
               style={{ width: "120px", height: "120px" }}
             >
+              {/* Background accessory (bed) */}
+              {equippedAccessories.find(
+                (acc) => acc.accessory_type === "background"
+              ) && (
+                <div
+                  className="absolute"
+                  style={{
+                    width: "140px",
+                    height: "140px",
+                    top: "0px", // Position it behind the pet
+                    left: "-10px",
+                    zIndex: "0",
+                  }}
+                >
+                  <Image
+                    src={
+                      equippedAccessories.find(
+                        (acc) => acc.accessory_type === "background"
+                      )?.icon_url || ""
+                    }
+                    alt="Pet bed"
+                    width={140}
+                    height={140}
+                    objectFit="contain"
+                  />
+                </div>
+              )}
+
               {/* Left accessory (pole) */}
-              {pet.accessories.find((acc) => acc.slot === "left") && (
+              {equippedAccessories.find(
+                (acc) => acc.accessory_type === "left"
+              ) && (
                 <div
                   className="absolute"
                   style={{
@@ -631,17 +878,22 @@ export function VirtualPet() {
                 >
                   <Image
                     src={
-                      pet.accessories.find((acc) => acc.slot === "left")
-                        ?.iconUrl || ""
+                      equippedAccessories.find(
+                        (acc) => acc.accessory_type === "left"
+                      )?.icon_url || ""
                     }
                     alt="Scratch pole"
-                    layout="fill"
+                    width={50}
+                    height={100}
                     objectFit="contain"
                   />
                 </div>
               )}
+
               {/* Bottom left accessory (kitten) */}
-              {pet.accessories.find((acc) => acc.slot === "bottom-left") && (
+              {equippedAccessories.find(
+                (acc) => acc.accessory_type === "bottom-left"
+              ) && (
                 <div
                   className="absolute"
                   style={{
@@ -654,17 +906,22 @@ export function VirtualPet() {
                 >
                   <Image
                     src={
-                      pet.accessories.find((acc) => acc.slot === "bottom-left")
-                        ?.iconUrl || ""
+                      equippedAccessories.find(
+                        (acc) => acc.accessory_type === "bottom-left"
+                      )?.icon_url || ""
                     }
                     alt="Friend kitten"
-                    layout="fill"
+                    width={40}
+                    height={40}
                     objectFit="contain"
                   />
                 </div>
               )}
+
               {/* Bottom right accessory (bowl) */}
-              {pet.accessories.find((acc) => acc.slot === "bottom-right") && (
+              {equippedAccessories.find(
+                (acc) => acc.accessory_type === "bottom-right"
+              ) && (
                 <div
                   className="absolute"
                   style={{
@@ -677,15 +934,18 @@ export function VirtualPet() {
                 >
                   <Image
                     src={
-                      pet.accessories.find((acc) => acc.slot === "bottom-right")
-                        ?.iconUrl || ""
+                      equippedAccessories.find(
+                        (acc) => acc.accessory_type === "bottom-right"
+                      )?.icon_url || ""
                     }
                     alt="Food bowl"
-                    layout="fill"
+                    width={40}
+                    height={40}
                     objectFit="contain"
                   />
                 </div>
-              )}{" "}
+              )}
+
               <Image
                 src={getPetAnimationSrc()}
                 alt={`${pet.name} the Cat`}
@@ -758,7 +1018,22 @@ export function VirtualPet() {
                 </Button>
               </>
             )}
-          </div>{" "}
+          </div>
+          {/* Equipped Accessories Indicator */}
+          {equippedAccessories.length > 0 && (
+            <div className="flex items-center justify-center gap-1 mb-3">
+              <span className="text-xs text-muted-foreground">Equipped:</span>
+              {equippedAccessories.map((accessory, index) => (
+                <span
+                  key={accessory.accessory_id}
+                  className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded"
+                >
+                  {accessory.name}
+                  {index < equippedAccessories.length - 1 && ","}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="w-full space-y-3">
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
@@ -773,22 +1048,19 @@ export function VirtualPet() {
                     <path d="M12 2c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z" />
                     <path d="M15 6h-6v12h6v-12z" />
                   </svg>
-                  <span>Experience</span>
+                  <span>Level</span>
                 </div>
-                <span>
-                  {pet.experience} / {pet.experienceToNextLevel}
-                </span>
+                <span>{pet.level}</span>
               </div>
+
               <Progress
-                value={(pet.experience / pet.experienceToNextLevel) * 100}
+                value={100} // Pet level is now synchronized with user level
                 className="h-2 bg-purple-100 dark:bg-purple-900/20"
               >
                 <div
                   className="bg-gradient-to-r from-purple-500 to-purple-700 h-full transition-all"
                   style={{
-                    width: `${
-                      (pet.experience / pet.experienceToNextLevel) * 100
-                    }%`,
+                    width: "100%",
                   }}
                 />
               </Progress>
@@ -875,74 +1147,7 @@ export function VirtualPet() {
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-6 mt-4">
-                  {availableAccessories.map((accessory) => {
-                    const isEquipped = pet.accessories.some(
-                      (acc) => acc.id === accessory.id
-                    );
-                    const isLocked = pet.level < accessory.levelRequired;
-                    const levelsNeeded = getLevelsNeeded(accessory);
-                    return (
-                      <Button
-                        key={accessory.id}
-                        variant={isEquipped ? "default" : "outline"}
-                        className={`flex flex-col items-center justify-between h-auto p-5 ${
-                          isEquipped ? "bg-primary text-primary-foreground" : ""
-                        } ${isLocked ? "opacity-80" : ""}`}
-                        onClick={() => equipAccessory(accessory)}
-                        disabled={isLocked}
-                      >
-                        <div className="relative w-16 h-16 mb-3">
-                          <Image
-                            src={accessory.iconUrl}
-                            alt={accessory.name}
-                            layout="fill"
-                            objectFit="contain"
-                            className={isLocked ? "opacity-50" : ""}
-                          />
-                          {isLocked && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="bg-background/80 dark:bg-background rounded-full p-1">
-                                <Lock className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div
-                          className={`text-sm font-medium mb-2 ${
-                            isEquipped ? "text-white" : ""
-                          }`}
-                        >
-                          {accessory.name}
-                        </div>
-                        <div
-                          className={`text-xs ${
-                            isEquipped
-                              ? "text-white/90"
-                              : "text-muted-foreground"
-                          } text-center leading-relaxed w-full overflow-hidden break-words`}
-                        >
-                          {isLocked
-                            ? `Unlocks at level ${accessory.levelRequired}`
-                            : accessory.description}
-                        </div>
-                        <div
-                          className={`text-xs font-medium mt-3 ${
-                            isEquipped ? "text-white/90" : ""
-                          }`}
-                        >
-                          {isLocked
-                            ? `🔒 ${levelsNeeded} more level${
-                                levelsNeeded !== 1 ? "s" : ""
-                              } needed`
-                            : isEquipped
-                            ? "✓ Equipped"
-                            : "Click to equip"}
-                        </div>
-                      </Button>
-                    );
-                  })}
-                </div>
+                {renderAccessoriesTab()}
               </DialogContent>
             </Dialog>
           </TabsContent>

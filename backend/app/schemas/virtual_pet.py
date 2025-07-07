@@ -61,6 +61,7 @@ class PetResponse(BaseModel):
     species: str
     happiness: float
     energy: float
+    level: int  # Now synchronized with user level
     last_fed: datetime
     last_played: datetime
     created_at: datetime
@@ -125,3 +126,30 @@ class AccessoryEquipResponse(BaseModel):
     success: bool
     message: str
     accessory: PetAccessoryResponse
+
+
+class LevelSyncResponse(BaseModel):
+    success: bool
+    message: str
+    old_level: int
+    new_level: int
+    level_ups: int
+    unlocked_accessories: List[dict]
+    user_level: int
+
+
+class AvailableAccessoryResponse(BaseModel):
+    accessory_id: int
+    name: str
+    description: str
+    accessory_type: str
+    icon_url: str
+    level_required: int
+    stats_boost: dict
+    unlocked: bool
+
+
+class AccessoriesListResponse(BaseModel):
+    success: bool
+    available_accessories: List[AvailableAccessoryResponse]
+    user_level: int

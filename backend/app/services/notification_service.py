@@ -9,6 +9,59 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
+class NotificationService:
+    """Wrapper service for notifications that can use SSE or database storage"""
+    
+    def __init__(self, db: Session = None):
+        self.db = db
+    
+    def send_notification(self, user_id: int, title: str, message: str, notification_type: str = "info", data: Optional[Dict[str, Any]] = None):
+        """Send a notification to a user"""
+        try:
+            # Log the notification
+            logger.info(f"[Notification] User {user_id}: {title} - {message} ({notification_type})")
+            
+            # Create notification data
+            notification_data = NotificationData(
+                notification_type=notification_type,
+                user_id=user_id,
+                title=title,
+                message=message,
+                quest_data=data or {}
+            )
+            
+            # Try to send via SSE if available
+            asyncio.create_task(notification_service.send_notification(notification_data))
+            
+        except Exception as e:
+            logger.error(f"Failed to send notification to user {user_id}: {e}")
+    
+    def send_level_up_notification(self, user_id: int, new_level: int, levels_gained: int):
+        """Send a level up notification"""
+        self.send_notification(
+            user_id=user_id,
+            title="Pet Level Up! 🎉",
+            message=f"Your pet has leveled up to level {new_level}! Keep learning to help your pet grow stronger!",
+            notification_type="pet_level_up",
+            data={
+                "new_level": new_level,
+                "levels_gained": levels_gained
+            }
+        )
+    
+    def send_accessory_unlock_notification(self, user_id: int, accessory_name: str, accessory_type: str):
+        """Send an accessory unlock notification"""
+        self.send_notification(
+            user_id=user_id,
+            title="New Pet Accessory Unlocked! 🎁",
+            message=f"You've unlocked '{accessory_name}' for your pet! Equip it to give your pet a boost!",
+            notification_type="accessory_unlocked",
+            data={
+                "accessory_name": accessory_name,
+                "accessory_type": accessory_type
+            }
+        )
+
 class NotificationData:
     """Data structure for real-time notifications"""
     def __init__(self, 

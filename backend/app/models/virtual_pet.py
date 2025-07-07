@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKe
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database.connection import Base
+import math
 
 
 class VirtualPet(Base):
@@ -13,6 +14,7 @@ class VirtualPet(Base):
     species = Column(String(50), nullable=False)
     happiness = Column(Float, nullable=False, default=100.0)
     energy = Column(Float, nullable=False, default=100.0)
+    level = Column(Integer, nullable=False, default=1)  # Now synchronized with user level
     last_fed = Column(DateTime(timezone=True), server_default=func.now())
     last_played = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -21,6 +23,28 @@ class VirtualPet(Base):
     # Relationships
     accessories = relationship("PetAccessory", back_populates="pet", cascade="all, delete-orphan")
     user = relationship("User", foreign_keys=[user_id])
+
+    def synchronize_with_user_level(self, user_level: int) -> dict:
+        """Synchronize pet level with user level and return level change info."""
+        old_level = self.level
+        self.level = user_level
+        
+        level_ups = 0
+        if user_level > old_level:
+            level_ups = user_level - old_level
+        
+        return {
+            "level_ups": level_ups,
+            "old_level": old_level,
+            "new_level": self.level,
+            "synchronized": True
+        }
+
+    def get_available_accessories(self, user_level: int) -> list:
+        """Get accessories that are available at the current user level."""
+        from app.models.virtual_pet import PetAccessory
+        # This will be implemented in the service layer
+        return []
 
 
 class PetAccessory(Base):
