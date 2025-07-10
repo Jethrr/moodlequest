@@ -14,10 +14,14 @@ from app.schemas.virtual_pet import (
     PetDeleteResponse,
     PetResponse,
     PetAccessoryResponse,
-    PetCheckResponse
+    PetCheckResponse,
+    LevelSyncResponse,
+    AvailableAccessoryResponse,
+    AccessoriesListResponse
 )
 from app.utils.auth import get_current_active_user, get_current_user_from_moodle_token
 from app.services.activity_log_service import log_activity
+from app.services.pet_service import PetService
 
 import logging
 
@@ -66,13 +70,14 @@ async def get_pet(
     db: Session = Depends(get_db)
 ):
     """
-    Get the current user's virtual pet information using moodleToken authentication.
+    Get the current user's virtual pet information with synchronized level.
     Returns 404 if no pet exists.
     """
     try:
         logger.info(f"User {current_user.username} (ID: {current_user.id}) requesting pet data")
         
-        pet = db.query(VirtualPet).filter(VirtualPet.user_id == current_user.id).first()
+        pet_service = PetService(db)
+        pet = pet_service.get_pet_with_synchronized_level(current_user.id)
         
         if not pet:
             logger.info(f"No pet found for user {current_user.username} (ID: {current_user.id})")
@@ -104,6 +109,7 @@ async def get_pet(
             species=pet.species,
             happiness=pet.happiness,
             energy=pet.energy,
+            level=pet.level,  # Now synchronized with user level
             last_fed=pet.last_fed,
             last_played=pet.last_played,
             created_at=pet.created_at,
@@ -154,18 +160,27 @@ async def create_pet_new(
                 detail=f"You already have a pet named '{existing_pet.name}'. You can only have one pet."
             )
         
-        # Create new pet
+        # Create new pet with synchronized level
+        pet_service = PetService(db)
+        user_level = pet_service.calculate_user_level(current_user.id)
+        
         new_pet = VirtualPet(
             user_id=current_user.id,
             name=pet_data.name,
             species=pet_data.species,
             happiness=100.0,
-            energy=100.0
+            energy=100.0,
+            level=user_level  # Initialize with user level
         )
         
         db.add(new_pet)
         db.commit()
         db.refresh(new_pet)
+        
+        # Check for initial accessory unlocks
+        unlocked_accessories = pet_service._check_accessory_unlocks(new_pet, user_level)
+        if unlocked_accessories:
+            pet_service._send_accessory_unlock_notifications(current_user.id, unlocked_accessories)
         
         # Log the pet creation activity
         log_activity(
@@ -175,7 +190,8 @@ async def create_pet_new(
             action_details={
                 "pet_name": pet_data.name,
                 "species": pet_data.species,
-                "pet_id": new_pet.pet_id
+                "pet_id": new_pet.pet_id,
+                "initial_level": user_level
             },
             related_entity_type="virtual_pet",
             related_entity_id=new_pet.pet_id
@@ -188,6 +204,7 @@ async def create_pet_new(
             species=new_pet.species,
             happiness=new_pet.happiness,
             energy=new_pet.energy,
+            level=new_pet.level,
             last_fed=new_pet.last_fed,
             last_played=new_pet.last_played,
             created_at=new_pet.created_at,
@@ -199,18 +216,106 @@ async def create_pet_new(
         
         return PetCreateResponse(
             success=True,
-            message=f"Virtual pet '{pet_data.name}' created successfully!",
+            message=f"Pet '{pet_data.name}' created successfully!",
             pet=pet_response,
             is_new_pet=True
         )
         
     except HTTPException:
-        raise  # Re-raise HTTPExceptions as-is
+        raise
     except Exception as e:
         logger.error(f"Error creating pet for user {current_user.id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create virtual pet"
+            detail="Failed to create pet"
+        )
+
+
+@router.post("/sync-level", response_model=LevelSyncResponse)
+async def sync_pet_level(
+    request: Request,
+    current_user: User = Depends(get_current_user_from_moodle_token),
+    db: Session = Depends(get_db)
+):
+    """
+    Synchronize pet level with user level and handle accessory unlocks.
+    """
+    try:
+        logger.info(f"User {current_user.username} (ID: {current_user.id}) syncing pet level")
+        
+        pet_service = PetService(db)
+        sync_result = pet_service.synchronize_pet_level(current_user.id)
+        
+        if "error" in sync_result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=sync_result["error"]
+            )
+        
+        logger.info(f"Successfully synced pet level for user {current_user.username}")
+        
+        return LevelSyncResponse(
+            success=True,
+            message="Pet level synchronized successfully",
+            old_level=sync_result["old_level"],
+            new_level=sync_result["new_level"],
+            level_ups=sync_result["level_ups"],
+            unlocked_accessories=sync_result["unlocked_accessories"],
+            user_level=sync_result["user_level"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error syncing pet level for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to sync pet level"
+        )
+
+
+@router.get("/accessories", response_model=AccessoriesListResponse)
+async def get_available_accessories(
+    request: Request,
+    current_user: User = Depends(get_current_user_from_moodle_token),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all available accessories for the current user level.
+    """
+    try:
+        logger.info(f"User {current_user.username} (ID: {current_user.id}) requesting available accessories")
+        
+        pet_service = PetService(db)
+        user_level = pet_service.calculate_user_level(current_user.id)
+        available_accessories = pet_service.get_available_accessories_for_level(user_level)
+        
+        accessories_response = []
+        for accessory in available_accessories:
+            accessories_response.append(AvailableAccessoryResponse(
+                accessory_id=accessory.get("accessory_id", 0),  # Default to 0 if not found
+                name=accessory["name"],
+                description=accessory["description"],
+                accessory_type=accessory["accessory_type"],
+                icon_url=accessory["icon_url"],
+                level_required=accessory["level_required"],
+                stats_boost=accessory["stats_boost"],
+                unlocked=accessory["unlocked"]
+            ))
+        
+        logger.info(f"Successfully retrieved {len(accessories_response)} accessories for user {current_user.username}")
+        
+        return AccessoriesListResponse(
+            success=True,
+            available_accessories=accessories_response,
+            user_level=user_level
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting accessories for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get available accessories"
         )
 
 
@@ -496,4 +601,175 @@ async def delete_pet(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete pet"
+        )
+
+
+@router.post("/equip-accessory", response_model=dict)
+async def equip_accessory(
+    request: Request,
+    current_user: User = Depends(get_current_user_from_moodle_token),
+    db: Session = Depends(get_db)
+):
+    # Get parameters from request body
+    body = await request.json()
+    accessory_id = body.get("accessory_id")
+    equip = body.get("equip")
+    
+    if accessory_id is None or equip is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="accessory_id and equip are required"
+        )
+    """
+    Equip or unequip a pet accessory.
+    """
+    try:
+        logger.info(f"User {current_user.username} (ID: {current_user.id}) {'equipping' if equip else 'unequipping'} accessory {accessory_id}")
+        
+        # Get user's pet
+        pet = db.query(VirtualPet).filter(VirtualPet.user_id == current_user.id).first()
+        if not pet:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No pet found for this user"
+            )
+        
+        # Get the accessory
+        accessory = db.query(PetAccessory).filter(
+            PetAccessory.accessory_id == accessory_id,
+            PetAccessory.pet_id == pet.pet_id
+        ).first()
+        
+        if not accessory:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Accessory not found"
+            )
+        
+        # Check if user level meets the requirement
+        pet_service = PetService(db)
+        user_level = pet_service.calculate_user_level(current_user.id)
+        
+        if user_level < accessory.level_required:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User level {user_level} does not meet requirement {accessory.level_required}"
+            )
+        
+        # Update accessory equipped status
+        accessory.is_equipped = 1 if equip else 0
+        db.commit()
+        
+        # Apply stat boosts if equipping
+        if equip:
+            if accessory.stats_boost:
+                try:
+                    import json
+                    stats = json.loads(accessory.stats_boost)
+                    
+                    # Apply stat boosts
+                    if "energy_boost" in stats:
+                        pet.energy = min(100.0, pet.energy + stats["energy_boost"])
+                    if "happiness_boost" in stats:
+                        pet.happiness = min(100.0, pet.happiness + stats["happiness_boost"])
+                    
+                    db.commit()
+                    logger.info(f"Applied stat boosts: {stats}")
+                except Exception as e:
+                    logger.error(f"Error applying stat boosts: {e}")
+        else:
+            # Remove stat boosts if unequipping
+            if accessory.stats_boost:
+                try:
+                    import json
+                    stats = json.loads(accessory.stats_boost)
+                    
+                    # Remove stat boosts
+                    if "energy_boost" in stats:
+                        pet.energy = max(0.0, pet.energy - stats["energy_boost"])
+                    if "happiness_boost" in stats:
+                        pet.happiness = max(0.0, pet.happiness - stats["happiness_boost"])
+                    
+                    db.commit()
+                    logger.info(f"Removed stat boosts: {stats}")
+                except Exception as e:
+                    logger.error(f"Error removing stat boosts: {e}")
+        
+        logger.info(f"Successfully {'equipped' if equip else 'unequipped'} accessory {accessory.name}")
+        
+        return {
+            "success": True,
+            "message": f"Successfully {'equipped' if equip else 'unequipped'} {accessory.name}",
+            "accessory_id": accessory_id,
+            "equipped": equip,
+            "pet_stats": {
+                "happiness": pet.happiness,
+                "energy": pet.energy
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error equipping accessory: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to equip accessory"
+        )
+
+
+@router.get("/equipped-accessories", response_model=dict)
+async def get_equipped_accessories(
+    request: Request,
+    current_user: User = Depends(get_current_user_from_moodle_token),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all equipped accessories for the current user's pet.
+    """
+    try:
+        logger.info(f"User {current_user.username} (ID: {current_user.id}) requesting equipped accessories")
+        
+        # Get user's pet
+        pet = db.query(VirtualPet).filter(VirtualPet.user_id == current_user.id).first()
+        if not pet:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No pet found for this user"
+            )
+        
+        # Get equipped accessories
+        equipped_accessories = db.query(PetAccessory).filter(
+            PetAccessory.pet_id == pet.pet_id,
+            PetAccessory.is_equipped == 1
+        ).all()
+        
+        accessories_data = []
+        for accessory in equipped_accessories:
+            accessories_data.append({
+                "accessory_id": accessory.accessory_id,
+                "name": accessory.name,
+                "accessory_type": accessory.accessory_type,
+                "icon_url": accessory.icon_url,
+                "stats_boost": accessory.stats_boost
+            })
+        
+        logger.info(f"Found {len(accessories_data)} equipped accessories for user {current_user.username}")
+        
+        return {
+            "success": True,
+            "equipped_accessories": accessories_data,
+            "pet_stats": {
+                "happiness": pet.happiness,
+                "energy": pet.energy
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting equipped accessories: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get equipped accessories"
         )

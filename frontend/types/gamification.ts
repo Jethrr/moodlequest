@@ -87,6 +87,17 @@ export interface PetAccessory {
   };
 }
 
+export interface AvailableAccessory {
+  accessory_id: number;
+  name: string;
+  description: string;
+  accessory_type: string;
+  icon_url: string;
+  level_required: number;
+  stats_boost: any;
+  unlocked: boolean;
+}
+
 export interface UserProgress {
   userId: string;
   level: number;
@@ -124,8 +135,12 @@ export interface Leaderboard {
   name: string;
   description?: string;
   course_id?: number;
-  metric_type: 'exp' | 'quests_completed' | 'badges_earned' | 'engagement_score';
-  timeframe: 'daily' | 'weekly' | 'monthly' | 'all_time';
+  metric_type:
+    | "exp"
+    | "quests_completed"
+    | "badges_earned"
+    | "engagement_score";
+  timeframe: "daily" | "weekly" | "monthly" | "all_time";
   is_active: boolean;
   created_at: string;
   last_updated: string;
@@ -205,5 +220,9 @@ export interface LeaderboardUser {
   position?: number; // Actual rank position in leaderboard
 }
 
-export type TimeFrameOption = 'daily' | 'weekly' | 'monthly' | 'all_time';
-export type MetricType = 'exp' | 'quests_completed' | 'badges_earned' | 'engagement_score';
+export type TimeFrameOption = "daily" | "weekly" | "monthly" | "all_time";
+export type MetricType =
+  | "exp"
+  | "quests_completed"
+  | "badges_earned"
+  | "engagement_score";
