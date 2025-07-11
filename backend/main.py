@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
-from app.routes import quests, auth, enrollment, webhooks, leaderboard, notifications
+from app.routes import quests, auth, enrollment, webhooks, leaderboard, notifications, progress
 from app.database.connection import engine, Base, SessionLocal
 from app.database.seed import seed_initial_data
 from app.models.auth import MoodleConfig
@@ -99,6 +99,7 @@ from app.routes import daily_quests
 from app.routes.badges import router as badges_router 
 from app.routes.activity_log import router as activity_log_router
 from app.routes.virtual_pet import router as virtual_pet_router
+from app.routes.learning_resources import router as learning_resources_router
 
 app.include_router(quests.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
@@ -110,6 +111,8 @@ app.include_router(notifications.router, prefix="/api")
 app.include_router(badges_router, prefix="/api")
 app.include_router(activity_log_router, prefix="/api")
 app.include_router(virtual_pet_router, prefix="/api")
+app.include_router(learning_resources_router, prefix="/api")
+app.include_router(progress.router, prefix="/api")
 
 @app.get("/")
 async def root():

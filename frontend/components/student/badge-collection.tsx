@@ -56,20 +56,6 @@ export function BadgeCollection({
     seedBadges,
   } = useBadgeCollection(user?.id);
 
-  // Debug logging
-  console.log("🎭 BadgeCollection Component Debug:", {
-    userId: user?.id,
-    loading,
-    error,
-    badgeProgressCount: badgeProgress.length,
-    earnedBadgesCount: earnedBadges.length,
-    availableBadgesCount: availableBadges.length,
-    earnedBadges: earnedBadges.map((b) => ({
-      id: b.badge.badge_id,
-      name: b.badge.name,
-      earned: b.earned,
-    })),
-  });
   const getBadgeIcon = (badgeType: string, name: string) => {
     const iconProps = { className: "h-4 w-4 md:h-5 md:w-5 text-white" };
 

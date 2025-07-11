@@ -3,13 +3,13 @@ import asyncio
 import json
 import logging
 from typing import AsyncGenerator
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.models.user import User
-from app.services.notification_service import notification_service
+from app.services.notification_service import notification_service, NotificationData
 from app.auth.dependencies import get_current_user_optional
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,12 @@ async def stream_notifications(
     """
     
     # Verify user exists and has permission to receive notifications
-    user = db.query(User).filter(User.moodle_user_id == user_id).first()
+    # Try to find user by internal ID first, then by moodle_user_id
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        # Fallback to moodle_user_id for backward compatibility
+        user = db.query(User).filter(User.moodle_user_id == user_id).first()
+    
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -100,44 +105,48 @@ async def stream_notifications(
         }
     )
 
-@router.get("/status")
-async def get_notification_status():
-    """Get the current status of the notification service"""
-    connected_users = notification_service.get_connected_users()
-    
-    return {
-        "service_status": "active",
-        "connected_users_count": len(connected_users),
-        "connected_users": connected_users
-    }
-
 @router.post("/test/{user_id}")
-async def send_test_notification(
+async def test_notification(
     user_id: int,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    """Send a test notification to a user (for testing purposes)"""
-    
-    # Verify user exists
-    user = db.query(User).filter(User.moodle_user_id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    from app.services.notification_service import NotificationData
-    
-    test_notification = NotificationData(
-        notification_type="test",
-        user_id=user.id,
-        title="Test Notification 🧪",
-        message="This is a test notification to verify the real-time system is working!",
-        xp_earned=0,
-        total_xp=0
-    )
-    
-    await notification_service.send_notification(test_notification)
-    
+    """Test endpoint to send a notification to a specific user"""
+    try:
+        data = await request.json()
+        
+        # Create test notification
+        notification_data = NotificationData(
+            notification_type="xp_reward",
+            user_id=user_id,
+            title=data.get("quest_title", "Test Quest Completed! 🎉"),
+            message=f"You earned {data.get('xp_earned', 10)} XP!",
+            xp_earned=data.get("xp_earned", 10),
+            total_xp=data.get("total_xp", 100),
+            quest_data={
+                "source_type": data.get("source_type", "test"),
+                "quest_title": data.get("quest_title", "Test Quest")
+            }
+        )
+        
+        # Send the notification
+        await notification_service.send_notification(notification_data)
+        
+        return {
+            "success": True,
+            "message": f"Test notification sent to user {user_id}",
+            "notification": notification_data.to_dict()
+        }
+        
+    except Exception as e:
+        logging.error(f"Error sending test notification: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/status")
+async def get_notification_status():
+    """Get the status of the notification service"""
     return {
-        "success": True,
-        "message": f"Test notification sent to user {user_id}",
-        "connected": notification_service.get_connection_count(user.id) > 0
+        "active_connections": len(notification_service.active_connections),
+        "connected_users": notification_service.get_connected_users(),
+        "service_status": "running"
     }

@@ -22,6 +22,7 @@ from app.schemas.virtual_pet import (
 from app.utils.auth import get_current_active_user, get_current_user_from_moodle_token
 from app.services.activity_log_service import log_activity
 from app.services.pet_service import PetService
+from app.services.daily_quest_service import DailyQuestService
 
 import logging
 
@@ -363,6 +364,7 @@ async def get_my_pet(
             species=pet.species,
             happiness=pet.happiness,
             energy=pet.energy,
+            level=pet.level,  # Add the missing level field
             last_fed=pet.last_fed,
             last_played=pet.last_played,
             created_at=pet.created_at,
@@ -447,6 +449,7 @@ async def create_pet(
             species=new_pet.species,
             happiness=new_pet.happiness,
             energy=new_pet.energy,
+            level=new_pet.level,  # Add the missing level field
             last_fed=new_pet.last_fed,
             last_played=new_pet.last_played,
             created_at=new_pet.created_at,
@@ -523,6 +526,7 @@ async def update_pet_name(
             species=pet.species,
             happiness=pet.happiness,
             energy=pet.energy,
+            level=pet.level,  # Add the missing level field
             last_fed=pet.last_fed,
             last_played=pet.last_played,
             created_at=pet.created_at,
@@ -772,4 +776,50 @@ async def get_equipped_accessories(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get equipped accessories"
+        )
+
+
+@router.post("/feed", response_model=dict)
+async def feed_pet(
+    request: Request,
+    current_user: User = Depends(get_current_user_from_moodle_token),
+    db: Session = Depends(get_db)
+):
+    """
+    Feed the current user's pet. Also completes the 'Feed your pet' daily quest if available.
+    """
+    try:
+        pet = db.query(VirtualPet).filter(VirtualPet.user_id == current_user.id).first()
+        if not pet:
+            raise HTTPException(status_code=404, detail="No pet found for this user")
+
+        # Update pet stats
+        pet.energy = min(100.0, pet.energy + 20)
+        pet.happiness = min(100.0, pet.happiness + 10)
+        pet.last_fed = datetime.utcnow()
+        pet.last_updated = datetime.utcnow()
+        db.commit()
+
+        # Complete the 'Feed your pet' daily quest if available
+        daily_quest_service = DailyQuestService(db)
+        quest_result = daily_quest_service.complete_feed_pet_quest(current_user.id)
+
+        # Optionally, send XP notification if quest was completed (already handled in service)
+
+        return {
+            "success": True,
+            "message": "Pet fed successfully!",
+            "pet_stats": {
+                "happiness": pet.happiness,
+                "energy": pet.energy
+            },
+            "daily_quest": quest_result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error feeding pet for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to feed pet"
         )

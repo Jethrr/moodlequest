@@ -476,7 +476,7 @@ class DailyQuestService:
 
         # Mark quest as completed
         user_quest.status = QuestStatusEnum.COMPLETED.value
-        user_quest.progress = user_quest.target_count
+        user_quest.current_progress = user_quest.target_progress
         user_quest.completed_at = datetime.utcnow()
         user_quest.last_updated = datetime.utcnow()
         user_quest.xp_awarded = user_quest.daily_quest.xp_reward
@@ -484,7 +484,9 @@ class DailyQuestService:
         try:
             # Award XP to user
             self._award_xp_to_user(user_id, user_quest.daily_quest.xp_reward)
-              # Update streak if it's a login quest
+            # Update student progress to add XP to total
+            self._update_student_progress(user_id, user_quest.daily_quest.xp_reward)
+            # Update streak if it's a login quest
             if quest_type == QuestTypeEnum.DAILY_LOGIN.value:
                 self._update_user_streak(user_id)
             
@@ -528,11 +530,25 @@ class DailyQuestService:
         ).first()
 
         if not user_quest:
-            return {
-                "success": False,
-                "message": "No active earn XP quest found for today",
-                "xp_awarded": 0
-            }
+            # Try to generate the earn XP quest if it doesn't exist
+            self.generate_all_daily_quests_for_user(user_id, today)
+            
+            # Try to find the quest again
+            user_quest = self.db.query(UserDailyQuest).join(DailyQuest).filter(
+                and_(
+                    UserDailyQuest.user_id == user_id,
+                    DailyQuest.quest_type == QuestTypeEnum.EARN_XP.value,
+                    cast(UserDailyQuest.quest_date, Date) == today,
+                    UserDailyQuest.status == QuestStatusEnum.ACTIVE.value
+                )
+            ).first()
+            
+            if not user_quest:
+                return {
+                    "success": False,
+                    "message": "No active earn XP quest found for today",
+                    "xp_awarded": 0
+                }
 
         # Check if already completed
         if user_quest.status == QuestStatusEnum.COMPLETED.value:
@@ -543,15 +559,17 @@ class DailyQuestService:
             }
 
         # Update progress
-        user_quest.progress = min(user_quest.progress + xp_earned, user_quest.target_count)
+        user_quest.current_progress = min(user_quest.current_progress + xp_earned, user_quest.target_progress)
         user_quest.last_updated = datetime.utcnow()
 
         # Check if quest is now complete
-        if user_quest.progress >= user_quest.target_count:
+        if user_quest.current_progress >= user_quest.target_progress:
             user_quest.status = QuestStatusEnum.COMPLETED.value
             user_quest.completed_at = datetime.utcnow()
             user_quest.xp_awarded = user_quest.daily_quest.xp_reward            # Award quest completion XP (separate from the XP that counted toward the quest)
             self._award_xp_to_user(user_id, user_quest.daily_quest.xp_reward)
+            # Update student progress to add XP to total
+            self._update_student_progress(user_id, user_quest.daily_quest.xp_reward)
             
             try:
                 self.db.commit()
@@ -578,7 +596,7 @@ class DailyQuestService:
                 
                 return {
                     "success": True,
-                    "message": f"Earn XP quest progress updated: {user_quest.progress}/{user_quest.target_count}",
+                    "message": f"Earn XP quest progress updated: {user_quest.current_progress}/{user_quest.target_progress}",
                     "xp_awarded": 0,
                     "quest": user_quest
                 }
@@ -598,6 +616,8 @@ class DailyQuestService:
             notes="Daily quest completion"
         )
         self.db.add(xp_record)
+        # Note: This method only creates the ExperiencePoints record
+        # Callers should also call _update_student_progress() to update total XP
 
     def _update_user_streak(self, user_id: int):
         """Update the user's login streak."""

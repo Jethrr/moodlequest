@@ -1,199 +1,65 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip } from "recharts"
-import { motion } from "framer-motion"
-import StreakGraph from "./streak-graph"
-
-// Mock data for progress tracking based on backend schema
-const weeklyData = [
-  { day: "Mon", exp_reward: 50, quests_completed: 2 },
-  { day: "Tue", exp_reward: 80, quests_completed: 3 },
-  { day: "Wed", exp_reward: 40, quests_completed: 1 },
-  { day: "Thu", exp_reward: 120, quests_completed: 4 },
-  { day: "Fri", exp_reward: 60, quests_completed: 2 },
-  { day: "Sat", exp_reward: 30, quests_completed: 1 },
-  { day: "Sun", exp_reward: 90, quests_completed: 3 },
-]
-
-const monthlyData = [
-  { week: "Week 1", exp_reward: 350, quests_completed: 12 },
-  { week: "Week 2", exp_reward: 420, quests_completed: 15 },
-  { week: "Week 3", exp_reward: 280, quests_completed: 10 },
-  { week: "Week 4", exp_reward: 390, quests_completed: 14 },
-]
-
-// Mock data for streak tracking (last 105 days - 15 weeks)
-interface StreakDay {
-  date: string;
-  intensity: number;
-  dayOfWeek: number;
-}
-
-const generateStreakData = (): StreakDay[] => {
-  const today = new Date();
-  const data: StreakDay[] = [];
-  
-  // Generate data for last 105 days (15 weeks)
-  for (let i = 104; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(today.getDate() - i);
-    
-    // Random activity intensity (0-4)
-    // 0: no activity, 1-4: activity intensity levels
-    let intensity = 0;
-    
-    // Create patterns - more activity on weekdays, less on weekends
-    const dayOfWeek = date.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    
-    // Generate activity patterns
-    const random = Math.random();
-    
-    if (isWeekend) {
-      // Less activity on weekends
-      if (random < 0.7) intensity = 0;
-      else if (random < 0.85) intensity = 1;
-      else if (random < 0.95) intensity = 2;
-      else intensity = 3;
-    } else {
-      // More activity on weekdays
-      if (random < 0.25) intensity = 0;
-      else if (random < 0.5) intensity = 1;
-      else if (random < 0.75) intensity = 2;
-      else if (random < 0.9) intensity = 3;
-      else intensity = 4;
-    }
-    
-    // Create streak patterns (consecutive days with activity)
-    // If previous 2-3 days had activity, increase chance of activity
-    if (data.length >= 2 && 
-        data[data.length-1].intensity > 0 && 
-        data[data.length-2].intensity > 0) {
-      if (intensity === 0 && Math.random() < 0.7) {
-        intensity = Math.floor(Math.random() * 3) + 1;
-      }
-    }
-    
-    data.push({
-      date: date.toISOString().split('T')[0],
-      intensity,
-      dayOfWeek
-    });
-  }
-  
-  return data;
-};
-
-const streakData = generateStreakData();
-
-// Calculate current streak
-const calculateCurrentStreak = (data: StreakDay[]): number => {
-  let currentStreak = 0;
-  
-  // Start from the most recent day
-  for (let i = data.length - 1; i >= 0; i--) {
-    if (data[i].intensity > 0) {
-      currentStreak++;
-    } else {
-      break;
-    }
-  }
-  
-  return currentStreak;
-};
-
-// Calculate longest streak
-const calculateLongestStreak = (data: StreakDay[]): number => {
-  let longestStreak = 0;
-  let currentStreak = 0;
-  
-  for (let i = 0; i < data.length; i++) {
-    if (data[i].intensity > 0) {
-      currentStreak++;
-      longestStreak = Math.max(longestStreak, currentStreak);
-    } else {
-      currentStreak = 0;
-    }
-  }
-  
-  return longestStreak;
-};
-
-const courseProgress = [
-  { course_title: "Mathematics", progress: 75, total_quests: 20, completed_quests: 15 },
-  { course_title: "Science", progress: 60, total_quests: 18, completed_quests: 11 },
-  { course_title: "English Literature", progress: 90, total_quests: 15, completed_quests: 13 },
-  { course_title: "History", progress: 40, total_quests: 12, completed_quests: 5 },
-  { course_title: "Computer Science", progress: 85, total_quests: 10, completed_quests: 8 },
-]
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import {
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+import { motion } from "framer-motion";
+import AccomplishmentGraph from "./streak-graph";
+import { useProgress } from "@/hooks/use-progress";
 
 export function ProgressTracker() {
+  const { progressData, loading, error, refetch } = useProgress();
+
+  // Loading and error states
+  if (loading) {
+    return <div className="p-6">Loading progress data...</div>;
+  }
+  if (error) {
+    return <div className="p-6 text-red-500">{error}</div>;
+  }
+  if (!progressData) {
+    return <div className="p-6">No progress data available.</div>;
+  }
+
+  // Use real data from backend
+  const weeklyData = progressData.weekly_data;
+  const monthlyData = progressData.monthly_data;
+  // Map streak_data to the format expected by AccomplishmentGraph
+  const accomplishmentData = progressData.streak_data.map((d) => ({
+    date: d.date,
+    accomplishments: d.intensity,
+    dayOfWeek: d.dayOfWeek,
+  }));
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 p-6 rounded-xl bg-card dark:bg-transparent"
     >
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight text-primary">Progress Tracker</h2>
-        <p className="text-muted-foreground">Monitor your learning journey and track your achievements over time.</p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        >
-          <Card className="border-none shadow-md hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg text-primary">Total XP</CardTitle>
-              <CardDescription>Experience points earned</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-primary">1,450 XP</div>
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        >
-          <Card className="border-none shadow-md hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg text-primary">Quests Completed</CardTitle>
-              <CardDescription>Total learning missions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-primary">52 / 78</div>
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        >
-          <Card className="border-none shadow-md hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg text-primary">Current Level</CardTitle>
-              <CardDescription>Your learning rank</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-primary">Level 5</div>
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span>Progress to Level 6</span>
-                  <span>450/600 XP</span>
-                </div>
-                <Progress value={75} className="h-2" />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <h2 className="text-3xl font-bold tracking-tight text-primary">
+          Progress Tracker
+        </h2>
+        <p className="text-muted-foreground">
+          Monitor your learning journey and track your achievements over time.
+        </p>
       </div>
 
       <Tabs defaultValue="weekly">
@@ -214,34 +80,99 @@ export function ProgressTracker() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={weeklyData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="day" stroke="var(--foreground)" />
-                      <YAxis stroke="var(--foreground)" />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: "var(--card)",
-                          borderColor: "var(--border)",
-                          borderRadius: "8px",
-                          color: "var(--foreground)"
-                        }} 
-                        labelStyle={{ color: "var(--foreground)" }}
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        opacity={0.2}
+                        stroke="hsl(var(--muted-foreground))"
                       />
-                      <Legend wrapperStyle={{ color: "var(--foreground)" }} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="exp_reward" 
-                        name="XP Earned" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={2}
-                        activeDot={{ r: 6 }} 
+                      <XAxis
+                        dataKey="day"
+                        stroke="hsl(var(--foreground))"
+                        fontSize={12}
+                        fontWeight={500}
+                        tickLine={false}
+                        axisLine={{
+                          stroke: "hsl(var(--border))",
+                          strokeWidth: 1,
+                        }}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="quests_completed" 
-                        name="Quests Completed" 
-                        stroke="hsl(var(--chart-2))" 
-                        strokeWidth={2}
-                        activeDot={{ r: 6 }} 
+                      <YAxis
+                        stroke="hsl(var(--foreground))"
+                        fontSize={12}
+                        fontWeight={500}
+                        tickLine={false}
+                        axisLine={{
+                          stroke: "hsl(var(--border))",
+                          strokeWidth: 1,
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "12px",
+                          color: "hsl(var(--foreground))",
+                          boxShadow:
+                            "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                        }}
+                        labelStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontWeight: "600",
+                          fontSize: "14px",
+                        }}
+                        itemStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontSize: "13px",
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                        }}
+                        iconType="circle"
+                        iconSize={8}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="exp_reward"
+                        name="XP Earned"
+                        stroke="hsl(142, 76%, 36%)"
+                        strokeWidth={3}
+                        dot={{
+                          fill: "hsl(142, 76%, 36%)",
+                          strokeWidth: 2,
+                          r: 4,
+                          stroke: "hsl(var(--background))",
+                        }}
+                        activeDot={{
+                          r: 6,
+                          fill: "hsl(142, 76%, 36%)",
+                          stroke: "hsl(var(--background))",
+                          strokeWidth: 2,
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="quests_completed"
+                        name="Quests Completed"
+                        stroke="hsl(221, 83%, 53%)"
+                        strokeWidth={3}
+                        dot={{
+                          fill: "hsl(221, 83%, 53%)",
+                          strokeWidth: 2,
+                          r: 4,
+                          stroke: "hsl(var(--background))",
+                        }}
+                        activeDot={{
+                          r: 6,
+                          fill: "hsl(221, 83%, 53%)",
+                          stroke: "hsl(var(--background))",
+                          strokeWidth: 2,
+                        }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -260,34 +191,99 @@ export function ProgressTracker() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="week" stroke="var(--foreground)" />
-                      <YAxis stroke="var(--foreground)" />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: "var(--card)",
-                          borderColor: "var(--border)",
-                          borderRadius: "8px",
-                          color: "var(--foreground)"
-                        }} 
-                        labelStyle={{ color: "var(--foreground)" }}
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        opacity={0.2}
+                        stroke="hsl(var(--muted-foreground))"
                       />
-                      <Legend wrapperStyle={{ color: "var(--foreground)" }} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="exp_reward" 
-                        name="XP Earned" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={2}
-                        activeDot={{ r: 6 }} 
+                      <XAxis
+                        dataKey="week"
+                        stroke="hsl(var(--foreground))"
+                        fontSize={12}
+                        fontWeight={500}
+                        tickLine={false}
+                        axisLine={{
+                          stroke: "hsl(var(--border))",
+                          strokeWidth: 1,
+                        }}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="quests_completed" 
-                        name="Quests Completed" 
-                        stroke="hsl(var(--chart-2))" 
-                        strokeWidth={2}
-                        activeDot={{ r: 6 }} 
+                      <YAxis
+                        stroke="hsl(var(--foreground))"
+                        fontSize={12}
+                        fontWeight={500}
+                        tickLine={false}
+                        axisLine={{
+                          stroke: "hsl(var(--border))",
+                          strokeWidth: 1,
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "12px",
+                          color: "hsl(var(--foreground))",
+                          boxShadow:
+                            "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                        }}
+                        labelStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontWeight: "600",
+                          fontSize: "14px",
+                        }}
+                        itemStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontSize: "13px",
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                        }}
+                        iconType="circle"
+                        iconSize={8}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="exp_reward"
+                        name="XP Earned"
+                        stroke="hsl(142, 76%, 36%)"
+                        strokeWidth={3}
+                        dot={{
+                          fill: "hsl(142, 76%, 36%)",
+                          strokeWidth: 2,
+                          r: 4,
+                          stroke: "hsl(var(--background))",
+                        }}
+                        activeDot={{
+                          r: 6,
+                          fill: "hsl(142, 76%, 36%)",
+                          stroke: "hsl(var(--background))",
+                          strokeWidth: 2,
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="quests_completed"
+                        name="Quests Completed"
+                        stroke="hsl(221, 83%, 53%)"
+                        strokeWidth={3}
+                        dot={{
+                          fill: "hsl(221, 83%, 53%)",
+                          strokeWidth: 2,
+                          r: 4,
+                          stroke: "hsl(var(--background))",
+                        }}
+                        activeDot={{
+                          r: 6,
+                          fill: "hsl(221, 83%, 53%)",
+                          stroke: "hsl(var(--background))",
+                          strokeWidth: 2,
+                        }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -297,34 +293,17 @@ export function ProgressTracker() {
           </motion.div>
         </TabsContent>
       </Tabs>
-      <div>
-        <h3 className="text-xl font-bold mb-4 text-primary">Course Progress</h3>
-        <div className="space-y-6">
-          {courseProgress.map((course) => (
-            <motion.div 
-              key={course.course_title} 
-              className="space-y-2 p-3 rounded-lg bg-background border shadow-sm"
-              whileHover={{ scale: 1.01, x: 5 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
-              <div className="flex justify-between">
-                <div className="font-medium text-primary">{course.course_title}</div>
-                <div className="text-sm text-primary">{course.completed_quests} / {course.total_quests} quests completed
-                </div>
-              </div>
-              <Progress value={course.progress} className="h-2" />
-            </motion.div>
-          ))}
-        </div>
-      </div>
 
       <div>
-        <h3 className="text-xl font-bold mb-4 text-primary">Learning Streaks</h3>
+        <h3 className="text-xl font-bold mb-4 text-primary">
+          Learning Streaks
+        </h3>
         <div className="mb-2 text-muted-foreground">
-          Track your daily learning activities and maintain your streak for consistent progress.
+          Track your daily learning activities and maintain your streak for
+          consistent progress.
         </div>
-        <StreakGraph data={streakData} />
+        <AccomplishmentGraph data={accomplishmentData} />
       </div>
     </motion.div>
-  )
+  );
 }

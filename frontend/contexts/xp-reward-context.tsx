@@ -107,7 +107,7 @@ export function XPRewardProvider({ children }: XPRewardProviderProps) {
 
   // Custom setOnboardingInProgress that also handles initialization
   const setOnboardingProgressWithInit = (inProgress: boolean) => {
-    console.log("Setting onboarding progress:", inProgress);
+    // console.log("Setting onboarding progress:", inProgress);
     setIsOnboardingInProgress(inProgress);
     if (!isInitialized) {
       setIsInitialized(true);

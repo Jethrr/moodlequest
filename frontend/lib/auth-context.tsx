@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (storedUser) {
             const userData = JSON.parse(storedUser);
-            console.log("Loaded user from storage:", userData);
+            // console.log("Loaded user from storage:", userData);
             // Set the token in the API client
             apiClient.setToken(userData.token);
 

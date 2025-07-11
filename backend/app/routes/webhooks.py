@@ -20,6 +20,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy import update
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Text
+from app.services.daily_quest_service import DailyQuestService
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +217,39 @@ def handle_quiz_attempt_submitted(data: dict, db: Session):
             # Don't fail the main operation if notification fails
             logger.error(f"Failed to send real-time notification for user {user_id}: {notification_error}")
             
+        # Update EARN_XP daily quest progress
+        try:
+            result = DailyQuestService(db).complete_earn_xp_quest(user_id, exp_reward)
+            logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+            
+            # If the EARN_XP quest was completed, send XP reward notification
+            if result.get("success") and result.get("xp_awarded", 0) > 0:
+                try:
+                    # Get updated student progress for total XP
+                    updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                    total_xp = updated_sp.total_exp if updated_sp else exp_reward
+                    
+                    # Create and send XP reward notification for daily quest completion
+                    daily_quest_notification = create_xp_notification(
+                        user_id=user_id,
+                        quest_title="Earn XP Daily Quest Completed! 🎉",
+                        xp_earned=result["xp_awarded"],
+                        total_xp=total_xp,
+                        source_type="daily_quest_completion"
+                    )
+                    
+                    # Send XP reward notification asynchronously (non-blocking)
+                    asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                    logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                    
+                except Exception as notification_error:
+                    logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                    
+        except Exception as e:
+            logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+        
     except IntegrityError as e:
         db.rollback()
         logger.error(f"Database integrity error processing quiz attempt: {e}")
@@ -357,6 +391,39 @@ def handle_assign_submitted(data: dict, db: Session):
             # Don't fail the main operation if notification fails
             logger.error(f"Failed to send real-time notification for user {user_id}: {notification_error}")
             
+        # Update EARN_XP daily quest progress
+        try:
+            result = DailyQuestService(db).complete_earn_xp_quest(user_id, exp_reward)
+            logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+            
+            # If the EARN_XP quest was completed, send XP reward notification
+            if result.get("success") and result.get("xp_awarded", 0) > 0:
+                try:
+                    # Get updated student progress for total XP
+                    updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                    total_xp = updated_sp.total_exp if updated_sp else exp_reward
+                    
+                    # Create and send XP reward notification for daily quest completion
+                    daily_quest_notification = create_xp_notification(
+                        user_id=user_id,
+                        quest_title="Earn XP Daily Quest Completed! 🎉",
+                        xp_earned=result["xp_awarded"],
+                        total_xp=total_xp,
+                        source_type="daily_quest_completion"
+                    )
+                    
+                    # Send XP reward notification asynchronously (non-blocking)
+                    asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                    logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                    
+                except Exception as notification_error:
+                    logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                    
+        except Exception as e:
+            logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+        
     except IntegrityError as e:
         db.rollback()
         logger.error(f"Database integrity error processing assignment submission: {e}")
@@ -573,6 +640,37 @@ def handle_course_completion_updated(data: dict, db: Session):
         logger.error(f"Error processing course completion: {e}")
         raise
 
+    # Update EARN_XP daily quest progress
+    try:
+        result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
+        logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+        
+        # If the EARN_XP quest was completed, send XP reward notification
+        if result.get("success") and result.get("xp_awarded", 0) > 0:
+            try:
+                # Get updated student progress for total XP
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else xp_amount
+                
+                # Create and send XP reward notification for daily quest completion
+                daily_quest_notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title="Earn XP Daily Quest Completed! 🎉",
+                    xp_earned=result["xp_awarded"],
+                    total_xp=total_xp,
+                    source_type="daily_quest_completion"
+                )
+                
+                # Send XP reward notification asynchronously (non-blocking)
+                asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                
+            except Exception as notification_error:
+                logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
+
 def handle_forum_post_created(data: dict, db: Session):
     """
     Handle forum post creation webhook from Moodle.
@@ -656,6 +754,37 @@ def handle_forum_post_created(data: dict, db: Session):
         logger.error(f"Error processing forum post: {e}")
         raise
 
+    # Update EARN_XP daily quest progress
+    try:
+        result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
+        logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+        
+        # If the EARN_XP quest was completed, send XP reward notification
+        if result.get("success") and result.get("xp_awarded", 0) > 0:
+            try:
+                # Get updated student progress for total XP
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else xp_amount
+                
+                # Create and send XP reward notification for daily quest completion
+                daily_quest_notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title="Earn XP Daily Quest Completed! 🎉",
+                    xp_earned=result["xp_awarded"],
+                    total_xp=total_xp,
+                    source_type="daily_quest_completion"
+                )
+                
+                # Send XP reward notification asynchronously (non-blocking)
+                asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                
+            except Exception as notification_error:
+                logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
+
 def handle_forum_discussion_created(data: dict, db: Session):
     """
     Handle forum discussion creation webhook from Moodle.
@@ -737,6 +866,37 @@ def handle_forum_discussion_created(data: dict, db: Session):
         db.rollback()
         logger.error(f"Error processing forum discussion: {e}")
         raise
+
+    # Update EARN_XP daily quest progress
+    try:
+        result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
+        logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+        
+        # If the EARN_XP quest was completed, send XP reward notification
+        if result.get("success") and result.get("xp_awarded", 0) > 0:
+            try:
+                # Get updated student progress for total XP
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else xp_amount
+                
+                # Create and send XP reward notification for daily quest completion
+                daily_quest_notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title="Earn XP Daily Quest Completed! 🎉",
+                    xp_earned=result["xp_awarded"],
+                    total_xp=total_xp,
+                    source_type="daily_quest_completion"
+                )
+                
+                # Send XP reward notification asynchronously (non-blocking)
+                asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                
+            except Exception as notification_error:
+                logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
 
 def handle_lesson_completed(data: dict, db: Session):
     """
@@ -928,6 +1088,37 @@ def handle_lesson_completed(data: dict, db: Session):
             logger.error(f"Error processing lesson completion: {e}")
             raise
 
+    # Update EARN_XP daily quest progress
+    try:
+        result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
+        logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+        
+        # If the EARN_XP quest was completed, send XP reward notification
+        if result.get("success") and result.get("xp_awarded", 0) > 0:
+            try:
+                # Get updated student progress for total XP
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else xp_amount
+                
+                # Create and send XP reward notification for daily quest completion
+                daily_quest_notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title="Earn XP Daily Quest Completed! 🎉",
+                    xp_earned=result["xp_awarded"],
+                    total_xp=total_xp,
+                    source_type="daily_quest_completion"
+                )
+                
+                # Send XP reward notification asynchronously (non-blocking)
+                asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                
+            except Exception as notification_error:
+                logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
+
 def handle_lesson_viewed(data: dict, db: Session):
     """
     Handle lesson view webhook from Moodle.
@@ -1013,6 +1204,37 @@ def handle_lesson_viewed(data: dict, db: Session):
         db.rollback()
         logger.error(f"Error processing lesson view: {e}")
         raise
+
+    # Update EARN_XP daily quest progress
+    try:
+        result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
+        logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+        
+        # If the EARN_XP quest was completed, send XP reward notification
+        if result.get("success") and result.get("xp_awarded", 0) > 0:
+            try:
+                # Get updated student progress for total XP
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else xp_amount
+                
+                # Create and send XP reward notification for daily quest completion
+                daily_quest_notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title="Earn XP Daily Quest Completed! 🎉",
+                    xp_earned=result["xp_awarded"],
+                    total_xp=total_xp,
+                    source_type="daily_quest_completion"
+                )
+                
+                # Send XP reward notification asynchronously (non-blocking)
+                asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                
+            except Exception as notification_error:
+                logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
 
 def handle_feedback_submitted(data: dict, db: Session):
     """
@@ -1190,6 +1412,37 @@ def handle_feedback_submitted(data: dict, db: Session):
         logger.error(f"Error processing feedback: {e}")
         raise
 
+    # Update EARN_XP daily quest progress
+    try:
+        result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
+        logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+        
+        # If the EARN_XP quest was completed, send XP reward notification
+        if result.get("success") and result.get("xp_awarded", 0) > 0:
+            try:
+                # Get updated student progress for total XP
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else xp_amount
+                
+                # Create and send XP reward notification for daily quest completion
+                daily_quest_notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title="Earn XP Daily Quest Completed! 🎉",
+                    xp_earned=result["xp_awarded"],
+                    total_xp=total_xp,
+                    source_type="daily_quest_completion"
+                )
+                
+                # Send XP reward notification asynchronously (non-blocking)
+                asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                
+            except Exception as notification_error:
+                logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
+
 def handle_glossary_entry_created(data: dict, db: Session):
     logger.info(f"Glossary entry created: {data}")
     # TODO: Implement glossary XP/quest logic
@@ -1291,6 +1544,37 @@ def handle_choice_answer_submitted(data: dict, db: Session):
         db.rollback()
         logger.error(f"Error processing choice: {e}")
         raise
+
+    # Update EARN_XP daily quest progress
+    try:
+        result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
+        logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
+        
+        # If the EARN_XP quest was completed, send XP reward notification
+        if result.get("success") and result.get("xp_awarded", 0) > 0:
+            try:
+                # Get updated student progress for total XP
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else xp_amount
+                
+                # Create and send XP reward notification for daily quest completion
+                daily_quest_notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title="Earn XP Daily Quest Completed! 🎉",
+                    xp_earned=result["xp_awarded"],
+                    total_xp=total_xp,
+                    source_type="daily_quest_completion"
+                )
+                
+                # Send XP reward notification asynchronously (non-blocking)
+                asyncio.create_task(notification_service.send_notification(daily_quest_notification))
+                logger.info(f"Daily quest XP reward notification sent to user {user_id}")
+                
+            except Exception as notification_error:
+                logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
 
 def handle_wiki_page_created(data: dict, db: Session):
     logger.info(f"Wiki page created: {data}")
