@@ -21,7 +21,7 @@ export interface MoodleProfileData {
   bio?: string;
   department?: string;
   institution?: string;
-  description?: string;
+  // Removed unused description field to improve clarity.
   roles?: any[];
 }
 
