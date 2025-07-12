@@ -76,7 +76,7 @@ export async function fetchUserProfileFromBackend(
     if (result.success && result.data) {
       // Map the backend response to our ProfileData format
       const profileData: ProfileData = {
-        id: result.data.id?.toString() || user.id,
+        id: result.data.id?.toString() || user.id.toString(),
         username: result.data.username || user.username,
         first_name: result.data.first_name || user.username.split(".")[0] || "",
         last_name: result.data.last_name || user.username.split(".")[1] || "",
