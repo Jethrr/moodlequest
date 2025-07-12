@@ -57,7 +57,6 @@ export default function ProfileEditPage() {
 
         if (data) {
           setProfileData(data);
-          console.log("Gwapo data:", data);
           // Initialize form with existing data
           setFormData({
             firstName: data.first_name || "",
