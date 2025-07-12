@@ -144,7 +144,7 @@ export default function ProfileEditPage() {
         console.warn("Non-critical: Failed to update Moodle profile", e);
       }
 
-      success("Profile updated  successfully");
+      success("Profile updated successfully");
 
       // Navigate back to profile
       router.push("/dashboard/profile");
