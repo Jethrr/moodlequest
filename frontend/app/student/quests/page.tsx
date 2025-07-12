@@ -79,12 +79,13 @@ interface LeaderboardUser {
 export default function StudentQuestsPage() {
   const { user: currentUser } = useCurrentUser();
   const { showXPReward, createRewardData } = useGlobalXPReward();
-  
+
   // Add badge collection hook to get refetch function
   const { refetch: refetchBadges } = useBadgeCollection(currentUser?.id);
 
   // Add SSE notifications for real-time updates
-  const { addNotificationHandler, removeNotificationHandler } = useSSENotifications();
+  const { addNotificationHandler, removeNotificationHandler } =
+    useSSENotifications();
 
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,28 +190,32 @@ export default function StudentQuestsPage() {
       } finally {
         setLoadingDailyQuests(false);
       }
-    };    fetchDailyQuests();
+    };
+    fetchDailyQuests();
   }, [currentUser?.id]);
 
   // Set up SSE notification handler for quest completion events
   useEffect(() => {
     const handleQuestCompletion = async (notification: any) => {
       console.log("Quest completion notification received:", notification);
-      
+
       // Refresh badge data when a quest is completed via webhook
       try {
         await refetchBadges();
-        
+
         // Also refresh daily quest summary in case it was a daily quest
         if (currentUser?.id) {
-          const updatedSummary = await apiClient.getDailyQuestSummary(currentUser.id);
+          const updatedSummary = await apiClient.getDailyQuestSummary(
+            currentUser.id
+          );
           setQuestSummary(updatedSummary);
         }
-        
+
         // Show a toast notification
         toast({
           title: notification.title || "Quest Completed! 🎉",
-          description: notification.message || "You may have earned new badges!",
+          description:
+            notification.message || "You may have earned new badges!",
         });
       } catch (error) {
         console.error("Failed to refresh data after quest completion:", error);
@@ -224,7 +229,12 @@ export default function StudentQuestsPage() {
     return () => {
       removeNotificationHandler("quest_completion");
     };
-  }, [currentUser?.id, refetchBadges, addNotificationHandler, removeNotificationHandler]);
+  }, [
+    currentUser?.id,
+    refetchBadges,
+    addNotificationHandler,
+    removeNotificationHandler,
+  ]);
 
   // Handle quest completion
   const handleCompleteQuest = async (quest: UserDailyQuest) => {
@@ -254,12 +264,12 @@ export default function StudentQuestsPage() {
             title: "Quest Completed! 🎉",
             description: `You earned ${result.xp_awarded} XP!`,
           });
-        }        // Refresh quest summary
+        } // Refresh quest summary
         const updatedSummary = await apiClient.getDailyQuestSummary(
           currentUser.id
         );
         setQuestSummary(updatedSummary);
-        
+
         // Refresh badge data to show any newly earned badges
         try {
           await refetchBadges();
@@ -632,65 +642,10 @@ export default function StudentQuestsPage() {
         className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"
       >
         {/* Player Card */}
-        <motion.div
-          whileHover={{ scale: 1.02, y: -5 }}
-          className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6 flex items-center gap-3 md:gap-4"
-        >
-          <div className="relative">
-            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center relative">
-              <span className="text-base md:text-xl font-bold text-white">
-                {user.name.charAt(0)}
-              </span>
-              <motion.div
-                className="absolute inset-0 rounded-full border-2 border-primary/30"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            </div>
-            <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-              {user.expLevel}
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center flex-wrap">
-              <h3 className="font-semibold text-sm md:text-base truncate">
-                {user.name}
-              </h3>
-              <Badge
-                variant="outline"
-                className="bg-primary/10 text-primary border-primary/20 text-xs whitespace-nowrap"
-              >
-                {user.rank}
-              </Badge>
-            </div>
-
-            <div className="mt-2">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Level Progress</span>
-                <span className="font-medium">
-                  {user.currentExp}/{user.maxExp} XP
-                </span>
-              </div>
-              <Progress
-                value={(user.currentExp / user.maxExp) * 100}
-                className="h-1.5"
-              />
-            </div>
-
-            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Users className="h-3 w-3" /> {user.followers}
-              </div>
-              <div className="flex items-center gap-1">
-                <Star className="h-3 w-3" /> {user.likes}
-              </div>
-            </div>
-          </div>
-        </motion.div>
+         
 
         {/* Streak Card */}
-        <motion.div
+        {/* <motion.div
           whileHover={{ scale: 1.02, y: -5 }}
           className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6"
         >
@@ -724,10 +679,10 @@ export default function StudentQuestsPage() {
               <Flag className="h-3 w-3" /> Keep going
             </Button>
           </div>
-        </motion.div>
+        </motion.div> */}
 
         {/* Rank Card */}
-        <motion.div
+        {/* <motion.div
           whileHover={{ scale: 1.02, y: -5 }}
           className="bg-background/95 backdrop-blur-lg rounded-xl border p-4 md:p-6 sm:col-span-2 md:col-span-1"
         >
@@ -775,7 +730,7 @@ export default function StudentQuestsPage() {
               </Button>
             </Link>
           </div>
-        </motion.div>
+        </motion.div> */}
       </motion.div>
 
       {/* Mini Games Section */}
@@ -885,7 +840,8 @@ export default function StudentQuestsPage() {
                 </div>
               </div>
             </motion.div>
-          ))}        </div>
+          ))}{" "}
+        </div>
       </motion.div>
 
       {/* Daily Quests & Leaderboard Section */}
@@ -1036,7 +992,8 @@ export default function StudentQuestsPage() {
               </div>
               <span className="text-xs text-muted-foreground">Tomorrow</span>
             </motion.div>
-          </div>        </motion.div>
+          </div>{" "}
+        </motion.div>
 
         {/* Achievements & Badges */}
         <motion.div variants={itemVariants}>

@@ -336,7 +336,7 @@ export default function TeacherStudentsPage() {
                     <TableHead>Progress</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                </TableHeader>{" "}
+                </TableHeader>
                 <TableBody>
                   {sortedStudents.map((student) => {
                     const name =

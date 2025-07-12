@@ -195,7 +195,7 @@ export function VirtualPet() {
         setIsLoading(true);
         setError(null);
 
-        console.log("VirtualPet: Fetching pet data from API...");
+        // console.log("VirtualPet: Fetching pet data from API...");
         const [petResponse, accessoriesResponse, equippedResponse] =
           await Promise.all([
             getMyPet(),
@@ -203,21 +203,21 @@ export function VirtualPet() {
             getEquippedAccessories(),
           ]);
 
-        console.log("VirtualPet: API responses:", {
-          petResponse,
-          accessoriesResponse,
-          equippedResponse,
-        });
+        // console.log("VirtualPet: API responses:", {
+        //   petResponse,
+        //   accessoriesResponse,
+        //   equippedResponse,
+        // });
 
         if (petResponse.success && petResponse.has_pet && petResponse.pet) {
           // Convert backend pet data to frontend format
           const frontendPet = convertBackendPetToFrontend(petResponse.pet);
           setPet(frontendPet);
           setNewPetName(frontendPet.name);
-          console.log("VirtualPet: Successfully loaded pet:", frontendPet);
+          // console.log("VirtualPet: Successfully loaded pet:", frontendPet);
         } else if (petResponse.success && !petResponse.has_pet) {
           // User doesn't have a pet - this component shouldn't be shown
-          console.log("VirtualPet: No pet found for user");
+          // console.log("VirtualPet: No pet found for user");
           setError("No pet found. Please create a pet first.");
         } else {
           console.error(
@@ -258,7 +258,7 @@ export function VirtualPet() {
       try {
         const syncResponse = await syncPetLevel();
         if (syncResponse.success) {
-          console.log("Pet level synced:", syncResponse);
+          // console.log("Pet level synced:", syncResponse);
 
           // Update pet level if it changed
           if (syncResponse.new_level !== pet.level) {

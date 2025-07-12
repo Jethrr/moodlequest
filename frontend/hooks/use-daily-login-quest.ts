@@ -27,10 +27,10 @@ export function useDailyLoginQuest() {
       // Prevent multiple completion attempts on the same day
       if (hasCompletedToday.current === today) return;
 
-      console.log(
-        "Starting daily login quest completion for user:",
-        user.username
-      );
+      // console.log(
+      //   "Starting daily login quest completion for user:",
+      //   user.username
+      // );
 
       try {
         // Ensure quest templates are seeded (this is idempotent)

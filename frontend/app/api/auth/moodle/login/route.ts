@@ -164,6 +164,7 @@ export async function POST(request: NextRequest) {
           email: moodleUser.email || `${moodleUser.username}@example.com`,
           role: detectedRole,
           moodleId: moodleUser.id,
+          bio: moodleUser.description || "",
           token: token,
           privateToken: tokenData.privatetoken || "",
           avatarUrl: moodleUser.profileimageurl || "",
@@ -190,6 +191,7 @@ export async function POST(request: NextRequest) {
                 lastName: moodleUser.lastname || "",
                 token: token,
                 privateToken: tokenData.privatetoken || "",
+                bio: moodleUser.description || "",
                 role: detectedRole, // include the detected role
                 profileImageUrl: moodleUser.profileimageurl || "", // include profile image
               }),

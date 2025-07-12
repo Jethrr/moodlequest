@@ -18,6 +18,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
     profile_image_url = Column(Text, nullable=True)
+    bio = Column(Text, nullable=True)
     moodle_user_id = Column(Integer, nullable=True)
     settings = Column(JSONB, server_default='{}')
     user_token = Column(Text, unique=True, nullable=True)

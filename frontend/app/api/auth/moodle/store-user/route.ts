@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
       token,
       privateToken,
       profileImageUrl,
+      bio,
     } = body;
 
     // Forward the request to our backend service
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
         token,
         privateToken,
         profileImageUrl,
+        bio,
       }),
     });
 

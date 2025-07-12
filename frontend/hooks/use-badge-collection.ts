@@ -37,16 +37,12 @@ export function useBadgeCollection(userId?: number): BadgeCollectionReturn {
       setLoading(true);
       setError(null);
 
-      console.log(`🔍 Fetching badge data for user ID: ${userId}`);
-
       // Fetch all available badges with improved error handling
       let badges: Badge[] = [];
       try {
         badges = await apiClient.getAllBadges(true);
         setAllBadges(badges);
-        console.log(`📋 Fetched ${badges.length} total badges`);
       } catch (badgeError) {
-        console.error("Failed to fetch badges:", badgeError);
         setAllBadges([]);
 
         const errorMsg =
@@ -85,7 +81,6 @@ export function useBadgeCollection(userId?: number): BadgeCollectionReturn {
             );
             setBadgeProgress(userOnlyProgress);
           } catch (userBadgeError) {
-            console.error("Failed to fetch user badges:", userBadgeError);
             setBadgeProgress([]);
           }
         }
@@ -97,20 +92,11 @@ export function useBadgeCollection(userId?: number): BadgeCollectionReturn {
         try {
           const userEarnedBadges = await apiClient.getUserBadges(userId);
           setUserBadges(userEarnedBadges);
-          console.log(
-            `👤 User ${userId} has ${userEarnedBadges.length} earned badges:`,
-            userEarnedBadges.map((ub) => `Badge ${ub.badge_id}`).join(", ")
-          );
 
           // Fetch user's badge progress using the comprehensive endpoint
           try {
             const progressData = await apiClient.getUserBadgeProgress(userId);
-            console.log("🏆 Badge progress API response:", {
-              earned_count: progressData.earned_badges?.length || 0,
-              available_count: progressData.available_badges?.length || 0,
-              stats: progressData.stats,
-            });
-            console.log("📊 Full API response:", progressData); // Process the API response directly since backend already separates earned/available correctly
+
             const earnedBadgesList: UserBadgeProgress[] = (
               progressData.earned_badges || []
             ).map((item: any) => ({
@@ -147,20 +133,7 @@ export function useBadgeCollection(userId?: number): BadgeCollectionReturn {
 
             const actualEarned = earnedBadgesList;
             const actualAvailable = availableBadgesList;
-            console.log(
-              `✅ Final processed results: ${actualEarned.length} earned, ${actualAvailable.length} available`
-            );
-            console.log(
-              `🏆 Earned badges:`,
-              actualEarned.map(
-                (b) => `${b.badge.name} (ID: ${b.badge.badge_id})`
-              )
-            );
           } catch (progressError) {
-            console.error(
-              "Badge progress endpoint not available, using basic progress:",
-              progressError
-            );
             // If progress endpoint doesn't exist, create basic progress data
             const basicProgress: UserBadgeProgress[] = badges.map((badge) => {
               const earnedBadge = userEarnedBadges.find(
@@ -178,7 +151,6 @@ export function useBadgeCollection(userId?: number): BadgeCollectionReturn {
             setBadgeProgress(basicProgress);
           }
         } catch (userError) {
-          console.error("Failed to fetch user badge data:", userError);
           // Create basic progress from just the badges
           const basicProgress: UserBadgeProgress[] = badges.map((badge) => ({
             badge,
@@ -200,7 +172,6 @@ export function useBadgeCollection(userId?: number): BadgeCollectionReturn {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch badge data";
       setError(errorMessage);
-      console.error("Error fetching badge data:", err);
 
       setAllBadges([]);
       setUserBadges([]);

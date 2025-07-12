@@ -22,6 +22,7 @@ class UserResponse(UserBase):
     id: int
     moodle_user_id: Optional[int] = None
     profile_image_url: Optional[str] = None
+    bio: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -44,6 +45,7 @@ class StoreUserRequest(BaseModel):
     privateToken: Optional[str] = None
     role: Optional[str] = "student"
     profileImageUrl: Optional[str] = None
+    bio: Optional[str] = None
 
 
 class Token(BaseModel):

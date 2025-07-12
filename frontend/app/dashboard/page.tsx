@@ -24,6 +24,7 @@ import { getLevelInfo } from "@/lib/leveling-system";
 import { Flame } from "lucide-react";
 import { PetOnboardingModal } from "@/components/dashboard/pet-onboarding-modal";
 import { useGlobalXPReward } from "@/contexts/xp-reward-context";
+import { useSSENotifications } from "@/hooks/use-sse-notifications";
 
 export default function DashboardPage() {
   // Protect this route for students - teachers will be redirected to /teacher/dashboard
@@ -37,6 +38,9 @@ export default function DashboardPage() {
   // Initialize daily login quest auto-completion
   useDailyLoginQuest();
 
+  // Initialize SSE notifications for real-time updates
+  const { connectionState } = useSSENotifications();
+
   const [studentProgress, setStudentProgress] =
     useState<StudentProgress | null>(null);
   const [progressLoading, setProgressLoading] = useState(true);
@@ -47,27 +51,7 @@ export default function DashboardPage() {
   const [petCheckLoading, setPetCheckLoading] = useState(true); // Start as true to show loading initially
   const [petCreationLoading, setPetCreationLoading] = useState(false);
 
-  // Debug logging
-  useEffect(() => {
-    console.log("Dashboard - User state:", {
-      user: user?.username,
-      userLoading,
-      hasPet,
-      petCheckLoading,
-      isOnboardingInProgress,
-    });
-  }, [user, userLoading, hasPet, petCheckLoading, isOnboardingInProgress]);
-
-  // Debug logging for onboarding state
-  useEffect(() => {
-    console.log("Dashboard onboarding state changed:", {
-      isOnboardingInProgress,
-      hasPet,
-      petCheckLoading,
-      userLoading,
-      userId: user?.id,
-    });
-  }, [isOnboardingInProgress, hasPet, petCheckLoading, userLoading, user?.id]);
+  // Debug logging - removed for cleaner console
 
   // Fetch student progress data
   useEffect(() => {
@@ -140,11 +124,11 @@ export default function DashboardPage() {
 
       try {
         setPetCheckLoading(true);
-        console.log("Checking pet status for user:", user.username);
+        // console.log("Checking pet status for user:", user.username);
 
         // Step 1: Check if user has a pet
         const checkResponse = await checkUserHasPet();
-        console.log("Pet check response:", checkResponse);
+        // console.log("Pet check response:", checkResponse);
 
         if (!checkResponse.success) {
           console.error("Failed to check pet status:", checkResponse.message);
@@ -156,9 +140,9 @@ export default function DashboardPage() {
         setHasPet(hasPetStatus);
 
         if (hasPetStatus) {
-          console.log(
-            "User has a pet, will load it when VirtualPet component mounts"
-          );
+          // console.log(
+          //   "User has a pet, will load it when VirtualPet component mounts"
+          // );
           // User has a pet, no onboarding needed
           setOnboardingInProgress(false);
         } else {

@@ -239,7 +239,6 @@ export async function checkUserHasPet(): Promise<{
   message?: string;
 }> {
   try {
-    console.log("🔍 Checking if user has pet...");
     debugVirtualPetAuth(); // Add debugging information
 
     const data = await apiClient.request<PetCheckResponse>(
@@ -247,7 +246,6 @@ export async function checkUserHasPet(): Promise<{
       "GET"
     );
 
-    console.log("✅ Pet check successful:", data);
     return {
       success: true,
       data: data,
