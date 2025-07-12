@@ -62,8 +62,8 @@ def sync_user_from_moodle(user: User, moodle_user: dict, db: Session = None) -> 
         user.last_name = moodle_user["lastname"]
     if "profileimageurl" in moodle_user:
         user.profile_image_url = moodle_user["profileimageurl"]
-    if "profileimageurl" in moodle_user:
-        user.profile_image_url = moodle_user["profileimageurl"]
+    if "description" in moodle_user:
+        user.bio = moodle_user["description"]
     
     # Update role based on Moodle roles
     roles = moodle_user.get("roles", [])
@@ -208,6 +208,8 @@ async def moodle_login(
             last_name=user.last_name,
             is_active=user.is_active,
             moodle_user_id=user.moodle_user_id,
+            profile_image_url=user.profile_image_url,
+            bio=user.bio,
             created_at=user.created_at
         )
         
@@ -277,6 +279,8 @@ async def moodle_login(
                         last_name=user.last_name,
                         is_active=user.is_active,
                         moodle_user_id=user.moodle_user_id,
+                        profile_image_url=user.profile_image_url,
+                        bio=user.bio,
                         created_at=user.created_at
                     )
                     
@@ -394,6 +398,8 @@ async def moodle_login(
             last_name=user.last_name,
             is_active=user.is_active,
             moodle_user_id=user.moodle_user_id,
+            profile_image_url=user.profile_image_url,
+            bio=user.bio,
             created_at=user.created_at or datetime.utcnow()
         )
         
@@ -474,6 +480,8 @@ async def login_for_access_token(
         last_name=user.last_name,
         is_active=user.is_active,
         moodle_user_id=user.moodle_user_id,
+        profile_image_url=user.profile_image_url,
+        bio=user.bio,
         created_at=user.created_at
     )
     
@@ -530,6 +538,8 @@ async def read_users_me(
         last_name=current_user.last_name,
         is_active=current_user.is_active,
         moodle_user_id=current_user.moodle_user_id,
+        profile_image_url=current_user.profile_image_url,
+        bio=current_user.bio,
         created_at=current_user.created_at
     )
 
@@ -607,6 +617,8 @@ async def refresh_moodle_token(
                 last_name=current_user.last_name,
                 is_active=current_user.is_active,
                 moodle_user_id=current_user.moodle_user_id,
+                profile_image_url=current_user.profile_image_url,
+                bio=current_user.bio,
                 created_at=current_user.created_at or datetime.utcnow()
             )
             
@@ -661,6 +673,10 @@ async def store_moodle_user(
             if user_data.profileImageUrl:
                 user.profile_image_url = user_data.profileImageUrl
             
+            # Update bio if provided
+            if hasattr(user_data, 'bio') and user_data.bio is not None:
+                user.bio = user_data.bio
+            
             # Update last login time
             user.last_login = datetime.utcnow()
             
@@ -676,6 +692,7 @@ async def store_moodle_user(
                 user_token=user_data.token,
                 role=user_data.role,  # Default role
                 profile_image_url=user_data.profileImageUrl,  # Set profile image
+                bio=getattr(user_data, 'bio', None),
                 is_active=True,
                 password_hash="moodle_user",  # Placeholder as we use Moodle auth
                 created_at=datetime.utcnow()  # Explicitly set creation time
@@ -717,6 +734,7 @@ async def store_moodle_user(
             is_active=user.is_active,
             moodle_user_id=user.moodle_user_id,
             profile_image_url=user.profile_image_url,
+            bio=user.bio,
             created_at=user.created_at or datetime.utcnow()
         )
         
@@ -1200,5 +1218,78 @@ async def get_course(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch or save courses from Moodle: {str(e)}"
+        )
+
+
+@router.get("/users/{user_id}/profile")
+async def get_user_profile(
+    user_id: int,
+    username: str = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get basic profile information for a specific user.
+    """
+    try:
+        # First try to find by Moodle user ID, then by local ID
+        user = db.query(User).filter(User.moodle_user_id == user_id).first()
+        if not user:
+            user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        # Get additional stats from related tables
+        try:
+            from app.models.quest import QuestProgress
+            from app.models.badge import UserBadge
+            from app.models.virtual_pet import VirtualPet
+            
+            # Count completed quests
+            quests_completed = db.query(QuestProgress).filter(
+                QuestProgress.user_id == user.id,
+                QuestProgress.status == "completed"
+            ).count()
+            
+            # Count badges earned
+            badges_earned = db.query(UserBadge).filter(
+                UserBadge.user_id == user.id
+            ).count()
+            
+            # Get current level from virtual pet or default to 1
+            virtual_pet = db.query(VirtualPet).filter(VirtualPet.user_id == user.id).first()
+            current_level = virtual_pet.level if virtual_pet else 1
+        except Exception as e:
+            logger.error(f"Error getting user stats: {str(e)}")
+            # Use defaults if there's an error
+            quests_completed = 0
+            badges_earned = 0
+            current_level = 1
+        
+        profile_data = {
+            "id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "profile_image_url": user.profile_image_url,
+            "role": user.role,
+            "bio": user.bio,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "current_level": current_level,
+            "badges_earned": badges_earned,
+            "quests_completed": quests_completed,
+        }
+        return {"success": True, "data": profile_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"DEBUG PROFILE ENDPOINT ERROR: {e}")
+        logger.error(f"Error getting user profile: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get user profile"
         )
 

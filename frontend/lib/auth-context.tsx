@@ -20,6 +20,7 @@ export type User = {
   role: string;
   moodleId: string;
   avatarUrl?: string;
+  bio?: string;
   level?: number;
   xp?: number;
   badges?: number;

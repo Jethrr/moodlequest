@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.endpoints import users, auth, quests, courses, enrollment
-from app.routes import webhooks, badges, virtual_pet, notifications, progress
+from app.routes import webhooks, badges, virtual_pet, notifications, progress, analytics
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
@@ -14,3 +14,4 @@ api_router.include_router(badges.router, prefix="/badges", tags=["badges"])
 api_router.include_router(virtual_pet.router, prefix="/virtual-pet", tags=["virtual-pet"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

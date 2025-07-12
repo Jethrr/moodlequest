@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   GraduationCap,
   Trophy,
@@ -14,69 +14,75 @@ import {
   LineChart,
   LayoutDashboard,
   Sun,
-  Moon
-} from "lucide-react"
-import { LogoutButton } from "@/components/logout-button"
-import { useAuth } from "@/lib/auth-context"
-import { ModeToggle } from "@/components/ui/mode-toggle"
+  Moon,
+} from "lucide-react";
+import { LogoutButton } from "@/components/logout-button";
+import { useAuth } from "@/lib/auth-context";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 
 const routes = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
-    color: "text-purple-500"
+    color: "text-purple-500",
   },
   {
     label: "Quests",
     icon: GraduationCap,
     href: "/student/quests",
-    color: "text-violet-500"
+    color: "text-violet-500",
   },
   {
     label: "Progress",
     icon: LineChart,
     href: "/dashboard/progress",
-    color: "text-emerald-500"
+    color: "text-emerald-500",
   },
   {
     label: "Leaderboard",
     icon: Trophy,
     href: "/dashboard/leaderboard",
-    color: "text-orange-500"
+    color: "text-orange-500",
   },
   {
     label: "Profile",
     icon: UserCircle,
     href: "/dashboard/profile",
-    color: "text-blue-500"
-  }
-]
+    color: "text-blue-500",
+  },
+  // {
+  //   label: "Learning Resources",
+  //   icon: UserCircle,
+  //   href: "/student/learning-resources",
+  //   color: "text-green-500",
+  // },
+];
 
 export function Navbar() {
-  const pathname = usePathname()
-  const [isExpanded, setIsExpanded] = useState(true)
-  const { user } = useAuth()
+  const pathname = usePathname();
+  const [isExpanded, setIsExpanded] = useState(true);
+  const { user } = useAuth();
 
   // For smaller screens, automatically collapse the navbar to save space
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
-        setIsExpanded(false)
+        setIsExpanded(false);
       } else {
-        setIsExpanded(true)
+        setIsExpanded(true);
       }
-    }
-    
+    };
+
     // Set initial state based on screen size
-    handleResize()
-    
+    handleResize();
+
     // Add event listener
-    window.addEventListener('resize', handleResize)
-    
+    window.addEventListener("resize", handleResize);
+
     // Cleanup
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-6 z-50 pointer-events-none">
@@ -86,23 +92,27 @@ export function Navbar() {
         transition={{ duration: 0.3 }}
         className="pointer-events-auto"
       >
-        <div className={cn(
-          "flex items-center gap-2 bg-background/95 backdrop-blur-lg rounded-full p-2 shadow-xl border",
-          "transition-all duration-300 ease-in-out",
-          isExpanded ? "pr-6" : "hover:pr-6"
-        )}>
+        <div
+          className={cn(
+            "flex items-center gap-2 bg-background/95 backdrop-blur-lg rounded-full p-2 shadow-xl border",
+            "transition-all duration-300 ease-in-out",
+            isExpanded ? "pr-6" : "hover:pr-6"
+          )}
+        >
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="p-2 hover:bg-accent rounded-full transition"
-            aria-label={isExpanded ? "Collapse navigation" : "Expand navigation"}
+            aria-label={
+              isExpanded ? "Collapse navigation" : "Expand navigation"
+            }
           >
             <Menu className="h-5 w-5" />
           </button>
 
           <nav className="flex items-center gap-1">
             {routes.map((route) => {
-              const isActive = pathname === route.href
-              
+              const isActive = pathname === route.href;
+
               return (
                 <Link
                   key={route.href}
@@ -113,12 +123,14 @@ export function Navbar() {
                     isActive && "bg-accent"
                   )}
                 >
-                  <route.icon className={cn(
-                    "h-5 w-5 transition-colors",
-                    isActive ? route.color : "text-muted-foreground",
-                    "group-hover:text-foreground"
-                  )} />
-                  
+                  <route.icon
+                    className={cn(
+                      "h-5 w-5 transition-colors",
+                      isActive ? route.color : "text-muted-foreground",
+                      "group-hover:text-foreground"
+                    )}
+                  />
+
                   {isExpanded && (
                     <motion.span
                       initial={{ opacity: 0, width: 0 }}
@@ -141,21 +153,21 @@ export function Navbar() {
                       transition={{
                         type: "spring",
                         stiffness: 350,
-                        damping: 30
+                        damping: 30,
                       }}
                     />
                   )}
                 </Link>
-              )
+              );
             })}
 
             {user && (
               <>
                 <div className="ml-2 pl-2 border-l border-muted">
-                  <LogoutButton 
-                    variant="ghost" 
-                    size="sm" 
-                    showIcon={isExpanded} 
+                  <LogoutButton
+                    variant="ghost"
+                    size="sm"
+                    showIcon={isExpanded}
                     className={cn(
                       "rounded-full transition-all duration-300",
                       "hover:bg-accent group flex items-center",
@@ -176,5 +188,5 @@ export function Navbar() {
         </div>
       </motion.div>
     </div>
-  )
-} 
+  );
+}
