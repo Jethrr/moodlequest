@@ -35,7 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Loader2, TrendingUp, Award, Target, Users, Clock, Activity, BarChart3, Calendar, Zap, Target as TargetIcon, Users as UsersIcon, Clock as ClockIcon, Activity as ActivityIcon } from "lucide-react";
 import { useState } from "react";
 import { useAnalytics } from "@/hooks/use-analytics";
@@ -222,11 +221,11 @@ export function StudentProgressAnalytics() {
         <TabsContent value="engagement" className="mt-6">
           <Card className="bg-white border border-emerald-100 shadow-md">
             <CardHeader>
-              <CardTitle className="text-emerald-900 flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-black">
                 <TrendingUp className="h-5 w-5 text-emerald-600" />
                 Class Engagement
               </CardTitle>
-              <CardDescription className="text-emerald-700/80">
+              <CardDescription className="text-black">
                 Daily active users and quest activity over time
               </CardDescription>
             </CardHeader>
@@ -270,10 +269,10 @@ export function StudentProgressAnalytics() {
                         strokeDasharray="3 3"
                         className="stroke-emerald-200"
                       />
-                      <XAxis dataKey="day" className="text-emerald-900" />
-                      <YAxis className="text-emerald-900" />
+                      <XAxis dataKey="day" className="text-black" tick={{ fill: '#111' }} />
+                      <YAxis className="text-black" tick={{ fill: '#111' }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Legend />
+                      <Legend wrapperStyle={{ color: '#111' }} />
                       <Line
                         type="monotone"
                         dataKey="activeUsers"
@@ -314,11 +313,11 @@ export function StudentProgressAnalytics() {
         <TabsContent value="performance" className="mt-6">
           <Card className="bg-white border border-purple-100 shadow-md">
             <CardHeader>
-              <CardTitle className="text-purple-900 flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-black">
                 <Target className="h-5 w-5 text-purple-600" />
                 Performance Analytics
               </CardTitle>
-              <CardDescription className="text-purple-700/80">
+              <CardDescription className="text-black">
                 Daily average XP and completion rates for the selected time period
               </CardDescription>
             </CardHeader>
@@ -359,10 +358,10 @@ export function StudentProgressAnalytics() {
                           strokeDasharray="3 3"
                           className="stroke-purple-200"
                         />
-                        <XAxis dataKey="day" className="text-purple-900" />
-                        <YAxis className="text-purple-900" />
+                        <XAxis dataKey="day" className="text-black" tick={{ fill: '#111' }} />
+                        <YAxis className="text-black" tick={{ fill: '#111' }} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend />
+                        <Legend wrapperStyle={{ color: '#111' }} />
                         <Bar
                           dataKey="averageXp"
                           fill="#7c3aed"
@@ -385,8 +384,8 @@ export function StudentProgressAnalytics() {
                       <CardContent className="p-4">
                         <div className="flex justify-between items-center">
                           <div>
-                            <h4 className="font-semibold text-purple-900">Data Summary</h4>
-                            <p className="text-sm text-purple-700/80">
+                            <h4 className="font-semibold text-black">Data Summary</h4>
+                            <p className="text-sm text-black">
                               {performanceData.length} days of data • {performanceData.reduce((sum, item) => sum + item.totalAttempts, 0)} total attempts
                             </p>
                           </div>
@@ -413,11 +412,11 @@ export function StudentProgressAnalytics() {
             {/* Engagement Insights Overview */}
             <Card className="bg-white border border-blue-100 shadow-md">
               <CardHeader>
-                <CardTitle className="text-blue-900 flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-black">
                   <Activity className="h-5 w-5 text-blue-600" />
                   Engagement Insights
                 </CardTitle>
-                <CardDescription className="text-blue-700/80">
+                <CardDescription className="text-black">
                   Deep dive into user behavior patterns and engagement metrics
                 </CardDescription>
               </CardHeader>
@@ -443,11 +442,11 @@ export function StudentProgressAnalytics() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <Card className="bg-blue-50 border border-blue-200 shadow-sm">
                         <CardHeader>
-                          <CardTitle className="text-blue-900 flex items-center gap-2 text-sm">
+                          <CardTitle className="flex items-center gap-2 text-black text-sm">
                             <Clock className="h-4 w-4 text-blue-600" />
                             Login Patterns
                           </CardTitle>
-                          <CardDescription className="text-blue-700/80 text-xs">
+                          <CardDescription className="text-black text-xs">
                             User activity by hour of day
                           </CardDescription>
                         </CardHeader>
@@ -469,10 +468,11 @@ export function StudentProgressAnalytics() {
                                 />
                                 <XAxis 
                                   dataKey="hour" 
-                                  className="text-blue-900 text-xs"
+                                  className="text-black text-xs"
+                                  tick={{ fill: '#111' }}
                                   tickFormatter={(value) => `${value}:00`}
                                 />
-                                <YAxis className="text-blue-900 text-xs" />
+                                <YAxis className="text-black text-xs" tick={{ fill: '#111' }} />
                                 <ChartTooltip content={<ChartTooltipContent />} />
                                 <Bar
                                   dataKey="uniqueUsers"
@@ -488,11 +488,11 @@ export function StudentProgressAnalytics() {
                       {/* Engagement Levels */}
                       <Card className="bg-blue-50 border border-blue-200 shadow-sm">
                         <CardHeader>
-                          <CardTitle className="text-blue-900 flex items-center gap-2 text-sm">
+                          <CardTitle className="flex items-center gap-2 text-black text-sm">
                             <Users className="h-4 w-4 text-blue-600" />
                             Engagement Levels
                           </CardTitle>
-                          <CardDescription className="text-blue-700/80 text-xs">
+                          <CardDescription className="text-black text-xs">
                             Users categorized by activity intensity
                           </CardDescription>
                         </CardHeader>
@@ -501,7 +501,7 @@ export function StudentProgressAnalytics() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                                <span className="text-sm font-medium text-gray-900">High Engagement</span>
+                                <span className="text-sm font-medium text-black">High Engagement</span>
                               </div>
                               <span className="text-sm font-bold text-emerald-700">
                                 {engagementInsights.engagementLevels.high}
@@ -510,7 +510,7 @@ export function StudentProgressAnalytics() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                                <span className="text-sm font-medium text-gray-900">Medium Engagement</span>
+                                <span className="text-sm font-medium text-black">Medium Engagement</span>
                               </div>
                               <span className="text-sm font-bold text-yellow-600">
                                 {engagementInsights.engagementLevels.medium}
@@ -519,7 +519,7 @@ export function StudentProgressAnalytics() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                                <span className="text-sm font-medium text-gray-900">Low Engagement</span>
+                                <span className="text-sm font-medium text-black">Low Engagement</span>
                               </div>
                               <span className="text-sm font-bold text-red-600">
                                 {engagementInsights.engagementLevels.low}
@@ -533,39 +533,39 @@ export function StudentProgressAnalytics() {
                     {/* Streak Analysis */}
                     <Card className="bg-blue-50 border border-blue-200 shadow-sm">
                       <CardHeader>
-                        <CardTitle className="text-blue-900 flex items-center gap-2 text-sm">
+                        <CardTitle className="flex items-center gap-2 text-black text-sm">
                           <Zap className="h-4 w-4 text-purple-600" />
                           Streak Analysis
                         </CardTitle>
-                        <CardDescription className="text-blue-700/80 text-xs">
+                        <CardDescription className="text-black text-xs">
                           Consistency and engagement patterns
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-700">
+                            <div className="text-2xl font-bold text-black">
                               {engagementInsights.streakAnalysis.currentStreak}
                             </div>
-                            <div className="text-xs text-blue-700/80">Current Streak</div>
+                            <div className="text-xs text-black">Current Streak</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-purple-700">
+                            <div className="text-2xl font-bold text-black">
                               {engagementInsights.streakAnalysis.maxStreak}
                             </div>
-                            <div className="text-xs text-purple-700/80">Max Streak</div>
+                            <div className="text-xs text-black">Max Streak</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-emerald-700">
+                            <div className="text-2xl font-bold text-black">
                               {engagementInsights.streakAnalysis.activeDays}
                             </div>
-                            <div className="text-xs text-emerald-700/80">Active Days</div>
+                            <div className="text-xs text-black">Active Days</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-orange-600">
+                            <div className="text-2xl font-bold text-black">
                               {engagementInsights.streakAnalysis.consistencyRate.toFixed(1)}%
                             </div>
-                            <div className="text-xs text-orange-600/80">Consistency</div>
+                            <div className="text-xs text-black">Consistency</div>
                           </div>
                         </div>
                       </CardContent>
@@ -574,11 +574,11 @@ export function StudentProgressAnalytics() {
                     {/* Most Active Time Periods */}
                     <Card className="bg-blue-50 border border-blue-200 shadow-sm">
                       <CardHeader>
-                        <CardTitle className="text-blue-900 flex items-center gap-2 text-sm">
+                        <CardTitle className="flex items-center gap-2 text-black text-sm">
                           <Calendar className="h-4 w-4 text-blue-600" />
                           Most Active Time Periods
                         </CardTitle>
-                        <CardDescription className="text-blue-700/80 text-xs">
+                        <CardDescription className="text-black text-xs">
                           When users are most engaged
                         </CardDescription>
                       </CardHeader>
@@ -600,12 +600,13 @@ export function StudentProgressAnalytics() {
                               />
                               <XAxis 
                                 dataKey="period" 
-                                className="text-blue-900 text-xs"
+                                className="text-black text-xs"
+                                tick={{ fill: '#111' }}
                                 angle={-45}
                                 textAnchor="end"
                                 height={60}
                               />
-                              <YAxis className="text-blue-900 text-xs" />
+                              <YAxis className="text-black text-xs" tick={{ fill: '#111' }} />
                               <ChartTooltip content={<ChartTooltipContent />} />
                               <Bar
                                 dataKey="activityCount"
@@ -621,11 +622,11 @@ export function StudentProgressAnalytics() {
                     {/* Action Distribution */}
                     <Card className="bg-blue-50 border border-blue-200 shadow-sm">
                       <CardHeader>
-                        <CardTitle className="text-blue-900 flex items-center gap-2 text-sm">
+                        <CardTitle className="flex items-center gap-2 text-black text-sm">
                           <BarChart3 className="h-4 w-4 text-blue-600" />
                           Action Distribution
                         </CardTitle>
-                        <CardDescription className="text-blue-700/80 text-xs">
+                        <CardDescription className="text-black text-xs">
                           Most common user activities
                         </CardDescription>
                       </CardHeader>
@@ -646,11 +647,11 @@ export function StudentProgressAnalytics() {
                                     ][index % 5]
                                   }}
                                 ></div>
-                                <span className="text-sm font-medium text-gray-900 capitalize">
+                                <span className="text-sm font-medium text-black capitalize">
                                   {action.action.replace('_', ' ')}
                                 </span>
                               </div>
-                              <span className="text-sm font-bold text-blue-700">
+                              <span className="text-sm font-bold text-black">
                                 {action.count}
                               </span>
                             </div>
