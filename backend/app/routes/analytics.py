@@ -298,17 +298,15 @@ async def get_performance_analytics(
             }
             current_date += timedelta(days=1)
 
-        # Fill in actual data
         for record in performance_data:
-            if record.day:
-                day_name = record.day.strftime("%A")
-                daily_data[record.day] = {
-                    "day": day_name,
-                    "averageXp": float(record.averageXp) if record.averageXp else 0,
-                    "completionRate": float(record.completionRate) if record.completionRate else 0,
-                    "totalAttempts": record.totalAttempts,
-                    "completedQuests": record.completedQuests
-                }
+            day_name = record.day.strftime("%A")
+            daily_data[record.day] = {
+                "day": day_name,
+                "averageXp": float(record.averageXp) if record.averageXp else 0,
+                "completionRate": float(record.completionRate) if record.completionRate else 0,
+                "totalAttempts": record.totalAttempts,
+                "completedQuests": record.completedQuests
+            }
 
         # Convert to list format for frontend
         result = list(daily_data.values())
@@ -418,12 +416,25 @@ async def get_engagement_insights(
             func.date(ActivityLog.timestamp)
         ).all()
 
+        # Optimized: Calculate active_days directly from the database
+        active_days = db.query(
+            func.count()
+        ).select_from(
+            db.query(
+                func.date(ActivityLog.timestamp).label('date')
+            )
+            .filter(and_(*base_conditions))
+            .group_by(func.date(ActivityLog.timestamp))
+            .having(func.count(func.distinct(ActivityLog.user_id)) > 0)
+            .subquery()
+        ).scalar()
+
         # Calculate streak metrics
         streak_data = []
         current_streak = 0
         max_streak = 0
         total_days = len(daily_user_activity)
-        active_days = sum(1 for day in daily_user_activity if day.activeUsers > 0)
+        # active_days is now calculated above
 
         for i, day in enumerate(daily_user_activity):
             if day.activeUsers > 0:
