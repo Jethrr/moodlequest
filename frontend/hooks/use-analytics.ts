@@ -3,6 +3,8 @@ import {
   AnalyticsService,
   EngagementData,
   EngagementSummary,
+  PerformanceData,
+  EngagementInsightsData,
 } from "@/lib/analytics-service";
 
 export interface UseAnalyticsOptions {
@@ -14,6 +16,8 @@ export interface UseAnalyticsOptions {
 export interface UseAnalyticsReturn {
   engagementData: EngagementData[];
   summary: EngagementSummary | null;
+  performanceData: PerformanceData[];
+  engagementInsights: EngagementInsightsData | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -28,6 +32,8 @@ export function useAnalytics(
 
   const [engagementData, setEngagementData] = useState<EngagementData[]>([]);
   const [summary, setSummary] = useState<EngagementSummary | null>(null);
+  const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
+  const [engagementInsights, setEngagementInsights] = useState<EngagementInsightsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentTimeRange, setCurrentTimeRange] = useState(timeRange);
@@ -38,8 +44,8 @@ export function useAnalytics(
     setError(null);
 
     try {
-      // Fetch both engagement data and summary in parallel
-      const [engagementResponse, summaryResponse] = await Promise.all([
+      // Fetch engagement data, summary, performance data, and engagement insights in parallel
+      const [engagementResponse, summaryResponse, performanceResponse, insightsResponse] = await Promise.all([
         AnalyticsService.getEngagementAnalytics(
           currentTimeRange,
           currentCourseId
@@ -48,10 +54,20 @@ export function useAnalytics(
           currentTimeRange,
           currentCourseId
         ),
+        AnalyticsService.getPerformanceAnalytics(
+          currentTimeRange,
+          currentCourseId
+        ),
+        AnalyticsService.getEngagementInsights(
+          currentTimeRange,
+          currentCourseId
+        ),
       ]);
 
       setEngagementData(engagementResponse);
       setSummary(summaryResponse);
+      setPerformanceData(performanceResponse);
+      setEngagementInsights(insightsResponse);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch analytics data";
@@ -83,6 +99,8 @@ export function useAnalytics(
   return {
     engagementData,
     summary,
+    performanceData,
+    engagementInsights,
     loading,
     error,
     refetch,

@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Sun,
   Moon,
+  Flag,
 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { useAuth } from "@/lib/auth-context";
@@ -32,6 +33,12 @@ const routes = [
     icon: GraduationCap,
     href: "/student/quests",
     color: "text-violet-500",
+  },
+  {
+    label: "Capture the Flag",
+    icon: Flag,
+    href: "/capture-the-flag/sessions",
+    color: "text-red-500",
   },
   {
     label: "Progress",
