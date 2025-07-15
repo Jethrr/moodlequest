@@ -202,7 +202,7 @@ async function storeMoodleProfile(
         firstName: moodleData.firstname || "",
         lastName: moodleData.lastname || "",
         token: token,
-        bio: moodleData.description || "",
+        bio: moodleData.bio || "",
       }),
       signal: controller.signal,
     });
@@ -242,7 +242,7 @@ function createProfileFromMoodle(
     }),
     school: moodleData.institution || "Unknown School",
     department: moodleData.department || "General Studies",
-    bio: moodleData.description || "",
+    bio: moodleData.bio || "",
     badges_collected: [],
     stats: {
       finished_skills: 0,
