@@ -116,6 +116,13 @@ export interface TeacherProfile {
   account_status: string;
 }
 
+export interface TeacherProfileUpdate {
+  first_name?: string;
+  last_name?: string;
+  bio?: string;
+  profile_image_url?: string;
+}
+
 // Streak Types
 export interface UserStreak {
   current_streak: number;
@@ -358,6 +365,21 @@ class ApiClient {
       return await this.request<TeacherProfile>("/profile/teacher", "GET");
     } catch (error) {
       console.error("Teacher profile fetch error:", error);
+      throw error;
+    }
+  }
+
+  async updateTeacherProfile(
+    updateData: TeacherProfileUpdate
+  ): Promise<TeacherProfile> {
+    try {
+      return await this.request<TeacherProfile>(
+        "/profile/teacher",
+        "PUT",
+        updateData
+      );
+    } catch (error) {
+      console.error("Teacher profile update error:", error);
       throw error;
     }
   }
