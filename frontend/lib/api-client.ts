@@ -98,6 +98,24 @@ export interface QuestCompletionResponse {
   quest?: UserDailyQuest;
 }
 
+// Teacher Profile Types
+export interface TeacherProfile {
+  id: number;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  email: string;
+  profile_image_url?: string;
+  bio?: string;
+  joined_date: string;
+  total_courses: number;
+  active_courses: number;
+  total_students: number;
+  quests_created: number;
+  badges_designed: number;
+  account_status: string;
+}
+
 // Streak Types
 export interface UserStreak {
   current_streak: number;
@@ -330,6 +348,16 @@ class ApiClient {
       );
     } catch (error) {
       console.error("User streak fetch error:", error);
+      throw error;
+    }
+  }
+
+  // Profile Methods
+  async getTeacherProfile(): Promise<TeacherProfile> {
+    try {
+      return await this.request<TeacherProfile>("/profile/teacher", "GET");
+    } catch (error) {
+      console.error("Teacher profile fetch error:", error);
       throw error;
     }
   }
