@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
@@ -21,3 +21,10 @@ class TeacherProfileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TeacherProfileUpdate(BaseModel):
+    first_name: Optional[str] = Field(None, max_length=100)
+    last_name: Optional[str] = Field(None, max_length=100)
+    bio: Optional[str] = Field(None, max_length=500)
+    profile_image_url: Optional[str] = Field(None, max_length=255)

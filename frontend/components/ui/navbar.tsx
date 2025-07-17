@@ -34,12 +34,12 @@ const routes = [
     href: "/student/quests",
     color: "text-violet-500",
   },
-  {
-    label: "Capture the Flag",
-    icon: Flag,
-    href: "/capture-the-flag/sessions",
-    color: "text-red-500",
-  },
+  // {
+  //   label: "Capture the Flag",
+  //   icon: Flag,
+  //   href: "/capture-the-flag/sessions",
+  //   color: "text-red-500",
+  // },
   {
     label: "Progress",
     icon: LineChart,
