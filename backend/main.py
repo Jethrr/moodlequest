@@ -101,6 +101,7 @@ from app.routes.activity_log import router as activity_log_router
 from app.routes.virtual_pet import router as virtual_pet_router
 from app.routes.profile import router as profile_router
 from app.routes.analytics import router as analytics_router
+from app.routes.progress import router as progress_router
 
 app.include_router(quests.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
@@ -114,6 +115,7 @@ app.include_router(activity_log_router, prefix="/api")
 app.include_router(virtual_pet_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(progress_router, prefix="/api")
 
 @app.get("/")
 async def root():
