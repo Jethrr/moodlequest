@@ -23,6 +23,13 @@ def handle_course_completion_updated(data: dict, db: Session):
     Handle course module completion update webhook from Moodle.
     Awards XP for completing course activities that may not be full quests.
     """
+    # Log the full object received from Moodle for debugging
+    try:
+        import json
+        logger.info("Course completion updated webhook payload: %s", json.dumps(data, indent=2))
+    except Exception as log_error:
+        logger.warning(f"Could not log course completion updated payload: {log_error}")
+
     moodle_course_id = data.get("course_id")
     moodle_activity_id = data.get("activity_id") or data.get("module_id")
     moodle_user_id = data.get("user_id")
@@ -52,34 +59,114 @@ def handle_course_completion_updated(data: dict, db: Session):
         return
     user_id = user.id
 
-    # Check if this is already a quest (if so, it should be handled by other webhooks)
+
+    # Check if this activity is mapped to a quest
     quest = db.query(Quest).filter(
         Quest.course_id == course_id,
         Quest.moodle_activity_id == moodle_activity_id,
-        Quest.is_active == True
+        Quest.is_active == True,
+        (Quest.start_date == None) | (Quest.start_date <= datetime.utcnow()),
+        (Quest.end_date == None) | (Quest.end_date >= datetime.utcnow())
     ).first()
-    
+
     if quest:
-        logger.debug(f"Activity {moodle_activity_id} is already a quest, skipping completion XP")
+        # Mark quest as completed for this user
+        qp = db.query(QuestProgress).filter_by(user_id=user_id, quest_id=quest.quest_id).first()
+        now = datetime.utcnow()
+        if not qp:
+            qp = QuestProgress(user_id=user_id, quest_id=quest.quest_id, status="not_started", progress_percent=0)
+            db.add(qp)
+            db.commit()
+            db.refresh(qp)
+        if not qp.started_at:
+            qp.started_at = now
+        qp.status = "completed"
+        qp.progress_percent = 100
+        qp.completed_at = now
+        if quest.validation_method == "manual":
+            qp.validation_notes = "Module completed. Pending manual validation."
+            qp.validated_at = None
+        else:
+            qp.validated_at = now
+            qp.validation_notes = "Auto-validated module completion."
+        exp_reward = quest.exp_reward or XP_CONFIG["activity_completion"].get(activity_type.lower(), 5)
+
+        # Update student progress
+        sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+        if sp:
+            sp.total_exp += exp_reward
+            sp.quests_completed += 1
+            sp.last_activity = now
+        else:
+            sp = StudentProgress(
+                user_id=user_id,
+                course_id=course_id,
+                total_exp=exp_reward,
+                quests_completed=1,
+                last_activity=now
+            )
+            db.add(sp)
+
+        # Record experience points
+        ep = ExperiencePoints(
+            user_id=user_id,
+            course_id=course_id,
+            amount=exp_reward,
+            source_type="module_quest",
+            source_id=quest.quest_id,
+            awarded_at=now,
+            notes=f"Quest completion for module (activity_id={moodle_activity_id})"
+        )
+        db.add(ep)
+
+        try:
+            db.commit()
+            logger.info(f"Successfully processed module quest completion for user {user_id}, quest {quest.quest_id}")
+            check_badges_after_quest_completion(user_id, db)
+            # Send notifications
+            try:
+                updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
+                total_xp = updated_sp.total_exp if updated_sp else exp_reward
+                notification = create_xp_notification(
+                    user_id=user_id,
+                    quest_title=quest.title,
+                    xp_earned=exp_reward,
+                    total_xp=total_xp,
+                    source_type="module_completion"
+                )
+                asyncio.create_task(notification_service.send_notification(notification))
+                logger.info(f"Real-time XP notification sent to user {user_id} for module completion")
+                quest_notification = create_quest_notification(
+                    user_id=user_id,
+                    quest_title=quest.title,
+                    notification_type="quest_completion",
+                    message=f"Quest completed via module completion! You may have earned new badges."
+                )
+                asyncio.create_task(notification_service.send_notification(quest_notification))
+                logger.info(f"Quest completion notification sent to user {user_id} for badge refresh")
+            except Exception as notification_error:
+                logger.error(f"Failed to send real-time notification for user {user_id}: {notification_error}")
+        except IntegrityError as e:
+            db.rollback()
+            logger.error(f"Database integrity error processing module quest: {e}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error processing module quest: {e}")
+            raise
         return
 
-    # Award small XP for general activity completion
+    # If not a quest, award small XP for general activity completion (existing logic)
     now = datetime.utcnow()
     xp_amount = XP_CONFIG["activity_completion"].get(activity_type.lower(), 5)
-    
-    # Check if we already awarded XP for this completion
     existing_xp = db.query(ExperiencePoints).filter(
         ExperiencePoints.user_id == user_id,
         ExperiencePoints.course_id == course_id,
         ExperiencePoints.source_type == "completion",
         ExperiencePoints.source_id == moodle_activity_id
     ).first()
-    
     if existing_xp:
         logger.debug(f"XP already awarded for completion of activity {moodle_activity_id} by user {user_id}")
         return
-
-    # Update student progress
     sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
     if sp:
         sp.total_exp += xp_amount
@@ -89,23 +176,20 @@ def handle_course_completion_updated(data: dict, db: Session):
             user_id=user_id,
             course_id=course_id,
             total_exp=xp_amount,
-            quests_completed=0,  # This is not a quest completion
+            quests_completed=0,
             last_activity=now
         )
         db.add(sp)
-
-    # Record experience points
     ep = ExperiencePoints(
         user_id=user_id,
         course_id=course_id,
         amount=xp_amount,
         source_type="completion",
-        source_id=moodle_activity_id,  # Store the activity_id as source_id
+        source_id=moodle_activity_id,
         awarded_at=now,
         notes=f"Activity completion XP for {activity_type} (activity_id={moodle_activity_id})"
     )
     db.add(ep)
-    
     try:
         db.commit()
         logger.info(f"Awarded {xp_amount} XP for {activity_type} completion to user {user_id} in course {course_id}")
@@ -116,20 +200,13 @@ def handle_course_completion_updated(data: dict, db: Session):
         db.rollback()
         logger.error(f"Error processing course completion: {e}")
         raise
-
-    # Update EARN_XP daily quest progress
     try:
         result = DailyQuestService(db).complete_earn_xp_quest(user_id, xp_amount)
         logger.info(f"EARN_XP daily quest update result for user {user_id}: {result}")
-        
-        # If the EARN_XP quest was completed, send XP reward notification
         if result.get("success") and result.get("xp_awarded", 0) > 0:
             try:
-                # Get updated student progress for total XP
                 updated_sp = db.query(StudentProgress).filter_by(user_id=user_id, course_id=course_id).first()
                 total_xp = updated_sp.total_exp if updated_sp else xp_amount
-                
-                # Create and send XP reward notification for daily quest completion
                 daily_quest_notification = create_xp_notification(
                     user_id=user_id,
                     quest_title="Earn XP Daily Quest Completed! 🎉",
@@ -137,14 +214,10 @@ def handle_course_completion_updated(data: dict, db: Session):
                     total_xp=total_xp,
                     source_type="daily_quest_completion"
                 )
-                
-                # Send XP reward notification asynchronously (non-blocking)
                 asyncio.create_task(notification_service.send_notification(daily_quest_notification))
                 logger.info(f"Daily quest XP reward notification sent to user {user_id}")
-                
             except Exception as notification_error:
                 logger.error(f"Failed to send daily quest XP reward notification for user {user_id}: {notification_error}")
-                
     except Exception as e:
         logger.error(f"Failed to update EARN_XP daily quest for user {user_id}: {e}")
 
@@ -154,6 +227,13 @@ def handle_feedback_submitted(data: dict, db: Session):
     Handle feedback activity submission webhook from Moodle.
     Awards XP for completing feedback forms and surveys.
     """
+    # Log the full object received from Moodle for debugging
+    try:
+        import json
+        logger.info("Feedback submitted webhook payload: %s", json.dumps(data, indent=2))
+    except Exception as log_error:
+        logger.warning(f"Could not log feedback submitted payload: {log_error}")
+
     moodle_course_id = data.get("course_id")
     moodle_activity_id = data.get("feedback_id") or data.get("activity_id")
     moodle_user_id = data.get("user_id")
@@ -364,6 +444,13 @@ def handle_choice_answer_submitted(data: dict, db: Session):
     Handle choice (poll/voting) answer submission webhook from Moodle.
     Awards XP for participating in course polls and voting activities.
     """
+    # Log the full object received from Moodle for debugging
+    try:
+        import json
+        logger.info("Choice answer submitted webhook payload: %s", json.dumps(data, indent=2))
+    except Exception as log_error:
+        logger.warning(f"Could not log choice answer submitted payload: {log_error}")
+
     moodle_course_id = data.get("course_id")
     moodle_activity_id = data.get("choice_id") or data.get("activity_id")
     moodle_user_id = data.get("user_id")
