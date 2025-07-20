@@ -95,7 +95,7 @@ export function QuestCreator() {
   const [courseMap, setCourseMap] = useState<{ [id: number]: string }>({});
   const { user } = useCurrentUser();
   const [quest, setQuest] = useState<Partial<Quest>>({
-    xp: 50,
+    exp_reward: 50,
     difficulty: "Medium",
     learningObjectives: [],
     tasks: [],
@@ -343,7 +343,7 @@ export function QuestCreator() {
     setQuest({
       title: activity.name,
       description: activity.description,
-      xp: 50,
+      exp_reward: 50,
       difficulty: "Medium",
       category: activity.course.toString(),
       learningObjectives: [],
@@ -444,7 +444,8 @@ export function QuestCreator() {
       return;
     }
 
-    // Calculate total XP from tasks
+    // Calculate total XP: base XP + tasks + XP rewards
+    const baseXP = quest.exp_reward || 0;
     const taskXP = (quest.tasks || []).reduce(
       (sum, task) => sum + (task.xpReward || 0),
       0
@@ -452,7 +453,7 @@ export function QuestCreator() {
     const rewardXP = (quest.rewards || [])
       .filter((reward) => reward.type === "xp")
       .reduce((sum, reward) => sum + (reward.value || 0), 0);
-    const totalXP = taskXP + rewardXP;
+    const totalXP = baseXP + taskXP + rewardXP;
 
     // Map difficulty string to integer for backend
     const difficultyMap: Record<string, number> = {
@@ -467,7 +468,7 @@ export function QuestCreator() {
       id: `quest-${Date.now()}`,
       title: quest.title || selectedActivity.name,
       description: quest.description || selectedActivity.description || "",
-      xp: totalXP,
+      exp_reward: totalXP, // Use xp instead of exp_reward
       progress: 0,
       moodleActivityId: selectedActivity.id,
       moodleCourse: selectedActivity.course,
@@ -530,7 +531,7 @@ export function QuestCreator() {
       );
       setSelectedActivity(null);
       setQuest({
-        xp: 50,
+        exp_reward: 50,
         difficulty: "Medium",
         learningObjectives: [],
         tasks: [],
@@ -959,11 +960,11 @@ export function QuestCreator() {
                       <Input
                         id="base-xp"
                         type="number"
-                        value={quest.xp}
+                        value={quest.exp_reward}
                         onChange={(e) =>
                           setQuest({
                             ...quest,
-                            xp: Number.parseInt(e.target.value) || 0,
+                            exp_reward: Number.parseInt(e.target.value) || 0,
                           })
                         }
                         min="0"
@@ -1222,7 +1223,7 @@ interface Quest {
   id: string;
   title: string;
   description: string;
-  xp: number;
+  exp_reward: number;
   progress: number;
   difficulty: "Easy" | "Medium" | "Hard" | "Epic";
   category: string;

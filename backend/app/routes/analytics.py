@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from functools import lru_cache
+from functools import lru_cache
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, extract, case, cast, Float
 from datetime import datetime, timedelta
@@ -10,6 +12,36 @@ from app.models.quest import QuestProgress, Quest, ExperiencePoints
 from app.models.user import User
 from app.models.course import Course
 from app.auth.dependencies import get_current_user_optional
+
+
+# Caching helpers for endpoints
+def get_engagement_cache_key(time_range, course_id):
+    return f"{time_range}:{course_id}"
+
+@lru_cache(maxsize=128)
+def cached_engagement_analytics(time_range, course_id):
+    return None
+
+def get_summary_cache_key(time_range, course_id):
+    return f"{time_range}:{course_id}"
+
+@lru_cache(maxsize=128)
+def cached_engagement_summary(time_range, course_id):
+    return None
+
+def get_insights_cache_key(time_range, course_id):
+    return f"{time_range}:{course_id}"
+
+@lru_cache(maxsize=128)
+def cached_engagement_insights(time_range, course_id):
+    return None
+
+def get_performance_cache_key(time_range, course_id):
+    return f"{time_range}:{course_id}"
+
+@lru_cache(maxsize=128)
+def cached_performance_analytics(time_range, course_id):
+    return None
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -24,6 +56,10 @@ async def get_engagement_analytics(
     Get engagement analytics data including active users, badges earned, and quests completed
     """
     try:
+        cache_key = get_engagement_cache_key(time_range, course_id)
+        cached_result = cached_engagement_analytics(time_range, course_id)
+        if cached_result:
+            return cached_result
         # Calculate date range
         end_date = datetime.now()
         if time_range == "week":
@@ -160,6 +196,10 @@ async def get_engagement_summary(
     Get summary statistics for engagement analytics
     """
     try:
+        cache_key = get_summary_cache_key(time_range, course_id)
+        cached_result = cached_engagement_summary(time_range, course_id)
+        if cached_result:
+            return cached_result
         # Calculate date range
         end_date = datetime.now()
         if time_range == "week":
@@ -231,6 +271,15 @@ async def get_engagement_summary(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching engagement summary: {str(e)}") 
 
+def get_performance_cache_key(time_range, course_id):
+    return f"{time_range}:{course_id}"
+
+@lru_cache(maxsize=128)
+def cached_performance_analytics(time_range, course_id):
+    # This function is a placeholder for actual caching logic
+    # In production, use Redis or another distributed cache
+    return None
+
 @router.get("/performance")
 async def get_performance_analytics(
     time_range: str = Query("week", description="Time range: week, month, semester"),
@@ -242,6 +291,11 @@ async def get_performance_analytics(
     Get performance analytics including average XP per day and completion rates per day
     """
     try:
+        # Check cache first
+        cache_key = get_performance_cache_key(time_range, course_id)
+        cached_result = cached_performance_analytics(time_range, course_id)
+        if cached_result:
+            return cached_result
         # Calculate date range
         end_date = datetime.now()
         if time_range == "week":
@@ -311,12 +365,15 @@ async def get_performance_analytics(
         # Convert to list format for frontend
         result = list(daily_data.values())
 
-        return {
+        response = {
             "success": True,
             "data": result,
             "timeRange": time_range,
             "courseId": course_id
         }
+        # Store in cache (for demo, lru_cache is read-only, so this is a placeholder)
+        # In production, use Redis or another cache to store response
+        return response
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching performance analytics: {str(e)}") 
@@ -333,6 +390,10 @@ async def get_engagement_insights(
     engagement intensity, and streak analysis
     """
     try:
+        cache_key = get_insights_cache_key(time_range, course_id)
+        cached_result = cached_engagement_insights(time_range, course_id)
+        if cached_result:
+            return cached_result
         # Calculate date range
         end_date = datetime.now()
         if time_range == "week":

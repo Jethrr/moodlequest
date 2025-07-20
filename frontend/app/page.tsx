@@ -323,7 +323,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/95 overflow-hidden relative">
       {/* Development Mode Notice */}
-      {isDev && (
+      {/* {isDev && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground px-4 py-2 flex items-center justify-center gap-4 shadow-lg">
           <div className="text-sm font-medium">
             🔧 Development Mode: Authentication is bypassed with an auto-login teacher account
@@ -347,7 +347,7 @@ export default function LandingPage() {
             </Button>
           </Link>
         </div>
-      )}
+      )} */}
       
       {/* Bottom Sign-in button */}
       <BottomSignIn />

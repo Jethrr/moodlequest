@@ -23,6 +23,13 @@ def handle_lesson_completed(data: dict, db: Session):
     Handle lesson completion webhook from Moodle.
     Can either be a quest (if mapped) or award general completion XP.
     """
+    # Log the full object received from Moodle for debugging
+    try:
+        import json
+        logger.info("Lesson completed webhook payload: %s", json.dumps(data, indent=2))
+    except Exception as log_error:
+        logger.warning(f"Could not log lesson completed payload: {log_error}")
+
     moodle_course_id = data.get("course_id")
     moodle_activity_id = data.get("lesson_id") or data.get("activity_id")
     moodle_user_id = data.get("user_id")
@@ -247,6 +254,13 @@ def handle_lesson_viewed(data: dict, db: Session):
     Handle lesson view webhook from Moodle.
     Awards small XP for lesson engagement and viewing activities.
     """
+    # Log the full object received from Moodle for debugging
+    try:
+        import json
+        logger.info("Lesson viewed webhook payload: %s", json.dumps(data, indent=2))
+    except Exception as log_error:
+        logger.warning(f"Could not log lesson viewed payload: {log_error}")
+
     moodle_course_id = data.get("course_id")
     moodle_activity_id = data.get("lesson_id") or data.get("activity_id")
     moodle_user_id = data.get("user_id")

@@ -381,7 +381,7 @@ def create_quest_from_frontend(
             "description": payload.get("description"),
             "course_id": payload.get("course_id"),
             "creator_id": payload.get("creator_id", 1),  # Default to user ID 1 if not provided
-            "exp_reward": payload.get("exp_reward", 100),
+            "exp_reward": payload.get("exp_reward"),
             "quest_type": payload.get("quest_type", "assignment"),
             "validation_method": payload.get("validation_method", "manual"),
             "validation_criteria": payload.get("validation_criteria", {}),
