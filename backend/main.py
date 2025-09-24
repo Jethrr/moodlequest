@@ -11,14 +11,9 @@ from app.database.seed import seed_initial_data
 from app.models.auth import MoodleConfig
 
 # Suppress SSL warnings for localhost development
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# ============================================================================
-# ⚠️ DEVELOPMENT WARNING: Authentication is currently DISABLED
-# This configuration automatically logs in with a dummy teacher account
-# Do not use this setup in production! Re-enable authentication when needed.
-# See app/utils/auth.py and frontend/lib/auth-context.tsx
-# ============================================================================
+
 
 # Configure logging
 logging.basicConfig(
@@ -55,7 +50,6 @@ origins = [
     "http://localhost:3000",  # Next.js default
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
-
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://localhost:5173",  # Vite default

@@ -95,12 +95,23 @@ export function QuestCreator() {
   const [courseMap, setCourseMap] = useState<{ [id: number]: string }>({});
   const { user } = useCurrentUser();
   const [quest, setQuest] = useState<Partial<Quest>>({
-    exp_reward: 50,
     difficulty: "Medium",
     learningObjectives: [],
     tasks: [],
     rewards: [],
   });
+  const [editing, setEditing] = useState(false);
+
+  // Function to calculate XP based on difficulty
+  const calculateXP = (difficulty: string): number => {
+    const difficultyXPMap: Record<string, number> = {
+      "Easy": 20,
+      "Medium": 50,
+      "Hard": 100,
+      "Epic": 150
+    };
+    return difficultyXPMap[difficulty] || 50;
+  };
 
   const [newObjective, setNewObjective] = useState("");
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -343,7 +354,6 @@ export function QuestCreator() {
     setQuest({
       title: activity.name,
       description: activity.description,
-      exp_reward: 50,
       difficulty: "Medium",
       category: activity.course.toString(),
       learningObjectives: [],
@@ -444,8 +454,8 @@ export function QuestCreator() {
       return;
     }
 
-    // Calculate total XP: base XP + tasks + XP rewards
-    const baseXP = quest.exp_reward || 0;
+    // Calculate total XP: base XP (from difficulty) + tasks + XP rewards
+    const baseXP = calculateXP(quest.difficulty as string);
     const taskXP = (quest.tasks || []).reduce(
       (sum, task) => sum + (task.xpReward || 0),
       0
@@ -468,7 +478,6 @@ export function QuestCreator() {
       id: `quest-${Date.now()}`,
       title: quest.title || selectedActivity.name,
       description: quest.description || selectedActivity.description || "",
-      exp_reward: totalXP, // Use xp instead of exp_reward
       progress: 0,
       moodleActivityId: selectedActivity.id,
       moodleCourse: selectedActivity.course,
@@ -491,14 +500,21 @@ export function QuestCreator() {
     };
     console.log("Submitting quest:", completeQuest);
     try {
-      // Send to backend with correct difficulty type and field mapping
+      // Send to backend with correct field mapping
       const response: QuestCreationResponse = await createQuest({
-        ...completeQuest,
-        difficulty: difficultyInt,
+        title: quest.title || selectedActivity.name,
+        description: quest.description || selectedActivity.description || "",
         course_id: selectedActivity.course, // Map moodleCourse to course_id for backend
+        creator_id: user?.id ?? 0, // Map creatorId to creator_id for backend
+        difficulty_level: difficultyInt, // Use difficulty_level for backend
+        exp_reward: baseXP, // Send calculated XP reward
+        quest_type: "assignment", // Default quest type
+        validation_method: "manual", // Default validation method
+        validation_criteria: quest.tasks || [], // Map tasks to validation_criteria
+        is_active: true,
+        moodle_activity_id: selectedActivity.id, // Map moodleActivityId to moodle_activity_id
         moodle_course_id: selectedActivity.course,
         moodle_user_id: user?.id ?? 0,
-        moodle_activity_id: selectedActivity.id, // Map moodleActivityId to moodle_activity_id
       });
 
       if (!response || response.success === false) {
@@ -531,7 +547,6 @@ export function QuestCreator() {
       );
       setSelectedActivity(null);
       setQuest({
-        exp_reward: 50,
         difficulty: "Medium",
         learningObjectives: [],
         tasks: [],
@@ -560,6 +575,36 @@ export function QuestCreator() {
           <div className="flex items-center justify-center h-40">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
           </div>
+
+              {/* Edit/Delete buttons for assigned quest */}
+              {selectedActivity?.is_assigned && (
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEditing(true);
+                      toast.success("Editing mode enabled");
+                    }}
+                  >
+                    Edit Quest
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to delete this quest?")) {
+                        // Call deleteQuest API here (mock)
+                        toast.success("Quest deleted (mock)");
+                        setSelectedActivity(null);
+                        setEditing(false);
+                      }
+                    }}
+                  >
+                    Delete Quest
+                  </Button>
+                </div>
+              )}
         </CardContent>
       </Card>
     );
@@ -957,18 +1002,18 @@ export function QuestCreator() {
 
                     <div className="space-y-2">
                       <Label htmlFor="base-xp">Base XP Award</Label>
-                      <Input
-                        id="base-xp"
-                        type="number"
-                        value={quest.exp_reward}
-                        onChange={(e) =>
-                          setQuest({
-                            ...quest,
-                            exp_reward: Number.parseInt(e.target.value) || 0,
-                          })
-                        }
-                        min="0"
-                      />
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          id="base-xp"
+                          type="number"
+                          value={calculateXP(quest.difficulty as string)}
+                          disabled
+                          className="bg-muted"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          (Auto-calculated)
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1204,11 +1249,13 @@ export function QuestCreator() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={selectedActivity.is_assigned}
+                disabled={selectedActivity.is_assigned && !editing}
               >
                 <Sparkles className="h-4 w-4 mr-2" />
-                {selectedActivity.is_assigned
+                {selectedActivity.is_assigned && !editing
                   ? "Already Assigned to Students"
+                  : selectedActivity.is_assigned && editing
+                  ? "Save Changes"
                   : "Assign Quest to Students"}
               </Button>
             </CardFooter>
@@ -1223,7 +1270,6 @@ interface Quest {
   id: string;
   title: string;
   description: string;
-  exp_reward: number;
   progress: number;
   difficulty: "Easy" | "Medium" | "Hard" | "Epic";
   category: string;
