@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -53,19 +53,38 @@ type QuestFormValues = z.infer<typeof questSchema>
 export default function QuestForm({ onSuccess, onCancel }: QuestFormProps) {
   const createQuest = useCreateQuest()
   
+  // Function to calculate XP based on difficulty level
+  const calculateXP = (difficultyLevel: number): number => {
+    const difficultyXPMap: Record<number, number> = {
+      1: 20,  // Easy
+      2: 50,  // Medium
+      3: 100, // Hard
+      4: 150, // Epic
+      5: 200  // Legendary
+    };
+    return difficultyXPMap[difficultyLevel] || 50;
+  };
+  
   const form = useForm<QuestFormValues>({
     resolver: zodResolver(questSchema),
     defaultValues: {
       title: "",
       description: "",
       course_id: undefined,
-      exp_reward: 10,
+      exp_reward: 20, // Default for Easy difficulty (level 1)
       quest_type: "assignment",
       validation_method: "manual",
       is_active: true,
       difficulty_level: 1,
     },
   })
+  
+  // Watch difficulty level and update XP automatically
+  const watchedDifficulty = form.watch("difficulty_level");
+  React.useEffect(() => {
+    const calculatedXP = calculateXP(watchedDifficulty);
+    form.setValue("exp_reward", calculatedXP);
+  }, [watchedDifficulty, form]);
   
   const onSubmit = async (values: QuestFormValues) => {
     try {

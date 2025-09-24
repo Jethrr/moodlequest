@@ -14,5 +14,6 @@ from app.models.leaderboard import Leaderboard, LeaderboardEntry, StudentProgres
 from app.models.daily_quest import DailyQuest, UserDailyQuest, DailyQuestProgress, QuestTypeEnum, QuestStatusEnum
 from app.models.streak import UserStreak
 from app.models.badge import Badge, UserBadge
+from app.models.virtual_pet import VirtualPet, PetAccessory
 
 # This file ensures proper loading order of models when using relationships

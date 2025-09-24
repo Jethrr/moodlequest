@@ -14,7 +14,7 @@ import type {
 
 // Update to match your actual backend URL
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
+  process.env.NEXT_PUBLIC_API_URL;
 
 export interface ApiErrorResponse {
   success: false;
@@ -602,6 +602,20 @@ class ApiClient {
       );
     } catch (error) {
       console.error("Check specific badge criteria error:", error);
+      throw error;
+    }
+  }
+
+  // Quest Methods
+  async createQuest(questData: any, creatorId: number): Promise<any> {
+    try {
+      return await this.request<any>(
+        `/quests?creator_id=${creatorId}`,
+        "POST",
+        questData
+      );
+    } catch (error) {
+      console.error("Create quest error:", error);
       throw error;
     }
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { QuestFilters } from "@/components/dashboard/quest-filters";
 import { QuestsList } from "@/components/dashboard/quests-list";
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QuestDemoControls } from "@/components/dashboard/quest-demo-controls";
 
-export default function QuestsPage() {
+function QuestsPageContent() {
   const searchParams = useSearchParams();
   const initialCourseId = searchParams.get('courseId');
   const [filters, setFilters] = useState<any>({
@@ -209,5 +209,32 @@ export default function QuestsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function QuestsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <Skeleton className="h-8 w-32 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-10" />
+          </div>
+        </div>
+        <Skeleton className="h-32 w-full" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      </div>
+    }>
+      <QuestsPageContent />
+    </Suspense>
   );
 } 

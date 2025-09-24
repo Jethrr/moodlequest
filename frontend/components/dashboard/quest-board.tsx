@@ -75,7 +75,6 @@ export function QuestBoard() {
         );
 
         if (response.success) {
-          // Update quest statistics
           setQuestStats({
             total: response.total_quests,
             completed: response.completed_quests,
@@ -223,16 +222,16 @@ export function QuestBoard() {
             <TabsTrigger value="all">
               All Quests {questStats.total > 0 && `(${questStats.total})`}
             </TabsTrigger>
-            <TabsTrigger value="not-started">
+            {/* <TabsTrigger value="not-started">
               Not Started{" "}
               {questStats.total > 0 &&
                 `(${quests.filter((q) => q.status === "not-started").length})`}
-            </TabsTrigger>
-            <TabsTrigger value="in-progress">
+            </TabsTrigger> */}
+            {/* <TabsTrigger value="in-progress">
               In Progress{" "}
               {questStats.total > 0 &&
                 `(${quests.filter((q) => q.status === "in-progress").length})`}
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger value="completed">
               Completed{" "}
               {questStats.completed > 0 && `(${questStats.completed})`}

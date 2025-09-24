@@ -24,10 +24,20 @@ router = APIRouter(
 @router.post("/", response_model=QuestSchema, status_code=status.HTTP_201_CREATED)
 def create_quest(quest: QuestCreate, creator_id: int = Query(..., description="ID of the user creating the quest"), db: Session = Depends(get_db)):
     """
-    Create a new quest.
+    Create a new quest with automatic XP assignment based on difficulty level.
     """
     quest_dict = quest.model_dump()
     quest_dict["creator_id"] = creator_id
+    
+    # Calculate XP based on difficulty level
+    difficulty_xp_map = {
+        1: 20,  # Easy
+        2: 50,  # Medium
+        3: 100, # Hard
+        4: 150  # Epic (bonus level)
+    }
+    quest_dict["exp_reward"] = difficulty_xp_map.get(quest.difficulty_level, 50)
+    
     db_quest = Quest(**quest_dict)
     db.add(db_quest)
     db.commit()
@@ -109,6 +119,17 @@ def update_quest(quest_id: int, quest: QuestUpdate, db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="Quest not found")
     
     quest_data = quest.model_dump(exclude_unset=True)
+    
+    # If difficulty level is being updated, recalculate XP
+    if "difficulty_level" in quest_data:
+        difficulty_xp_map = {
+            1: 20,  # Easy
+            2: 50,  # Medium
+            3: 100, # Hard
+            4: 150  # Epic (bonus level)
+        }
+        quest_data["exp_reward"] = difficulty_xp_map.get(quest_data["difficulty_level"], 50)
+    
     for field, value in quest_data.items():
         setattr(db_quest, field, value)
     
@@ -376,17 +397,27 @@ def create_quest_from_frontend(
     """
     try:
         # Extract quest data from payload
+        difficulty_level = payload.get("difficulty_level", 1)
+        
+        # Calculate XP based on difficulty level
+        difficulty_xp_map = {
+            1: 20,  # Easy
+            2: 50,  # Medium
+            3: 100, # Hard
+            4: 150  # Epic (bonus level)
+        }
+        
         quest_data = {
             "title": payload.get("title"),
             "description": payload.get("description"),
             "course_id": payload.get("course_id"),
             "creator_id": payload.get("creator_id", 1),  # Default to user ID 1 if not provided
-            "exp_reward": payload.get("exp_reward"),
+            "exp_reward": difficulty_xp_map.get(difficulty_level, 50),  # Auto-calculate XP
             "quest_type": payload.get("quest_type", "assignment"),
             "validation_method": payload.get("validation_method", "manual"),
-            "validation_criteria": payload.get("validation_criteria", {}),
+            "validation_criteria": payload.get("tasks", {}),
             "is_active": payload.get("is_active", True),
-            "difficulty_level": payload.get("difficulty_level", 1),
+            "difficulty_level": difficulty_level,
             "moodle_activity_id": payload.get("moodle_activity_id"),
             "start_date": datetime.utcnow(),
             "end_date": datetime.utcnow() + timedelta(days=30)  # Default 30 days from now
