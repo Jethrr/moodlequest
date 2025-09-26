@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { QuestCreator } from "@/components/dashboard/teacher/quest-creator";
+import { QuestManager } from "@/components/dashboard/teacher/quest-manager";
 import { StudentProgressAnalytics } from "@/components/dashboard/teacher/student-progress-analytics";
 import { ClassLeaderboard } from "@/components/dashboard/teacher/class-leaderboard";
 import { BadgeCreator } from "@/components/teacher/badge-creator";
@@ -36,6 +37,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard";
 import { TeacherDashboardService, RecentActivity } from "@/lib/teacher-dashboard-service";
+import { apiClient } from "@/lib/api-client";
 
 export function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -60,7 +62,17 @@ export function TeacherDashboard() {
     const fetchRecentActivity = async () => {
       setActivityLoading(true);
       try {
-        const activities = await TeacherDashboardService.getRecentActivity(5);
+        const data = (await apiClient.request(
+          "/activity-log?limit=5",
+          "GET"
+        )) as Array<any>;
+        const activities: RecentActivity[] = data.map((item: any) => ({
+          userId: item.user_id ?? 0, // fallback to 0 if not present
+          studentName: item.student_name || item.studentName,
+          action: item.action,
+          timestamp: item.timestamp || new Date().toISOString(), // fallback to now if not present
+          timeAgo: item.time_ago || item.timeAgo,
+        }));
         setRecentActivity(activities);
       } catch (error) {
         console.error("Error fetching recent activity:", error);
@@ -68,7 +80,6 @@ export function TeacherDashboard() {
         setActivityLoading(false);
       }
     };
-
     fetchRecentActivity();
   }, []);
 
@@ -209,6 +220,12 @@ export function TeacherDashboard() {
                 className="data-[state=active]:bg-background"
               >
                 Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="quests"
+                className="data-[state=active]:bg-background"
+              >
+                Quests
               </TabsTrigger>
               <TabsTrigger
                 value="students"
@@ -422,6 +439,10 @@ export function TeacherDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="quests" className="mt-6">
+            <QuestManager />
           </TabsContent>
 
           <TabsContent value="students" className="mt-6">

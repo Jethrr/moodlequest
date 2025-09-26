@@ -95,6 +95,11 @@ def get_my_quests(db: Session = Depends(get_db)):
         quest_data.append({
             "quest_id": quest.quest_id,
             "title": quest.title,
+            "description": quest.description,
+            "exp_reward": quest.exp_reward,
+            "difficulty_level": quest.difficulty_level,
+            "quest_type": quest.quest_type,
+            "validation_method": quest.validation_method,
             "is_active": is_truly_active,  # Use the calculated active status
             "end_date": quest.end_date.isoformat() if quest.end_date else None,
             "created_at": quest.created_at.isoformat() if quest.created_at else None
@@ -415,7 +420,7 @@ def create_quest_from_frontend(
             "exp_reward": difficulty_xp_map.get(difficulty_level, 50),  # Auto-calculate XP
             "quest_type": payload.get("quest_type", "assignment"),
             "validation_method": payload.get("validation_method", "manual"),
-            "validation_criteria": payload.get("tasks", {}),
+            "validation_criteria": {},  # Empty validation criteria since no tasks
             "is_active": payload.get("is_active", True),
             "difficulty_level": difficulty_level,
             "moodle_activity_id": payload.get("moodle_activity_id"),

@@ -25,7 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Quests, Task, Reward } from "@/types/gamification";
+import type { Quests, Reward } from "@/types/gamification";
 import { Plus, Trash2, Save, Sparkles, Filter, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -97,7 +97,6 @@ export function QuestCreator() {
   const [quest, setQuest] = useState<Partial<Quest>>({
     difficulty: "Medium",
     learningObjectives: [],
-    tasks: [],
     rewards: [],
   });
   const [editing, setEditing] = useState(false);
@@ -114,40 +113,12 @@ export function QuestCreator() {
   };
 
   const [newObjective, setNewObjective] = useState("");
-  const [newTask, setNewTask] = useState<Partial<Task>>({
-    description: "view_lesson", // Initialize with the first task type
-    xpReward: 10,
-  });
   const [newReward, setNewReward] = useState<Partial<Reward>>({
     type: "xp",
     value: 0,
     name: "",
   });
 
-  // Task types for dropdown
-  const TASK_TYPES = [
-    "New Beginnings – Create an account",
-    "Tested and Tried – Submit a quiz",
-    "Taking the Challenge – Attempt a quiz",
-    "Mission Accomplished – Submit an assignment",
-    "Scoreboard Update – Receive a grade",
-    "Checkpoint Cleared – Complete an activity",
-    "Champion Status – Complete a course",
-    "Speak Up – Create a forum post",
-    "Gather the Troops – Create a discussion",
-    "Lesson Mastered – Complete a lesson",
-    "Curious Mind – View a lesson",
-    "Your Voice Matters – Submit feedback",
-    "Decision Time – Submit a choice",
-    "Explorer Mode – View a resource",
-    "Bookworm Bonus – View a book",
-    "Page Turner – View a page",
-    "Link Seeker – View a URL",
-    "Wordsmith – Create a glossary entry",
-    "Wiki Wizard – Create a wiki page",
-    "Wiki Refresher – Update a wiki page",
-    "Chatterbox – Send a chat message",
-  ];
 
   // Fetch Moodle activities and courses
   useEffect(() => {
@@ -157,7 +128,7 @@ export function QuestCreator() {
         // Fetch activities
         // Change the URL to your actual Backend API endpoint i didnt put env here sa diri
         const activitiesRes = await fetch(
-          "http://localhost:8002/api/auth/get-activities",
+          `${process.env.NEXT_PUBLIC_API_URL}/auth/get-activities`,
           {
             credentials: "include",
           }
@@ -165,7 +136,7 @@ export function QuestCreator() {
         const activitiesData = await activitiesRes.json();
         // Fetch courses
         const coursesRes = await fetch(
-          "http://localhost:8002/api/auth/get-course",
+          `${process.env.NEXT_PUBLIC_API_URL}/auth/get-course`,
           {
             credentials: "include",
           }
@@ -357,7 +328,6 @@ export function QuestCreator() {
       difficulty: "Medium",
       category: activity.course.toString(),
       learningObjectives: [],
-      tasks: [],
       rewards: [],
     });
   };
@@ -378,44 +348,6 @@ export function QuestCreator() {
     setQuest({
       ...quest,
       learningObjectives: updatedObjectives,
-    });
-  };
-  const addTask = () => {
-    // Make sure there is a valid task type selected
-    if (newTask.description) {
-      // console.log("Task description exists, adding to quest");
-      const updatedTasks = [
-        ...(quest.tasks || []),
-        {
-          id: `task-${Date.now()}`,
-          description: newTask.description, // Task type from dropdown
-          completed: false,
-          xpReward: newTask.xpReward || 10,
-        } as Task,
-      ];
-
-      // Update quest with new task
-      setQuest({
-        ...quest,
-        tasks: updatedTasks,
-      });
-
-      // Reset newTask for the next input
-      setNewTask({
-        description: TASK_TYPES[0],
-        xpReward: 10,
-      });
-    } else {
-      console.warn("No task description provided");
-    }
-  };
-
-  const removeTask = (index: number) => {
-    const updatedTasks = [...(quest.tasks || [])];
-    updatedTasks.splice(index, 1);
-    setQuest({
-      ...quest,
-      tasks: updatedTasks,
     });
   };
 
@@ -454,16 +386,12 @@ export function QuestCreator() {
       return;
     }
 
-    // Calculate total XP: base XP (from difficulty) + tasks + XP rewards
+    // Calculate total XP: base XP (from difficulty) + XP rewards
     const baseXP = calculateXP(quest.difficulty as string);
-    const taskXP = (quest.tasks || []).reduce(
-      (sum, task) => sum + (task.xpReward || 0),
-      0
-    );
     const rewardXP = (quest.rewards || [])
       .filter((reward) => reward.type === "xp")
       .reduce((sum, reward) => sum + (reward.value || 0), 0);
-    const totalXP = baseXP + taskXP + rewardXP;
+    const totalXP = baseXP + rewardXP;
 
     // Map difficulty string to integer for backend
     const difficultyMap: Record<string, number> = {
@@ -495,7 +423,6 @@ export function QuestCreator() {
       status: "not-started",
       creatorId: user?.id ?? 0,
       learningObjectives: quest.learningObjectives || [],
-      tasks: (quest.tasks as Task[]) || [],
       rewards: (quest.rewards as Reward[]) || [],
     };
     console.log("Submitting quest:", completeQuest);
@@ -510,7 +437,7 @@ export function QuestCreator() {
         exp_reward: baseXP, // Send calculated XP reward
         quest_type: "assignment", // Default quest type
         validation_method: "manual", // Default validation method
-        validation_criteria: quest.tasks || [], // Map tasks to validation_criteria
+        validation_criteria: {}, // No tasks, empty validation criteria
         is_active: true,
         moodle_activity_id: selectedActivity.id, // Map moodleActivityId to moodle_activity_id
         moodle_course_id: selectedActivity.course,
@@ -549,7 +476,6 @@ export function QuestCreator() {
       setQuest({
         difficulty: "Medium",
         learningObjectives: [],
-        tasks: [],
         rewards: [],
       });
     } catch (error: any) {
@@ -954,10 +880,8 @@ export function QuestCreator() {
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle>Gamify: {selectedActivity.name}</CardTitle>
-                  <CardDescription>
-                    Add gamification elements to this Moodle activity
-                  </CardDescription>
+                  <CardTitle>{selectedActivity.name}</CardTitle>
+                
                 </div>
                 <div className="flex gap-2">
                   <Badge>{selectedActivity.type}</Badge>
@@ -974,7 +898,6 @@ export function QuestCreator() {
                   <TabsTrigger value="objectives">
                     Learning Objectives
                   </TabsTrigger>
-                  <TabsTrigger value="tasks">Tasks</TabsTrigger>
                   <TabsTrigger value="rewards">Rewards</TabsTrigger>
                 </TabsList>
 
@@ -1073,96 +996,6 @@ export function QuestCreator() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="tasks" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>
-                      Tasks (Students must complete these to finish the quest)
-                    </Label>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-                      <div className="sm:col-span-3">
-                        {" "}
-                        <Select
-                          value={newTask.description || "view_lesson"}
-                          onValueChange={(value) => {
-                            console.log("Selected task type:", value);
-                            setNewTask({
-                              ...newTask,
-                              description: value,
-                            });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select task type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TASK_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type
-                                  .replace(/_/g, " ")
-                                  .replace(/\b\w/g, (l) => l.toUpperCase())}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Input
-                          type="number"
-                          value={newTask.xpReward}
-                          onChange={(e) =>
-                            setNewTask({
-                              ...newTask,
-                              xpReward: Number.parseInt(e.target.value) || 0,
-                            })
-                          }
-                          placeholder="XP"
-                          min="0"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={addTask}
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Task
-                    </Button>
-
-                    <div className="space-y-2 mt-2">
-                      {quest.tasks?.map((task, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-2 border rounded-md"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium">
-                              {typeof task.description === "string"
-                                ? task.description
-                                    .replace(/_/g, " ")
-                                    .replace(/\b\w/g, (l) => l.toUpperCase())
-                                : ""}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {task.xpReward} XP
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            onClick={() => removeTask(index)}
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
 
                 <TabsContent value="rewards" className="space-y-4 pt-4">
                   <div className="space-y-2">
@@ -1279,6 +1112,5 @@ interface Quest {
   status: string;
   creatorId: number;
   learningObjectives?: string[];
-  tasks: Task[];
   rewards: Reward[];
 }

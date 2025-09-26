@@ -225,6 +225,17 @@ class ApiClient {
         );
       }
 
+      // Handle 204 No Content responses (like DELETE operations)
+      if (response.status === 204) {
+        return undefined as T;
+      }
+
+      // Check if response has content before trying to parse as JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        return undefined as T;
+      }
+
       return (await response.json()) as T;
     } catch (error) {
       // Connection error or timeout, clean up
@@ -616,6 +627,66 @@ class ApiClient {
       );
     } catch (error) {
       console.error("Create quest error:", error);
+      throw error;
+    }
+  }
+
+  async getQuests(filters?: {
+    skip?: number;
+    limit?: number;
+    course_id?: number;
+    is_active?: boolean;
+    difficulty_level?: number;
+  }): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== undefined) {
+            params.append(key, value.toString());
+          }
+        });
+      }
+      const url = `/quests${params.toString() ? `?${params.toString()}` : ''}`;
+      return await this.request<any>(url, "GET");
+    } catch (error) {
+      console.error("Get quests error:", error);
+      throw error;
+    }
+  }
+
+  async getQuest(questId: number): Promise<any> {
+    try {
+      return await this.request<any>(`/quests/${questId}`, "GET");
+    } catch (error) {
+      console.error("Get quest error:", error);
+      throw error;
+    }
+  }
+
+  async updateQuest(questId: number, questData: any): Promise<any> {
+    try {
+      return await this.request<any>(`/quests/${questId}`, "PUT", questData);
+    } catch (error) {
+      console.error("Update quest error:", error);
+      throw error;
+    }
+  }
+
+  async deleteQuest(questId: number): Promise<void> {
+    try {
+      await this.request<void>(`/quests/${questId}`, "DELETE");
+    } catch (error) {
+      console.error("Delete quest error:", error);
+      throw error;
+    }
+  }
+
+  async getMyQuests(): Promise<any> {
+    try {
+      return await this.request<any>("/quests/my-quests", "GET");
+    } catch (error) {
+      console.error("Get my quests error:", error);
       throw error;
     }
   }

@@ -12,15 +12,8 @@ export interface Quests {
   learningObjectives?: string[];
   requirements?: string[];
   rewards?: Reward[];
-  tasks?: Task[];
 }
 
-export interface Task {
-  id: string;
-  description: string;
-  completed: boolean;
-  xpReward: number;
-}
 
 export interface Reward {
   type: "xp" | "badge" | "item" | "pet-accessory" | "currency";
@@ -212,6 +205,8 @@ export interface LeaderboardUser {
   profile_image_url: string | null;
   rank: string;
   stats: {
+    badges_count: number;
+    badges_earned: number;
     quests_completed: number;
     exp_points: number;
     rank_score: number;
