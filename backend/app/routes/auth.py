@@ -141,7 +141,7 @@ async def moodle_login(
     
     # Get Moodle config from database or use default
     moodle_config = db.query(MoodleConfig).first()
-    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost:8080")
+    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL")
     service = user_data.service or (moodle_config.service_name if moodle_config else "modquest")
     
     logger.info(f"Attempting to login with Moodle at {base_url}")
@@ -509,7 +509,7 @@ async def read_users_me(
     if refresh_from_moodle and current_user.user_token:
         # Get Moodle config
         moodle_config = db.query(MoodleConfig).first()
-        base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost:8080")
+        base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL")
         
         try:
             # Connect to Moodle and get latest user data
@@ -590,7 +590,7 @@ async def refresh_moodle_token(
     
     # Get Moodle config
     moodle_config = db.query(MoodleConfig).first()
-    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost:8080")
+    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL")
     
     # Check if token is still valid
     async with MoodleService(base_url=base_url, verify_ssl=False) as moodle:
@@ -765,7 +765,7 @@ async def get_user_courses(
     try:
         # Get Moodle config
         moodle_config = db.query(MoodleConfig).first()
-        base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost:8080")
+        base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL")
         
         # Check if user has a valid Moodle token
         if not current_user.user_token:
@@ -922,7 +922,7 @@ async def get_activities(
 
     # Get Moodle config
     moodle_config = db.query(MoodleConfig).first()
-    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost")
+    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL")
     base_url = base_url.rstrip("/")
 
     # Determine course IDs
@@ -1118,7 +1118,7 @@ async def get_course(
 
     # Get Moodle config
     moodle_config = db.query(MoodleConfig).first()
-    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost")
+    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL")
     base_url = base_url.rstrip("/")
 
     try:

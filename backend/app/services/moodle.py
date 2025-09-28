@@ -13,7 +13,7 @@ class MoodleService:
     def __init__(self, base_url: str = None, verify_ssl: bool = False):
         """Initialize the Moodle service with the base URL."""
         if base_url is None:
-            base_url = os.getenv("MOODLE_URL", "http://localhost:8080")
+            base_url = os.getenv("MOODLE_URL")
         self.base_url = base_url.rstrip("/")  # Remove trailing slash if present
         
         # Create SSL context with certificate verification disabled if requested

@@ -45,16 +45,21 @@ with SessionLocal() as db:
 
 app = FastAPI(title="MoodleQuest API")
 
-# List of allowed origins
-origins = [
-    "http://localhost:3000",  # Next.js default
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:5173",  # Vite default
-    "http://127.0.0.1:5173",
-]
+# List of allowed origins from environment variable
+cors_origins = os.getenv("CORS_ORIGINS")
+if cors_origins:
+    origins = [origin.strip() for origin in cors_origins.split(",")]
+else:
+    # Default origins for development (fallback)
+    origins = [
+        "http://localhost:3000",  # Next.js default
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",  # Vite default
+        "http://127.0.0.1:5173",
+    ]
 
 # Configure CORS with specific origins
 app.add_middleware(

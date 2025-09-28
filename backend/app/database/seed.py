@@ -48,7 +48,7 @@ def seed_initial_data(db: Session):
     # Add a default Moodle configuration
     if db.query(MoodleConfig).count() == 0:
         moodle_config = MoodleConfig(
-            base_url=os.getenv("MOODLE_URL", "http://localhost:8080"),
+            base_url=os.getenv("MOODLE_URL"),
             service_name="modquest"
         )
         db.add(moodle_config)
