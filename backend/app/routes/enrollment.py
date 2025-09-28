@@ -29,7 +29,7 @@ async def sync_enrollments_for_user(user_id: int, token: str, db: Session = Depe
     from app.models.auth import MoodleConfig
     import os
     moodle_config = db.query(MoodleConfig).first()
-    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL", "http://localhost")
+    base_url = moodle_config.base_url if moodle_config else os.getenv("MOODLE_URL")
 
     # Fetch enrolled courses directly from Moodle web service
     import httpx
