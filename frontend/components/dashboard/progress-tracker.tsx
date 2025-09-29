@@ -38,7 +38,9 @@ export function ProgressTracker() {
   }
 
   // Use real data from backend
-  const weeklyData = progressData.weekly_data;
+  // Only show last 7 days for weeklyData
+  const weeklyDataRaw = progressData.weekly_data || [];
+  const weeklyData = weeklyDataRaw.slice(-7);
   const monthlyData = progressData.monthly_data;
   // Map streak_data to the format expected by AccomplishmentGraph
   const accomplishmentData = progressData.streak_data.map((d) => ({

@@ -205,11 +205,12 @@ export interface LeaderboardUser {
   profile_image_url: string | null;
   rank: string;
   stats: {
-    badges_count: number;
     badges_earned: number;
     quests_completed: number;
     exp_points: number;
     rank_score: number;
+    current_ranking: number;
+    last_active: string;
   };
   level: number;
   position?: number; // Actual rank position in leaderboard

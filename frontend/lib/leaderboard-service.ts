@@ -110,11 +110,14 @@ export class LeaderboardService {
       last_name: entry.last_name || '',
       profile_image_url: entry.profile_image_url,
       rank: this.calculateUserRank(entry.score || 0),
-      stats: {
-        quests_completed: entry.quests_completed || 0,
-        exp_points: entry.total_exp || entry.score || 0,
-        rank_score: entry.score || 0
-      },
+        stats: {
+          quests_completed: entry.quests_completed || 0,
+          exp_points: entry.total_exp || entry.score || 0,
+          rank_score: entry.score || 0,
+          badges_earned: entry.badges_earned || 0,
+          current_ranking: entry.current_ranking || entry.rank || 0,
+          last_active: entry.last_active || 'Unknown'
+        },
       level: this.calculateLevel(entry.total_exp || entry.score || 0),
       position: entry.rank || index + 1
     }));
