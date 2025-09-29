@@ -25,13 +25,11 @@ class ProgressService:
         self.db = db
 
     def get_weekly_activity_data(self, user_id: int) -> List[WeeklyDataPoint]:
-        """Get weekly activity data for the last 7 days from database"""
+        """Get weekly activity data for the last 7 calendar days from database"""
         try:
-            # Get the start of the week (Monday)
-            today = datetime.now()
-            start_of_week = today - timedelta(days=today.weekday())
-            start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-            
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            start_date = today - timedelta(days=6)
+
             # Get experience points earned per day for the last 7 days
             exp_query = self.db.query(
                 func.date(ExperiencePoint.awarded_at).label('date'),
@@ -39,12 +37,12 @@ class ProgressService:
                 func.count(ExperiencePoint.exp_id).label('exp_events')
             ).filter(
                 ExperiencePoint.user_id == user_id,
-                ExperiencePoint.awarded_at >= start_of_week - timedelta(days=6),
-                ExperiencePoint.awarded_at < start_of_week + timedelta(days=7)
+                ExperiencePoint.awarded_at >= start_date,
+                ExperiencePoint.awarded_at < today + timedelta(days=1)
             ).group_by(
                 func.date(ExperiencePoint.awarded_at)
             ).all()
-            
+
             # Get quests completed per day for the last 7 days
             quest_query = self.db.query(
                 func.date(QuestProgress.completed_at).label('date'),
@@ -52,46 +50,42 @@ class ProgressService:
             ).filter(
                 QuestProgress.user_id == user_id,
                 QuestProgress.status == 'completed',
-                QuestProgress.completed_at >= start_of_week - timedelta(days=6),
-                QuestProgress.completed_at < start_of_week + timedelta(days=7)
+                QuestProgress.completed_at >= start_date,
+                QuestProgress.completed_at < today + timedelta(days=1)
             ).group_by(
                 func.date(QuestProgress.completed_at)
             ).all()
-            
+
             # Create a mapping for the data
             exp_data = {str(record.date): record.total_exp for record in exp_query}
             quest_data = {str(record.date): record.quests_completed for record in quest_query}
-            
-            # Generate data for each day of the week
+
+            # Generate data for each of the last 7 days
             weekly_data = []
-            day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-            
             for i in range(7):
-                current_date = start_of_week + timedelta(days=i)
+                current_date = start_date + timedelta(days=i)
                 date_str = current_date.strftime("%Y-%m-%d")
-                
+                day_label = current_date.strftime("%a")  # e.g., Mon, Tue, etc.
+
                 exp_reward = exp_data.get(date_str, 0)
                 quests_completed = quest_data.get(date_str, 0)
-                
+
                 weekly_data.append(WeeklyDataPoint(
-                    day=day_names[i],
+                    day=day_label,
                     exp_reward=int(exp_reward),
                     quests_completed=int(quests_completed)
                 ))
-            
+
             return weekly_data
-            
+
         except Exception as e:
             logger.error(f"Error getting weekly activity data for user {user_id}: {e}")
             # Return empty data on error
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            start_date = today - timedelta(days=6)
             return [
-                WeeklyDataPoint(day="Mon", exp_reward=0, quests_completed=0),
-                WeeklyDataPoint(day="Tue", exp_reward=0, quests_completed=0),
-                WeeklyDataPoint(day="Wed", exp_reward=0, quests_completed=0),
-                WeeklyDataPoint(day="Thu", exp_reward=0, quests_completed=0),
-                WeeklyDataPoint(day="Fri", exp_reward=0, quests_completed=0),
-                WeeklyDataPoint(day="Sat", exp_reward=0, quests_completed=0),
-                WeeklyDataPoint(day="Sun", exp_reward=0, quests_completed=0),
+                WeeklyDataPoint(day=(start_date + timedelta(days=i)).strftime("%a"), exp_reward=0, quests_completed=0)
+                for i in range(7)
             ]
 
     def get_monthly_activity_data(self, user_id: int) -> List[MonthlyDataPoint]:

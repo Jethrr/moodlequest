@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, asc, func, and_, case
+from sqlalchemy import desc, asc, func, and_, or_, case
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -341,24 +341,61 @@ def get_top_students_by_course(db: Session, course_id: int, limit: int = 10, tim
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     else:
         start_date = None
+    # Get actual badge count from UserBadge table
+    from app.models.badge import UserBadge
+    
     exp_query = db.query(
         StudentProgress.user_id,
         StudentProgress.total_exp,
         StudentProgress.quests_completed,
-        StudentProgress.badges_earned,
+        func.coalesce(func.count(UserBadge.user_badge_id), 0).label('badges_earned'),
+        StudentProgress.last_activity,
         User.username,
         User.first_name,
         User.last_name,
         User.profile_image_url
-    ).join(User, StudentProgress.user_id == User.id).filter(
+    ).join(User, StudentProgress.user_id == User.id).outerjoin(
+        UserBadge, and_(
+            UserBadge.user_id == StudentProgress.user_id,
+            or_(
+                UserBadge.course_id == course_id,
+                UserBadge.course_id.is_(None)
+            )
+        )
+    ).filter(
         StudentProgress.course_id == course_id
+    ).group_by(
+        StudentProgress.user_id,
+        StudentProgress.total_exp,
+        StudentProgress.quests_completed,
+        StudentProgress.last_activity,
+        User.username,
+        User.first_name,
+        User.last_name,
+        User.profile_image_url
     )
     if start_date:
         exp_query = exp_query.filter(StudentProgress.last_activity >= start_date)
     exp_query = exp_query.order_by(desc(StudentProgress.total_exp)).limit(limit)
     results = exp_query.all()
     top_students = []
-    for i, (user_id, total_exp, quests_completed, badges_earned, username, first_name, last_name, profile_image_url) in enumerate(results, 1):
+    for i, (user_id, total_exp, quests_completed, badges_earned, last_activity, username, first_name, last_name, profile_image_url) in enumerate(results, 1):
+        # Calculate time since last activity
+        last_active_text = "Unknown"
+        if last_activity:
+            now = datetime.utcnow()
+            time_diff = now - last_activity.replace(tzinfo=None)
+            if time_diff.days > 0:
+                last_active_text = f"{time_diff.days} days ago"
+            elif time_diff.seconds > 3600:
+                hours = time_diff.seconds // 3600
+                last_active_text = f"{hours} hours ago"
+            elif time_diff.seconds > 60:
+                minutes = time_diff.seconds // 60
+                last_active_text = f"{minutes} minutes ago"
+            else:
+                last_active_text = "Just now"
+        
         top_students.append({
             "user_id": user_id,
             "username": username,
@@ -369,7 +406,9 @@ def get_top_students_by_course(db: Session, course_id: int, limit: int = 10, tim
             "rank": i,
             "total_exp": total_exp,
             "quests_completed": quests_completed,
-            "badges_earned": badges_earned
+            "badges_earned": badges_earned,
+            "current_ranking": i,
+            "last_active": last_active_text
         })
     return top_students
     """Get global top students across all courses"""
@@ -420,16 +459,22 @@ def get_global_top_students(db: Session, limit: int = 20, timeframe: str = "all_
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     else:
         start_date = None
+    # Get actual badge count from UserBadge table
+    from app.models.badge import UserBadge
+    
     query = db.query(
         StudentProgress.user_id,
         func.sum(StudentProgress.total_exp).label('total_exp'),
         func.sum(StudentProgress.quests_completed).label('total_quests'),
-        func.sum(StudentProgress.badges_earned).label('total_badges'),
+        func.coalesce(func.count(UserBadge.user_badge_id), 0).label('total_badges'),
+        func.max(StudentProgress.last_activity).label('last_activity'),
         User.username,
         User.first_name,
         User.last_name,
         User.profile_image_url
-    ).join(User, StudentProgress.user_id == User.id)
+    ).join(User, StudentProgress.user_id == User.id).outerjoin(
+        UserBadge, UserBadge.user_id == StudentProgress.user_id
+    )
     if start_date:
         query = query.filter(StudentProgress.last_activity >= start_date)
     query = query.group_by(
@@ -441,7 +486,23 @@ def get_global_top_students(db: Session, limit: int = 20, timeframe: str = "all_
     ).order_by(desc('total_exp')).limit(limit)
     results = query.all()
     top_students = []
-    for i, (user_id, total_exp, total_quests, total_badges, username, first_name, last_name, profile_image_url) in enumerate(results, 1):
+    for i, (user_id, total_exp, total_quests, total_badges, last_activity, username, first_name, last_name, profile_image_url) in enumerate(results, 1):
+        # Calculate time since last activity
+        last_active_text = "Unknown"
+        if last_activity:
+            now = datetime.utcnow()
+            time_diff = now - last_activity.replace(tzinfo=None)
+            if time_diff.days > 0:
+                last_active_text = f"{time_diff.days} days ago"
+            elif time_diff.seconds > 3600:
+                hours = time_diff.seconds // 3600
+                last_active_text = f"{hours} hours ago"
+            elif time_diff.seconds > 60:
+                minutes = time_diff.seconds // 60
+                last_active_text = f"{minutes} minutes ago"
+            else:
+                last_active_text = "Just now"
+        
         top_students.append({
             "user_id": user_id,
             "username": username,
@@ -452,6 +513,8 @@ def get_global_top_students(db: Session, limit: int = 20, timeframe: str = "all_
             "rank": i,
             "total_exp": total_exp,
             "quests_completed": total_quests,
-            "badges_earned": total_badges
+            "badges_earned": total_badges,
+            "current_ranking": i,
+            "last_active": last_active_text
         })
     return top_students

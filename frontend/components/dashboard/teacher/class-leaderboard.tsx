@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, X, Trophy, Star, Zap, Award, Target, TrendingUp, Clock } from "lucide-react";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { LeaderboardUser } from "@/types/gamification";
 
@@ -48,11 +48,11 @@ export function ClassLeaderboard() {
     avatar: user.profile_image_url,
     xp: user.stats.exp_points,
     level: user.level,
-    badges: 0, // This would need to be added to the backend response
+    badges: user.stats.badges_earned,
     rank: user.position || index + 1,
-    lastActive: "Unknown", // This would need to be added to the backend response
+    lastActive: user.stats.last_active,
     questsCompleted: user.stats.quests_completed,
-    streak: 0, // This would need to be added to the backend response
+    currentRanking: user.stats.current_ranking,
   }));
 
   if (loading && allStudents.length === 0) {
@@ -235,108 +235,198 @@ export function ClassLeaderboard() {
       </Card>
 
       {selectedStudent && (
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-blue-700">Student Details</CardTitle>
-            <CardDescription className="text-blue-600/80">
-              Detailed information about the selected student
-            </CardDescription>
-          </CardHeader>          <CardContent>
-            {(() => {
-              const student = transformedStudents.find((s) => s.id === selectedStudent);
-              if (!student) return null;
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <Card className="w-full max-w-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 border-slate-700 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-300">
+            <CardHeader className="relative pb-4">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-t-lg" />
+              <div className="relative">
+                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  Student Details
+                </CardTitle>
+                <CardDescription className="text-blue-300/80 mt-1">
+                  Detailed information about the selected student
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedStudent(null)}
+                className="absolute top-0 right-0 h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            
+            <CardContent className="space-y-8">
+              {(() => {
+                const student = transformedStudents.find((s) => s.id === selectedStudent);
+                if (!student) return null;
 
-              return (
-                <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <Avatar className="h-16 w-16 ring-2 ring-offset-2 ring-offset-blue-50 ring-blue-200">
-                      <AvatarImage
-                        src={student.avatar || "/placeholder.svg"}
-                        alt={student.name}
-                      />
-                      <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="text-xl font-bold text-blue-700">
-                        {student.name}
-                      </h3>
-                      <div className="text-sm text-blue-600/80">
-                        Rank #{student.rank} • Level {student.level}
+                return (
+                  <>
+                    {/* Profile Section */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                      <div className="relative">
+                        <Avatar className="h-20 w-20 ring-4 ring-blue-500/30 shadow-lg">
+                          <AvatarImage
+                            src={student.avatar || "/placeholder.svg"}
+                            alt={student.name}
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                            {student.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                          #{student.rank}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-2xl font-bold text-white mb-2">
+                          {student.name}
+                        </h3>
+                        <div className="flex items-center gap-4 text-blue-300">
+                          <div className="flex items-center gap-2">
+                            <Trophy className="h-4 w-4 text-yellow-400" />
+                            <span className="text-sm font-medium">Level {student.level}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Star className="h-4 w-4 text-yellow-400" />
+                            <span className="text-sm font-medium">{student.xp} XP</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-blue-600/80">
-                        Experience Points
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 p-6 hover:from-blue-500/30 hover:to-blue-600/30 transition-all duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-transparent" />
+                        <div className="relative">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-lg bg-blue-500/20">
+                              <Zap className="h-5 w-5 text-blue-400" />
+                            </div>
+                            <div className="text-sm font-medium text-blue-300">
+                              Experience Points
+                            </div>
+                          </div>
+                          <div className="text-3xl font-bold text-white">
+                            {student.xp}
+                          </div>
+                          <div className="text-xs text-blue-400 mt-1">XP</div>
+                        </div>
                       </div>
-                      <div className="text-2xl font-bold text-blue-700">
-                        {student.xp} XP
-                      </div>
-                    </div>
-                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-blue-600/80">
-                        Badges Earned
-                      </div>
-                      <div className="text-2xl font-bold text-blue-700">
-                        {student.badges}
-                      </div>
-                    </div>
-                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-blue-600/80">
-                        Quests Completed
-                      </div>
-                      <div className="text-2xl font-bold text-blue-700">
-                        {student.questsCompleted}
-                      </div>
-                    </div>
-                    <div className="space-y-2 bg-white/50 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-blue-600/80">
-                        Current Streak
-                      </div>
-                      <div className="text-2xl font-bold text-blue-700">
-                        {student.streak} days
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-blue-600/80">
-                      Last Active
+                      <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 p-6 hover:from-purple-500/30 hover:to-purple-600/30 transition-all duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 to-transparent" />
+                        <div className="relative">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-lg bg-purple-500/20">
+                              <Award className="h-5 w-5 text-purple-400" />
+                            </div>
+                            <div className="text-sm font-medium text-purple-300">
+                              Badges Earned
+                            </div>
+                          </div>
+                          <div className="text-3xl font-bold text-white">
+                            {student.badges}
+                          </div>
+                          <div className="text-xs text-purple-400 mt-1">Badges</div>
+                        </div>
+                      </div>
+
+                      <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 p-6 hover:from-emerald-500/30 hover:to-emerald-600/30 transition-all duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-transparent" />
+                        <div className="relative">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-lg bg-emerald-500/20">
+                              <Target className="h-5 w-5 text-emerald-400" />
+                            </div>
+                            <div className="text-sm font-medium text-emerald-300">
+                              Quests Completed
+                            </div>
+                          </div>
+                          <div className="text-3xl font-bold text-white">
+                            {student.questsCompleted}
+                          </div>
+                          <div className="text-xs text-emerald-400 mt-1">Quests</div>
+                        </div>
+                      </div>
+
+                      <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/20 border border-amber-500/30 p-6 hover:from-amber-500/30 hover:to-amber-600/30 transition-all duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-transparent" />
+                        <div className="relative">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-lg bg-amber-500/20">
+                              <TrendingUp className="h-5 w-5 text-amber-400" />
+                            </div>
+                            <div className="text-sm font-medium text-amber-300">
+                              Current Ranking
+                            </div>
+                          </div>
+                          <div className="text-3xl font-bold text-white">
+                            #{student.currentRanking}
+                          </div>
+                          <div className="text-xs text-amber-400 mt-1">Position</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={
-                          student.lastActive.includes("minutes")
-                            ? "default"
-                            : "outline"
-                        }
-                        className={
-                          student.lastActive.includes("minutes")
-                            ? "bg-blue-500 hover:bg-blue-600"
-                            : "text-blue-700 border-blue-200"
-                        }
+
+                    {/* Last Active Section
+                    <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-slate-700/50">
+                            <Clock className="h-5 w-5 text-slate-400" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-slate-300">
+                              Last Active
+                            </div>
+                            <div className="text-lg font-semibold text-white">
+                              {student.lastActive}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            student.lastActive.includes("minutes") || student.lastActive.includes("Just now")
+                              ? "default"
+                              : "secondary"
+                          }
+                          className={
+                            student.lastActive.includes("minutes") || student.lastActive.includes("Just now")
+                              ? "bg-green-500 hover:bg-green-600 text-white"
+                              : "bg-slate-600 hover:bg-slate-500 text-slate-200"
+                          }
+                        >
+                          {student.lastActive.includes("minutes") || student.lastActive.includes("Just now") ? "Online" : "Offline"}
+                        </Badge>
+                      </div>
+                    </div> */}
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedStudent(null)}
+                        className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                       >
-                        {student.lastActive}
-                      </Badge>
+                        Close
+                      </Button>
+                      {/* <Button
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                      >
+                        View Full Profile
+                      </Button> */}
                     </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedStudent(null)}
-                      className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                    >
-                      Close
-                    </Button>
-                  </div>
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

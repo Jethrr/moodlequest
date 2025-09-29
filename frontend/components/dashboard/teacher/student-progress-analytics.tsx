@@ -76,6 +76,8 @@ export function StudentProgressAnalytics() {
     ? performanceData.reduce((sum, item) => sum + item.completionRate, 0) / performanceData.length 
     : 0;
 
+
+  console.log(performanceData);
   // Calculate date range for display
   const getDateRangeText = () => {
     const endDate = new Date();
@@ -276,21 +278,21 @@ export function StudentProgressAnalytics() {
                       <Line
                         type="monotone"
                         dataKey="activeUsers"
-                        stroke="#059669"
+                        stroke="#ef4444" // red-500
                         name="Active Users"
                         strokeWidth={2}
                       />
                       <Line
                         type="monotone"
                         dataKey="badgesEarned"
-                        stroke="#10b981"
+                        stroke="#facc15" // yellow-400
                         name="Badges Earned"
                         strokeWidth={2}
                       />
                       <Line
                         type="monotone"
                         dataKey="questsCompleted"
-                        stroke="#047857"
+                        stroke="#22c55e" // green-500
                         name="Quests Completed"
                         strokeWidth={2}
                       />
