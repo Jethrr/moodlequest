@@ -286,32 +286,37 @@ async def get_available_accessories(
     """
     try:
         logger.info(f"User {current_user.username} (ID: {current_user.id}) requesting available accessories")
-        
         pet_service = PetService(db)
         user_level = pet_service.calculate_user_level(current_user.id)
         available_accessories = pet_service.get_available_accessories_for_level(user_level)
-        
+
+        # Get user's pet and all unlocked accessories from DB
+        pet = db.query(VirtualPet).filter(VirtualPet.user_id == current_user.id).first()
+        db_accessories = []
+        if pet:
+            db_accessories = db.query(PetAccessory).filter(PetAccessory.pet_id == pet.pet_id).all()
+
         accessories_response = []
-        for accessory in available_accessories:
+        for config in available_accessories:
+            # Try to find the DB accessory for this config (by name)
+            db_acc = next((a for a in db_accessories if a.name == config["name"]), None)
             accessories_response.append(AvailableAccessoryResponse(
-                accessory_id=accessory.get("accessory_id", 0),  # Default to 0 if not found
-                name=accessory["name"],
-                description=accessory["description"],
-                accessory_type=accessory["accessory_type"],
-                icon_url=accessory["icon_url"],
-                level_required=accessory["level_required"],
-                stats_boost=accessory["stats_boost"],
-                unlocked=accessory["unlocked"]
+                accessory_id=db_acc.accessory_id if db_acc else 0,
+                name=config["name"],
+                description=config["description"],
+                accessory_type=config["accessory_type"],
+                icon_url=config["icon_url"],
+                level_required=config["level_required"],
+                stats_boost=config["stats_boost"],
+                unlocked=config["unlocked"]
             ))
-        
+
         logger.info(f"Successfully retrieved {len(accessories_response)} accessories for user {current_user.username}")
-        
         return AccessoriesListResponse(
             success=True,
             available_accessories=accessories_response,
             user_level=user_level
         )
-        
     except Exception as e:
         logger.error(f"Error getting accessories for user {current_user.id}: {str(e)}")
         raise HTTPException(

@@ -40,90 +40,7 @@ import {
   updatePetName,
 } from "@/lib/virtual-pet-api";
 
-// Mock pet accessories
-const availableAccessories: PetAccessory[] = [
-  {
-    id: "bed",
-    name: "Cat Mattress",
-    description: "A cozy bed designed for optimal rest.",
-    slot: "background",
-    iconUrl: "/pet-access/bed.png",
-    levelRequired: 10,
-    position: {
-      position: "absolute",
-      inset: "0",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: "0",
-      opacity: "0.8",
-      width: "140px",
-      height: "140px",
-      top: "30px",
-      left: "-10px",
-    },
-    stats: {
-      energyBoost: 10,
-    },
-  },
-  {
-    id: "pole",
-    name: "Scratch Pole",
-    description: "A scratching post for exercise.",
-    slot: "left",
-    iconUrl: "/pet-access/pole.png",
-    levelRequired: 15,
-    position: {
-      position: "absolute",
-      width: "50px",
-      height: "100px",
-      left: "-150px", // moved even more to the left
-      bottom: "10px",
-      zIndex: "1",
-    },
-    stats: {
-      happinessBoost: 15,
-    },
-  },
-  {
-    id: "kitten",
-    name: "Friend (Kitten)",
-    description: "A companion for your virtual pet.",
-    slot: "bottom-left",
-    iconUrl: "/pet-access/kitten.png",
-    levelRequired: 25,
-    position: {
-      position: "absolute",
-      width: "40px",
-      height: "40px",
-      left: "-90px",
-      bottom: "0px",
-      zIndex: "2",
-    },
-    stats: {
-      happinessBoost: 20,
-    },
-  },
-  {
-    id: "bowl",
-    name: "Food Bowl",
-    description: "A special feeding bowl.",
-    slot: "bottom-right",
-    iconUrl: "/pet-access/food.png",
-    levelRequired: 30,
-    position: {
-      position: "absolute",
-      width: "40px",
-      height: "40px",
-      right: "-150px", // moved even more to the right
-      bottom: "10px", // adjusted to be more aligned with other items
-      zIndex: "2",
-    },
-    stats: {
-      energyBoost: 15,
-    },
-  },
-];
+
 
 // Mock pet data
 const mockPet: VirtualPetType = {
@@ -229,7 +146,9 @@ export function VirtualPet() {
 
         // Set available accessories and user level
         if (accessoriesResponse.success) {
-          setAvailableAccessories(accessoriesResponse.available_accessories);
+          // Sort by level_required ascending to match backend order (kitten first)
+          const sortedAccessories = [...accessoriesResponse.available_accessories].sort((a, b) => a.level_required - b.level_required);
+          setAvailableAccessories(sortedAccessories);
           setUserLevel(accessoriesResponse.user_level);
         }
 
@@ -1139,7 +1058,7 @@ export function VirtualPet() {
                   Accessories
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] dark:bg-background dark:border dark:border-border">
+              <DialogContent className="sm:max-w-[600px] dark:bg-background dark:border dark:border-border bg-gray-900">
                 <DialogHeader>
                   <DialogTitle>Pet Accessories</DialogTitle>
                   <DialogDescription>

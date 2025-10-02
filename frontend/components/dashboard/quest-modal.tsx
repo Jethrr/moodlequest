@@ -33,7 +33,7 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] bg-gray-900">
         {" "}
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
@@ -69,10 +69,10 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
           value={activeTab}
           onValueChange={setActiveTab}
         >
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className=" w-full ">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
-            <TabsTrigger value="rewards">Rewards</TabsTrigger>
+            {/* <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="rewards">Rewards</TabsTrigger> */}
           </TabsList>{" "}
           <TabsContent value="details" className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -190,14 +190,14 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
                     </div>
                   )}
                 </div>
-                {quest.validation_notes && (
+                {/* {quest.validation_notes && (
                   <div className="mt-2 p-2 bg-muted rounded text-sm">
                     <div className="font-medium text-muted-foreground mb-1">
                       Validation Notes:
                     </div>
                     <div>{quest.validation_notes}</div>
                   </div>
-                )}
+                )} */}
               </div>
             )}
           </TabsContent>

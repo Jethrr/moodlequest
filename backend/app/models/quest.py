@@ -36,6 +36,13 @@ class QuestProgress(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     validated_at = Column(DateTime(timezone=True), nullable=True)
     validation_notes = Column(Text, nullable=True)
+    
+    # Engagement tracking columns
+    engagement_stage = Column(String(20), nullable=False, default="not_started")
+    first_interaction_at = Column(DateTime(timezone=True), nullable=True)
+    last_interaction_at = Column(DateTime(timezone=True), nullable=True)
+    interaction_count = Column(Integer, nullable=False, default=0)
+    engagement_score = Column(Integer, nullable=False, default=0)
 
     __table_args__ = (
         # Composite unique constraint for (user_id, quest_id)
@@ -70,6 +77,19 @@ class ExperiencePoints(Base):
     awarded_at = Column(DateTime(timezone=True), default=func.now())
     awarded_by = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
+
+class QuestEngagementEvent(Base):
+    __tablename__ = "quest_engagement_events"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    quest_progress_id = Column(Integer, ForeignKey("quest_progress.progress_id", ondelete="CASCADE"), nullable=False)
+    event_type = Column(String(50), nullable=False)
+    event_data = Column(JSONB, nullable=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    engagement_points = Column(Integer, nullable=False, default=0)
+    
+    # Relationships
+    quest_progress = relationship("QuestProgress")
 
 
 

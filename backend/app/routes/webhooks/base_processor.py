@@ -13,6 +13,7 @@ from app.models.course import Course
 from app.models.user import User
 from app.services.notification_service import notification_service, create_xp_notification, create_quest_notification
 from app.services.daily_quest_service import DailyQuestService
+from app.services.quest_engagement_service import QuestEngagementService
 from .utils import check_badges_after_quest_completion, XP_CONFIG
 from .notification_manager import WebhookNotificationManager
 
@@ -29,6 +30,7 @@ class WebhookProcessor:
         self.db = db
         self.now = datetime.utcnow()
         self.notification_manager = WebhookNotificationManager(db)
+        self.engagement_service = QuestEngagementService(db)
     
     def find_course(self, moodle_course_id: int) -> Course:
         """Find course by Moodle course ID."""
@@ -297,6 +299,14 @@ class WebhookProcessor:
             logger.error(f"Database error: {e}")
             raise
     
+    def process_engagement_event(self, data: dict, event_type: str):
+        """Process webhook event for quest engagement tracking"""
+        try:
+            return self.engagement_service.process_engagement_event(data, event_type)
+        except Exception as e:
+            logger.error(f"Error processing engagement event {event_type}: {e}")
+            return False
+
     def process_quest_or_engagement(self, data: dict, source_type: str, 
                                    activity_id_key: str = "activity_id", 
                                    default_xp: int = 10, 

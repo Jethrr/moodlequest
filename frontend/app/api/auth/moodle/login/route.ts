@@ -9,10 +9,12 @@ if (process.env.NODE_ENV !== "production") {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
+const MOODLE_SERVICE_NAME = process.env.MOODLE_SERVICE_NAME || "modquest";
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password, service = "modquest" } = body;
+    const { username, password, service = MOODLE_SERVICE_NAME } = body;
 
     console.log("Sign-in attempt for user:", username);
 

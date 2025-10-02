@@ -23,6 +23,7 @@ import { apiClient } from "@/lib/api-client";
 import { formatDistanceToNow } from "date-fns";
 import { EditQuestModal } from "./edit-quest-modal";
 import { DeleteQuestDialog } from "./delete-quest-dialog";
+import { useRouter } from "next/navigation";
 
 interface Quest {
   quest_id: number;
@@ -67,6 +68,7 @@ export function QuestManager() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const router = useRouter();
 
   // Debug logging
   console.log("QuestManager render:", { editModalOpen, deleteDialogOpen, selectedQuest });
@@ -75,13 +77,28 @@ export function QuestManager() {
     setLoading(true);
     setError(null);
     try {
+      // Determine creator (local user) id from stored session
+      let creatorIdParam = "";
+      try {
+        if (typeof window !== "undefined") {
+          const raw = localStorage.getItem("moodlequest_user");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.id) {
+              creatorIdParam = `?creator_id=${encodeURIComponent(parsed.id)}`;
+            }
+          }
+        }
+      } catch {}
+
       const response = await apiClient.request<QuestListResponse>(
-        "/quests/my-quests",
+        `/quests/my-quests${creatorIdParam}`,
         "GET"
       );
       
       if (response.success) {
-        setQuests(response.data || []);
+        const list = (response.data || []).filter(q => q.is_active);
+        setQuests(list);
       } else {
         setError("Failed to fetch quests");
       }
@@ -135,6 +152,10 @@ export function QuestManager() {
     fetchQuests(); // Refresh the list after successful edit
   };
 
+  const handleViewAnalytics = (questId: number) => {
+    router.push(`/teacher/quests/${questId}/analytics`);
+  };
+
   const closeModals = () => {
     setEditModalOpen(false);
     setDeleteDialogOpen(false);
@@ -185,6 +206,7 @@ export function QuestManager() {
 
   return (
     <div className="space-y-4">
+      {/* Modal removed; navigation used instead */}
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Your Quests</h3>
@@ -285,6 +307,16 @@ export function QuestManager() {
                 >
                   <Edit className="h-3 w-3 mr-1" />
                   Edit
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleViewAnalytics(quest.quest_id)}
+                  className="flex-1"
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  View
                 </Button>
                 
                 <Button
