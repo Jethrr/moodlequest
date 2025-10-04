@@ -16,6 +16,32 @@ export async function POST(request: NextRequest) {
 
     console.log("Sign-in attempt for user:", username);
 
+    // Validate MOODLE_URL
+    if (!MOODLE_URL || MOODLE_URL === "https://localhost") {
+      console.error("MOODLE_URL is not properly configured:", MOODLE_URL);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Moodle server configuration error. Please contact administrator.",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Validate URL format
+    try {
+      new URL(MOODLE_URL);
+    } catch (urlError) {
+      console.error("Invalid MOODLE_URL format:", MOODLE_URL, urlError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid Moodle server URL configuration.",
+        },
+        { status: 500 }
+      );
+    }
+
     // STEP 1: Get Moodle token via direct call
     try {
       // Construct the token URL

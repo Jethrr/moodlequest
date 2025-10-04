@@ -27,7 +27,7 @@ interface MoodleAuthConfig {
 
 // Configuration for Moodle integration
 export const moodleConfig: MoodleAuthConfig = {
-  baseUrl: process.env.MOODLE_BASE_URL || "https://moodle.example.com",
+  baseUrl: process.env.MOODLE_BASE_URL || "https://modquest.jeth-tech.click",
   clientId: process.env.MOODLE_CLIENT_ID || "",
   clientSecret: process.env.MOODLE_CLIENT_SECRET || "",
   redirectUri: process.env.MOODLE_REDIRECT_URI || "http://localhost:3000/api/auth/callback/moodle",

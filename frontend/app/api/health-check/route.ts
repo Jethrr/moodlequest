@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     // This API health check tests if our proxy can reach the Moodle server
-    const moodleBaseUrl = process.env.MOODLE_URL || 'http://moodle50:8890';
+    const moodleBaseUrl = process.env.NEXT_PUBLIC_MOODLE_URL || 'https://modquest.jeth-tech.click';
     
     // Try connecting to Moodle
     try {
