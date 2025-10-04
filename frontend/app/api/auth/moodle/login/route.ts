@@ -1,8 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
-const MOODLE_URL = process.env.MOODLE_URL || "https://modquest.jeth-tech.click";
+// Environment-based configuration
+const isProduction = process.env.NODE_ENV === "production";
+
+const API_BASE_URL = isProduction 
+  ? "https://moodlequest-e6mu.onrender.com/api"
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api");
+
+const MOODLE_URL = isProduction
+  ? "https://modquest.jeth-tech.click"
+  : (process.env.MOODLE_URL || "https://modquest.jeth-tech.click");
+
+const MOODLE_SERVICE_NAME = process.env.MOODLE_SERVICE_NAME || "mod_services";
 
 // Disable SSL verification for development environments
 if (process.env.NODE_ENV !== "production") {
@@ -12,14 +21,17 @@ if (process.env.NODE_ENV !== "production") {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password, service = "modquest" } = body;
+    const { username, password, service = MOODLE_SERVICE_NAME } = body;
 
     console.log("Sign-in attempt for user:", username);
+    console.log("DEBUG: Environment:", isProduction ? "PRODUCTION" : "DEVELOPMENT");
     console.log("DEBUG: MOODLE_URL value:", MOODLE_URL);
-    console.log("DEBUG: MOODLE_URL type:", typeof MOODLE_URL);
+    console.log("DEBUG: API_BASE_URL value:", API_BASE_URL);
+    console.log("DEBUG: MOODLE_SERVICE_NAME value:", MOODLE_SERVICE_NAME);
+    console.log("DEBUG: All MOODLE-related env vars:", Object.keys(process.env).filter(key => key.includes('MOODLE')));
 
     // Validate MOODLE_URL
-    if (!MOODLE_URL || MOODLE_URL === "https://localhost") {
+    if (!MOODLE_URL) {
       console.error("MOODLE_URL is not properly configured:", MOODLE_URL);
       return NextResponse.json(
         {
