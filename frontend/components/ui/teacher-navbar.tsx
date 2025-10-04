@@ -46,12 +46,12 @@ const teacherRoutes = [
   //   href: "/teacher/quests/create",
   //   color: "text-orange-500"
   // },
-  {
-    label: "Achievements",
-    icon: Award,
-    href: "/teacher/achievements",
-    color: "text-amber-500",
-  },
+  // {
+  //   label: "Achievements",
+  //   icon: Award,
+  //   href: "/teacher/achievements",
+  //   color: "text-amber-500",
+  // },
   {
     label: "Profile",
     icon: UserCircle,

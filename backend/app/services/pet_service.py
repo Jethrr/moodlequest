@@ -81,38 +81,38 @@ class PetService:
 
     def _check_accessory_unlocks(self, pet: VirtualPet, user_level: int) -> List[Dict[str, Any]]:
         """Check which accessories should be unlocked at the current level."""
-        # Define available accessories with level requirements (lowered for testing)
+        # Kitten is first (level 2), then Scratch Pole (5), Cat Mattress (7), Food Bowl (8)
         available_accessories = [
             {
-                "name": "Cat Mattress",
-                "description": "A cozy bed designed for optimal rest.",
-                "accessory_type": "background",
-                "icon_url": "/pet-access/bed.png",
-                "level_required": 5,  # Lowered from 10
-                "stats_boost": json.dumps({"energy_boost": 10})
+                "name": "Friend (Kitten)",
+                "description": "A companion for your virtual pet.",
+                "accessory_type": "bottom-left",
+                "icon_url": "/pet-access/kitten.png",
+                "level_required": 2,
+                "stats_boost": json.dumps({"happiness_boost": 20})
             },
             {
                 "name": "Scratch Pole",
                 "description": "A scratching post for exercise.",
                 "accessory_type": "left",
                 "icon_url": "/pet-access/pole.png",
-                "level_required": 8,  # Lowered from 15
+                "level_required": 5,
                 "stats_boost": json.dumps({"happiness_boost": 15})
             },
             {
-                "name": "Friend (Kitten)",
-                "description": "A companion for your virtual pet.",
-                "accessory_type": "bottom-left",
-                "icon_url": "/pet-access/kitten.png",
-                "level_required": 12,  # Lowered from 25
-                "stats_boost": json.dumps({"happiness_boost": 20})
+                "name": "Cat Mattress",
+                "description": "A cozy bed designed for optimal rest.",
+                "accessory_type": "background",
+                "icon_url": "/pet-access/bed.png",
+                "level_required": 7,
+                "stats_boost": json.dumps({"energy_boost": 10})
             },
             {
                 "name": "Food Bowl",
                 "description": "A special feeding bowl.",
                 "accessory_type": "bottom-right",
                 "icon_url": "/pet-access/food.png",
-                "level_required": 15,  # Lowered from 30
+                "level_required": 8,
                 "stats_boost": json.dumps({"energy_boost": 15})
             }
         ]
@@ -191,17 +191,17 @@ class PetService:
         return pet
 
     def get_available_accessories_for_level(self, user_level: int) -> List[Dict[str, Any]]:
-        """Get all accessories available at a given user level."""
+        """Get all accessories available at a given user level, matching unlock order and levels."""
         available_accessories = [
             {
                 "accessory_id": 1,
-                "name": "Cat Mattress",
-                "description": "A cozy bed designed for optimal rest.",
-                "accessory_type": "background",
-                "icon_url": "/pet-access/bed.png",
-                "level_required": 5,  # Lowered for testing
-                "stats_boost": {"energy_boost": 10},
-                "unlocked": user_level >= 5
+                "name": "Friend (Kitten)",
+                "description": "A companion for your virtual pet.",
+                "accessory_type": "bottom-left",
+                "icon_url": "/pet-access/kitten.png",
+                "level_required": 2,
+                "stats_boost": {"happiness_boost": 20},
+                "unlocked": user_level >= 2
             },
             {
                 "accessory_id": 2,
@@ -209,19 +209,19 @@ class PetService:
                 "description": "A scratching post for exercise.",
                 "accessory_type": "left",
                 "icon_url": "/pet-access/pole.png",
-                "level_required": 8,  # Lowered for testing
+                "level_required": 5,
                 "stats_boost": {"happiness_boost": 15},
-                "unlocked": user_level >= 8
+                "unlocked": user_level >= 5
             },
             {
                 "accessory_id": 3,
-                "name": "Friend (Kitten)",
-                "description": "A companion for your virtual pet.",
-                "accessory_type": "bottom-left",
-                "icon_url": "/pet-access/kitten.png",
-                "level_required": 12,  # Lowered for testing
-                "stats_boost": {"happiness_boost": 20},
-                "unlocked": user_level >= 12
+                "name": "Cat Mattress",
+                "description": "A cozy bed designed for optimal rest.",
+                "accessory_type": "background",
+                "icon_url": "/pet-access/bed.png",
+                "level_required": 7,
+                "stats_boost": {"energy_boost": 10},
+                "unlocked": user_level >= 7
             },
             {
                 "accessory_id": 4,
@@ -229,10 +229,9 @@ class PetService:
                 "description": "A special feeding bowl.",
                 "accessory_type": "bottom-right",
                 "icon_url": "/pet-access/food.png",
-                "level_required": 15,  # Lowered for testing
+                "level_required": 8,
                 "stats_boost": {"energy_boost": 15},
-                "unlocked": user_level >= 15
+                "unlocked": user_level >= 8
             }
         ]
-        
         return available_accessories

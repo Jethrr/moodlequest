@@ -28,7 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
 import {
   Search,
   Loader2,
@@ -333,7 +332,6 @@ export default function TeacherStudentsPage() {
                     <TableHead>Experience</TableHead>
                     <TableHead>Quests</TableHead>
                     <TableHead>Last Active</TableHead>
-                    <TableHead>Progress</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -350,10 +348,6 @@ export default function TeacherStudentsPage() {
                         : mockLastActivityDays <= 7
                         ? `${mockLastActivityDays} days ago`
                         : "Inactive";
-                    const progressPercentage = Math.min(
-                      (student.stats.exp_points / 1000) * 100,
-                      100
-                    );
 
                     return (
                       <TableRow key={student.id} className="hover:bg-muted/50">
@@ -439,18 +433,6 @@ export default function TeacherStudentsPage() {
                             >
                               {lastActiveText}
                             </Badge>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="w-20">
-                            <Progress
-                              value={progressPercentage}
-                              className="h-2"
-                            />
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {Math.round(progressPercentage)}%
-                            </div>
                           </div>
                         </TableCell>
 

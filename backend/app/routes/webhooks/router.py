@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from .utils import log_and_ack
+from .base_processor import WebhookProcessor
 from .debug import router as debug_router
 from .handlers import (
     handle_quiz_attempt_submitted,
+    # new start events will reuse generic processor via lightweight endpoints
     handle_assign_submitted,
     handle_assign_graded,
     handle_forum_post_created,
@@ -43,6 +45,15 @@ EVENT_HANDLERS = {
     "quiz/attempt-submitted": {
         "message": "Quiz attempt submitted webhook received and logged",
         "handler": handle_quiz_attempt_submitted
+    },
+    # Start events (lightweight endpoints handled below)
+    "assign/viewed": {
+        "message": "Assignment viewed webhook received and logged",
+        "handler": None
+    },
+    "quiz/attempt-started": {
+        "message": "Quiz attempt started webhook received and logged",
+        "handler": None
     },
     "assign/submitted": {
         "message": "Assignment submitted webhook received and logged",
@@ -141,12 +152,41 @@ async def handle_webhook(event_path: str, request: Request, db: Session = Depend
         msg = event_info["message"]
 
         handler = event_info.get("handler")
+        processor = WebhookProcessor(db)
+
         if handler:
             # Pass db session if handler expects it
             if "db" in inspect.signature(handler).parameters:
                 handler(data, db)
             else:
                 handler(data)
+
+        # Always forward to engagement processor with normalized event type
+        EVENT_TO_TYPE = {
+            "assign/viewed": "assignment_viewed",
+            "assign/submitted": "assignment_submitted",
+            "assign/graded": "assignment_graded",
+            "quiz/attempt-started": "quiz_attempt_started",
+            "quiz/attempt-submitted": "quiz_attempt_submitted",
+            "lesson/viewed": "lesson_viewed",
+            "lesson/completed": "lesson_completed",
+            "feedback/submitted": "feedback_submitted",
+            "forum/post-created": "forum_post_created",
+            "forum/discussion-created": "forum_discussion_created",
+            "wiki/page-created": "wiki_page_created",
+            "wiki/page-updated": "wiki_page_updated",
+            "choice/answer-submitted": "choice_answer_submitted",
+            "chat/message-sent": "chat_message_sent",
+            "resource/file-viewed": "file_viewed",
+            "resource/book-viewed": "book_viewed",
+            "resource/page-viewed": "page_viewed",
+            "resource/url-viewed": "url_viewed",
+            "course/completion-updated": "module_completion_updated",
+        }
+
+        normalized = EVENT_TO_TYPE.get(event_path)
+        if normalized:
+            processor.process_engagement_event(data, normalized)
 
         return log_and_ack(event_path.replace("/", "_"), data, msg)
 

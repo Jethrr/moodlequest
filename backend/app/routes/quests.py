@@ -69,17 +69,20 @@ def get_quests(
     return quests
 
 @router.get("/my-quests", response_model=dict)
-def get_my_quests(db: Session = Depends(get_db)):
+def get_my_quests(creator_id: Optional[int] = Query(None, description="Filter by creator id (teacher)"), db: Session = Depends(get_db)):
     """
     Get all quests created by the current authenticated user.
     For now, returns quests for user ID 1 (dummy teacher).
     """
     from datetime import datetime
     
-    user_id = 1  # Hardcode to user ID 1 for now
     now = datetime.now()
     
-    quests = db.query(Quest).filter(Quest.creator_id == user_id).all()
+    # If a creator_id is provided, filter; otherwise return all quests (dev-friendly default)
+    if creator_id is not None:
+        quests = db.query(Quest).filter(Quest.creator_id == creator_id).all()
+    else:
+        quests = db.query(Quest).all()
     
     # Convert to dict format that matches frontend expectations
     quest_data = []

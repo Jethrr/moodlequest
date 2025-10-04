@@ -314,17 +314,17 @@ export function QuestBoard() {
                     whileTap={{ scale: 0.98 }}
                   >
                     <Card
-                      className={`overflow-hidden h-[300px] flex flex-col relative ${
+                      className={`overflow-hidden min-h-[300px] flex flex-col relative ${
                         quest.status === "completed"
                           ? "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20"
                           : quest.status === "in-progress"
-                          ? "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20"
+                          ? "border-blue-200 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
                           : "border-gray-200"
                       }`}
                     >
                       {/* Status indicator */}
                       <div
-                        className={`absolute top-2 right-2 w-3 h-3 rounded-full ${
+                        className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
                           quest.status === "completed"
                             ? "bg-green-500"
                             : quest.status === "in-progress"
@@ -338,7 +338,7 @@ export function QuestBoard() {
                           <div className="w-full pr-2">
                             {" "}
                             <CardTitle
-                              className={`text-lg font-bold  break-words ${
+                              className={`text-lg font-bold line-clamp-2 ${
                                 quest.status === "completed"
                                   ? "text-green-700"
                                   : ""
@@ -378,7 +378,7 @@ export function QuestBoard() {
                           {quest.description}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="pb-2 flex-grow">
+                      <CardContent className="pb-3 flex-grow">
                         <div className="space-y-2">
                           {" "}
                           <div className="flex justify-between text-sm">

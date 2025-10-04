@@ -294,22 +294,18 @@ export class TeacherDashboardService {
 
     // Sample student names
     const students = [
-      "Sarah Johnson",
-      "Michael Rodriguez",
-      "Emily Chen",
-      "James Wilson",
-      "David Chen",
-      "Maria Garcia",
-      "Alex Thompson",
-      "Lisa Wang",
-      "Robert Kim",
-      "Jessica Brown",
-      "Kevin Lee",
-      "Amanda Davis",
+      "student1",
+      "Taylor Swift",
+      "John Doe",
+      "John Cena",
+      "Brix",
+      "Bini Maloi",
+    
     ];
 
     // Sample activities based on engagement data
     const activityTypes = [
+      { type: "daily_login", template: 'Logged in to the platform' },
       { type: "quest_complete", template: 'Completed "[QUEST_NAME]" quest' },
       { type: "badge_earned", template: 'Earned "[BADGE_NAME]" badge' },
       { type: "quest_start", template: 'Started "[QUEST_NAME]" quest' },
@@ -322,14 +318,9 @@ export class TeacherDashboardService {
     ];
 
     const questNames = [
-      "Algebra Basics",
-      "Chemical Reactions",
-      "Literary Analysis",
-      "Physics Fundamentals",
-      "Programming Logic",
-      "Historical Events",
-      "Biology Cells",
-      "Geometry Proofs",
+      "test",
+      "sample",
+     
     ];
 
     const badgeNames = [
