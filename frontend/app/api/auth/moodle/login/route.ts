@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
-const MOODLE_URL = process.env.MOODLE_URL || "https://localhost";
+const MOODLE_URL = process.env.MOODLE_URL || "https://modquest.jeth-tech.click";
 
 // Disable SSL verification for development environments
 if (process.env.NODE_ENV !== "production") {
@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
     const { username, password, service = "modquest" } = body;
 
     console.log("Sign-in attempt for user:", username);
+    console.log("DEBUG: MOODLE_URL value:", MOODLE_URL);
+    console.log("DEBUG: MOODLE_URL type:", typeof MOODLE_URL);
 
     // Validate MOODLE_URL
     if (!MOODLE_URL || MOODLE_URL === "https://localhost") {
@@ -31,6 +33,7 @@ export async function POST(request: NextRequest) {
     // Validate URL format
     try {
       new URL(MOODLE_URL);
+      console.log("DEBUG: URL validation passed for:", MOODLE_URL);
     } catch (urlError) {
       console.error("Invalid MOODLE_URL format:", MOODLE_URL, urlError);
       return NextResponse.json(
