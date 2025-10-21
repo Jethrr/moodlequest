@@ -7,9 +7,7 @@ const API_BASE_URL = isProduction
   ? "https://moodlequest-e6mu.onrender.com/api"
   : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api");
 
-const MOODLE_URL = isProduction
-  ? "https://modquest.jeth-tech.click"
-  : (process.env.MOODLE_URL || "https://modquest.jeth-tech.click");
+const MOODLE_URL = process.env.MOODLE_URL || "https://mq.jeth-tech.click";
 
 const MOODLE_SERVICE_NAME = process.env.MOODLE_SERVICE_NAME || "mod_services";
 
