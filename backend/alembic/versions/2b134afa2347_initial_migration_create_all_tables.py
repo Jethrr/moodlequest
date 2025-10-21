@@ -22,17 +22,17 @@ def upgrade() -> None:
     # Check if questtypeenum exists, create if not
     connection = op.get_bind()
     result = connection.execute(
-        "SELECT 1 FROM pg_type WHERE typname = 'questtypeenum'"
+        sa.text("SELECT 1 FROM pg_type WHERE typname = 'questtypeenum'")
     ).fetchone()
     if not result:
-        op.execute("CREATE TYPE questtypeenum AS ENUM ('daily_login', 'feed_pet', 'earn_xp')")
+        op.execute(sa.text("CREATE TYPE questtypeenum AS ENUM ('daily_login', 'feed_pet', 'earn_xp')"))
     
     # Check if queststatusenum exists, create if not
     result = connection.execute(
-        "SELECT 1 FROM pg_type WHERE typname = 'queststatusenum'"
+        sa.text("SELECT 1 FROM pg_type WHERE typname = 'queststatusenum'")
     ).fetchone()
     if not result:
-        op.execute("CREATE TYPE queststatusenum AS ENUM ('available', 'active', 'completed', 'expired')")
+        op.execute(sa.text("CREATE TYPE queststatusenum AS ENUM ('available', 'active', 'completed', 'expired')"))
     
     op.create_table('dailyquest',
     sa.Column('quest_id', sa.Integer(), nullable=False),
@@ -366,14 +366,14 @@ def downgrade() -> None:
     # Drop enum types if they exist
     connection = op.get_bind()
     result = connection.execute(
-        "SELECT 1 FROM pg_type WHERE typname = 'queststatusenum'"
+        sa.text("SELECT 1 FROM pg_type WHERE typname = 'queststatusenum'")
     ).fetchone()
     if result:
-        op.execute("DROP TYPE queststatusenum")
+        op.execute(sa.text("DROP TYPE queststatusenum"))
     
     result = connection.execute(
-        "SELECT 1 FROM pg_type WHERE typname = 'questtypeenum'"
+        sa.text("SELECT 1 FROM pg_type WHERE typname = 'questtypeenum'")
     ).fetchone()
     if result:
-        op.execute("DROP TYPE questtypeenum")
+        op.execute(sa.text("DROP TYPE questtypeenum"))
     # ### end Alembic commands ###
