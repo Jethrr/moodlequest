@@ -143,15 +143,15 @@ export function QuestCreator() {
           headers['Authorization'] = `Bearer ${moodleToken}`;
         }
 
+        console.log('DEBUG: moodleToken:', moodleToken ? `${moodleToken.substring(0, 10)}...` : 'null');
+        console.log('DEBUG: headers:', headers);
+
         // Fetch activities
         const activitiesRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/auth/get-activities`,
           {
             credentials: "include",
-            headers: {
-              ...headers,
-              'Authorization': `Bearer ${moodleToken}`,
-            },
+            headers,
           }
         );
         if (!activitiesRes.ok) {
@@ -166,10 +166,7 @@ export function QuestCreator() {
           `${process.env.NEXT_PUBLIC_API_URL}/auth/get-course`,
           {
             credentials: "include",
-            headers: {
-              ...headers,
-              'Authorization': `Bearer ${moodleToken}`,
-            },
+            headers,
           }
         );
         

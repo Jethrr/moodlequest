@@ -903,6 +903,15 @@ async def get_user_courses(
         )
 
 
+@router.get("/debug-headers")
+async def debug_headers(request: Request):
+    """Debug endpoint to check what headers are being received"""
+    return {
+        "cookies": dict(request.cookies),
+        "authorization_header": request.headers.get("Authorization"),
+        "all_headers": dict(request.headers)
+    }
+
 @router.get("/get-activities", response_model=dict)
 async def get_activities(
     request: Request,
@@ -917,8 +926,21 @@ async def get_activities(
     """
     import requests
     token = request.cookies.get("moodleToken")
+    
+    # Debug logging
+    logger.info(f"Cookie moodleToken: {token}")
+    auth_header = request.headers.get("Authorization")
+    logger.info(f"Authorization header: {auth_header}")
+    
+    # If not in cookies, try Authorization header as fallback
     if not token:
-        raise HTTPException(status_code=401, detail="No Moodle token found in cookies. Please login first.")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            logger.info(f"Extracted token from Authorization header: {token[:10]}...")
+    
+    if not token:
+        logger.warning("No token found in cookies or Authorization header")
+        raise HTTPException(status_code=401, detail="No Moodle token found in cookies or Authorization header. Please login first.")
 
     # Get Moodle config
     moodle_config = db.query(MoodleConfig).first()
@@ -1110,10 +1132,17 @@ async def get_course(
     Also saves/updates the fetched courses to the local database.
     """
     token = request.cookies.get("moodleToken")
+    
+    # If not in cookies, try Authorization header as fallback
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+    
     if not token:
         raise HTTPException(
             status_code=401,
-            detail="No Moodle token found in cookies. Please login first."
+            detail="No Moodle token found in cookies or Authorization header. Please login first."
         )
 
     # Get Moodle config
