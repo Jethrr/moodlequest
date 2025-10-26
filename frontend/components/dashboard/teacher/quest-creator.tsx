@@ -125,22 +125,59 @@ export function QuestCreator() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Get moodleToken from cookies for Authorization header fallback
+        const getCookieValue = (name: string) => {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop()?.split(';').shift();
+          return null;
+        };
+        
+        const moodleToken = getCookieValue('moodleToken');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add Authorization header as fallback if moodleToken exists
+        if (moodleToken) {
+          headers['Authorization'] = `Bearer ${moodleToken}`;
+        }
+
         // Fetch activities
-        // Change the URL to your actual Backend API endpoint i didnt put env here sa diri
         const activitiesRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/auth/get-activities`,
           {
             credentials: "include",
+            headers: {
+              ...headers,
+              'Authorization': `Bearer ${moodleToken}`,
+            },
           }
         );
+        if (!activitiesRes.ok) {
+          const errorText = await activitiesRes.text();
+          console.error('Activities API error:', activitiesRes.status, errorText);
+          throw new Error(`Failed to fetch activities: ${activitiesRes.status} ${errorText}`);
+        }
         const activitiesData = await activitiesRes.json();
+        
         // Fetch courses
         const coursesRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/auth/get-course`,
           {
             credentials: "include",
+            headers: {
+              ...headers,
+              'Authorization': `Bearer ${moodleToken}`,
+            },
           }
         );
+        
+        if (!coursesRes.ok) {
+          const errorText = await coursesRes.text();
+          console.error('Courses API error:', coursesRes.status, errorText);
+          throw new Error(`Failed to fetch courses: ${coursesRes.status} ${errorText}`);
+        }
         const coursesData = await coursesRes.json();
 
         // Create course mapping
