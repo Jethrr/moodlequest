@@ -35,7 +35,6 @@ import {
   Star,
   Trophy,
   TrendingUp,
-  Clock,
   BookOpen,
   Award,
   Filter,
@@ -331,7 +330,7 @@ export default function TeacherStudentsPage() {
                     <TableHead>Level</TableHead>
                     <TableHead>Experience</TableHead>
                     <TableHead>Quests</TableHead>
-                    <TableHead>Last Active</TableHead>
+                    <TableHead>Badges</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -340,14 +339,6 @@ export default function TeacherStudentsPage() {
                     const name =
                       `${student.first_name} ${student.last_name}`.trim() ||
                       student.username;
-                    // Mock last activity data since it's not in the API yet
-                    const mockLastActivityDays = Math.floor(Math.random() * 14);
-                    const lastActiveText =
-                      mockLastActivityDays <= 1
-                        ? "Today"
-                        : mockLastActivityDays <= 7
-                        ? `${mockLastActivityDays} days ago`
-                        : "Inactive";
 
                     return (
                       <TableRow key={student.id} className="hover:bg-muted/50">
@@ -416,23 +407,10 @@ export default function TeacherStudentsPage() {
 
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <Badge
-                              variant={
-                                mockLastActivityDays <= 1
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className={
-                                mockLastActivityDays <= 1
-                                  ? "bg-green-500 hover:bg-green-600"
-                                  : mockLastActivityDays <= 7
-                                  ? "text-blue-700 border-blue-200"
-                                  : "text-muted-foreground"
-                              }
-                            >
-                              {lastActiveText}
-                            </Badge>
+                            <Award className="h-4 w-4 text-purple-500" />
+                            <span className="font-medium">
+                              {student.stats.badges_earned}
+                            </span>
                           </div>
                         </TableCell>
 
