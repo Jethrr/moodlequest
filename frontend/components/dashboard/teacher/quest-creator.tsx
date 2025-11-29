@@ -91,8 +91,10 @@ export function QuestCreator() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterAssigned, setFilterAssigned] = useState<string>("unassigned");
   const [priorityView, setPriorityView] = useState<string>("all"); // New filter for priority view
+  const [filterCourse, setFilterCourse] = useState<string>("all"); // Course filter
   const [searchQuery, setSearchQuery] = useState("");
   const [courseMap, setCourseMap] = useState<{ [id: number]: string }>({});
+  const [courses, setCourses] = useState<Course[]>([]); // Store courses array for dropdown
   const { user } = useCurrentUser();
   const [quest, setQuest] = useState<Partial<Quest>>({
     difficulty: "Medium",
@@ -177,12 +179,15 @@ export function QuestCreator() {
         }
         const coursesData = await coursesRes.json();
 
-        // Create course mapping
+        // Create course mapping and store courses array
         const courseMapping: { [id: number]: string } = {};
+        const coursesArray: Course[] = [];
         coursesData.courses?.forEach((course: Course) => {
           courseMapping[course.id] = course.fullname;
+          coursesArray.push(course);
         });
-        setCourseMap(courseMapping); // Log the received data for debugging
+        setCourseMap(courseMapping);
+        setCourses(coursesArray); // Log the received data for debugging
         console.log("Activities data received:", activitiesData);
 
         // Function to normalize activity types from Moodle's internal names
@@ -272,6 +277,12 @@ export function QuestCreator() {
     const applyFilters = (activityList: MoodleActivity[]) => {
       let result = [...activityList];
 
+      // Filter by course
+      if (filterCourse !== "all") {
+        const courseId = parseInt(filterCourse);
+        result = result.filter((activity) => activity.course === courseId);
+      }
+
       // Filter by activity type
       if (filterType !== "all") {
         result = result.filter((activity) => activity.type === filterType);
@@ -315,6 +326,10 @@ export function QuestCreator() {
 
     // For backward compatibility, also update the legacy filteredActivities
     let legacyResult = [...activities];
+    if (filterCourse !== "all") {
+      const courseId = parseInt(filterCourse);
+      legacyResult = legacyResult.filter((activity) => activity.course === courseId);
+    }
     if (filterType !== "all") {
       legacyResult = legacyResult.filter(
         (activity) => activity.type === filterType
@@ -340,10 +355,12 @@ export function QuestCreator() {
       active: filteredActive.length,
       due: filteredDue.length,
       priorityView,
+      filterCourse,
     });
   }, [
     filterType,
     filterAssigned,
+    filterCourse,
     searchQuery,
     priorityView,
     activeActivities,
@@ -608,7 +625,7 @@ export function QuestCreator() {
         <CardContent>
           <div className="space-y-4">
             {/* Search and filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="md:col-span-2">
                 <Label htmlFor="search">Search Activities</Label>
                 <Input
@@ -618,6 +635,23 @@ export function QuestCreator() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="mt-1"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Course</Label>
+                <Select value={filterCourse} onValueChange={setFilterCourse}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Courses</SelectItem>
+                    {courses.map((course) => (
+                      <SelectItem key={course.id} value={course.id.toString()}>
+                        {course.fullname}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1">
