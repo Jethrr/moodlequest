@@ -35,9 +35,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, TrendingUp, Award, Target, Users, Clock, Activity, BarChart3, Calendar, Zap, Target as TargetIcon, Users as UsersIcon, Clock as ClockIcon, Activity as ActivityIcon } from "lucide-react";
-import { useState } from "react";
+import { Loader2, TrendingUp, Award, Target, Users, Clock, Activity, BarChart3, Calendar, Zap, Target as TargetIcon, Users as UsersIcon, Clock as ClockIcon, Activity as ActivityIcon, Trophy } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useAnalytics } from "@/hooks/use-analytics";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { apiClient } from "@/lib/api-client";
 
 
 
@@ -52,6 +54,20 @@ export function StudentProgressAnalytics() {
     "week"
   );
   const [selectedSubject, setSelectedSubject] = useState("all");
+  
+  // State for top streak user
+  const [topStreakUser, setTopStreakUser] = useState<{
+    user: {
+      id: number;
+      username: string;
+      first_name: string;
+      last_name: string;
+      profile_image_url: string | null;
+    } | null;
+    streak: number;
+    longest_streak: number;
+  } | null>(null);
+  const [topStreakLoading, setTopStreakLoading] = useState(false);
 
   // Use real analytics data
   const {
@@ -76,6 +92,30 @@ export function StudentProgressAnalytics() {
     ? performanceData.reduce((sum, item) => sum + item.completionRate, 0) / performanceData.length 
     : 0;
 
+  // Fetch top streak user
+  useEffect(() => {
+    const fetchTopStreak = async () => {
+      try {
+        setTopStreakLoading(true);
+        const response = await apiClient.getTopLoginStreak("daily_login");
+        
+        if (response.success) {
+          setTopStreakUser({
+            user: response.user,
+            streak: response.streak,
+            longest_streak: response.longest_streak,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching top streak user:", error);
+        // Don't break UI if API call fails
+      } finally {
+        setTopStreakLoading(false);
+      }
+    };
+
+    fetchTopStreak();
+  }, []);
 
   console.log(performanceData);
   // Calculate date range for display
@@ -132,7 +172,7 @@ export function StudentProgressAnalytics() {
               <SelectItem value="semester">Last 90 Days</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+          {/* <Select value={selectedSubject} onValueChange={setSelectedSubject}>
             <SelectTrigger className="w-[150px] bg-muted/50 border-muted-foreground/20">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
@@ -144,7 +184,7 @@ export function StudentProgressAnalytics() {
               <SelectItem value="history">History</SelectItem>
               <SelectItem value="cs">Computer Science</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
         </div>
       </div>
 
@@ -532,7 +572,7 @@ export function StudentProgressAnalytics() {
                       </Card>
                     </div>
 
-                    {/* Streak Analysis */}
+                    {/* Streak Analysis
                     <Card className="bg-blue-50 border border-blue-200 shadow-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-black text-sm">
@@ -570,6 +610,65 @@ export function StudentProgressAnalytics() {
                             <div className="text-xs text-black">Consistency</div>
                           </div>
                         </div>
+                      </CardContent>
+                    </Card> */}
+
+                    {/* Highest Login Streak User */}
+                    <Card className="bg-white border border-yellow-100 shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-black text-sm">
+                          <Trophy className="h-4 w-4 text-yellow-600" />
+                          Highest Login Streak
+                        </CardTitle>
+                        <CardDescription className="text-black text-xs">
+                          Current leader in daily login consistency
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {topStreakLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin text-yellow-600" />
+                          </div>
+                        ) : topStreakUser && topStreakUser.user ? (
+                          <div className="flex items-center gap-4">
+                            <Avatar className="h-16 w-16 ring-2 ring-yellow-400">
+                              <AvatarImage
+                                src={topStreakUser.user.profile_image_url || "/placeholder.svg"}
+                                alt={`${topStreakUser.user.first_name} ${topStreakUser.user.last_name}`}
+                              />
+                              <AvatarFallback className="bg-yellow-100 text-yellow-700 font-bold">
+                                {topStreakUser.user.first_name?.[0] || topStreakUser.user.username?.[0] || "?"}
+                                {topStreakUser.user.last_name?.[0] || ""}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <h4 className="font-bold text-black">
+                                {topStreakUser.user.first_name} {topStreakUser.user.last_name}
+                              </h4>
+                              <p className="text-xs text-muted-foreground">
+                                @{topStreakUser.user.username}
+                              </p>
+                              <div className="flex items-center gap-4 mt-2">
+                                <div>
+                                  <div className="text-2xl font-bold text-yellow-700">
+                                    {topStreakUser.streak}
+                                  </div>
+                                  <div className="text-xs text-black">Current Streak</div>
+                                </div>
+                                <div>
+                                  <div className="text-2xl font-bold text-orange-700">
+                                    {topStreakUser.longest_streak}
+                                  </div>
+                                  <div className="text-xs text-black">Longest Streak</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 text-muted-foreground text-sm">
+                            No streak data available
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 

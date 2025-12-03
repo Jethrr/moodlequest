@@ -370,6 +370,39 @@ class ApiClient {
     }
   }
 
+  async getTopLoginStreak(
+    streakType: string = "daily_login"
+  ): Promise<{
+    success: boolean;
+    user: {
+      id: number;
+      username: string;
+      first_name: string;
+      last_name: string;
+      profile_image_url: string | null;
+    } | null;
+    streak: number;
+    longest_streak: number;
+  }> {
+    try {
+      return await this.request<{
+        success: boolean;
+        user: {
+          id: number;
+          username: string;
+          first_name: string;
+          last_name: string;
+          profile_image_url: string | null;
+        } | null;
+        streak: number;
+        longest_streak: number;
+      }>(`/daily-quests/top-streak?streak_type=${streakType}`, "GET");
+    } catch (error) {
+      console.error("Top streak fetch error:", error);
+      throw error;
+    }
+  }
+
   // Profile Methods
   async getTeacherProfile(): Promise<TeacherProfile> {
     try {
