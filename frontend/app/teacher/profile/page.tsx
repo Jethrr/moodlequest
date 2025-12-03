@@ -263,7 +263,7 @@ export default function TeacherProfilePage() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -302,7 +302,7 @@ export default function TeacherProfilePage() {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );

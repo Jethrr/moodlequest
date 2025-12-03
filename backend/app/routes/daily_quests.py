@@ -243,3 +243,49 @@ async def get_user_streak(
     except Exception as e:
         logger.error(f"Error getting user streak: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/top-streak")
+async def get_top_login_streak(
+    streak_type: str = "daily_login",
+    db: Session = Depends(get_db)
+):
+    """
+    Get the user with the highest current login streak.
+    """
+    try:
+        from sqlalchemy import desc
+        
+        # Get the user with the highest current streak
+        top_streak = db.query(UserStreak, User).join(
+            User, UserStreak.user_id == User.id
+        ).filter(
+            UserStreak.streak_type == streak_type
+        ).order_by(
+            desc(UserStreak.current_streak)
+        ).first()
+        
+        if not top_streak:
+            return {
+                "success": True,
+                "user": None,
+                "streak": 0,
+                "longest_streak": 0
+            }
+        
+        streak, user = top_streak
+        
+        return {
+            "success": True,
+            "user": {
+                "id": user.moodle_user_id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "profile_image_url": user.profile_image_url
+            },
+            "streak": streak.current_streak,
+            "longest_streak": streak.longest_streak
+        }
+    except Exception as e:
+        logger.error(f"Error getting top login streak: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
