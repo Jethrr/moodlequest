@@ -324,52 +324,7 @@ export function ProfileContent() {
               </div>
             </div>
 
-            {/* Progress Section */}
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Progress</h3>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Experience Points</span>
-                  <span className="text-sm font-medium">
-                    {profileData.stats?.exp_points || 0} XP
-                  </span>
-                </div>
-                <Progress value={progressToNextLevel} className="h-2" />
-                <p className="text-xs text-muted-foreground">
-                  {profileData.stats?.exp_points
-                    ? Math.floor(profileData.stats.exp_points / 1000) * 1000 -
-                      currentLevelExp
-                    : 0}{" "}
-                  / {nextLevelExp - currentLevelExp} XP to next level
-                </p>
-              </div>
-
-              {/* <div className="grid grid-cols-3 gap-4 pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {profileData.stats?.quests_completed || 0}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Quests Completed
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {profileData.stats?.courses_completed || 0}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Courses Completed
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {profileData.ranking?.position || 0}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Rank</div>
-                </div>
-              </div> */}
-            </div>
+           
           </CardContent>
         </Card>
       </motion.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -58,11 +58,26 @@ interface StudentStats {
   topPerformer: string;
 }
 
+// Helper function to generate stable mock activity days based on student ID
+// This ensures the same student always gets the same activity days value
+function getStableMockActivityDays(studentId: number): number {
+  // Use a simple hash based on student ID to get a consistent value between 0-13
+  return (studentId % 14);
+}
+
 export default function TeacherStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("rank");
   const [filterBy, setFilterBy] = useState<string>("all");
+  
+  // Handler for sort change with validation
+  const handleSortChange = (value: string) => {
+    const validSortOptions = ["rank", "name", "xp", "quests", "level"];
+    if (validSortOptions.includes(value)) {
+      setSortBy(value);
+    }
+  };
   const [selectedStudent, setSelectedStudent] =
     useState<LeaderboardUser | null>(null);
 
@@ -88,39 +103,70 @@ export default function TeacherStudentsPage() {
   }, [searchQuery, setHookSearchQuery]);
 
   // Combine all students data
-  const allStudents = [...data.topUsers, ...data.otherUsers];
-  const displayedStudents = searchQuery.trim() ? searchResults : allStudents;
+  const allStudents = useMemo(
+    () => [...data.topUsers, ...data.otherUsers],
+    [data.topUsers, data.otherUsers]
+  );
+
+  const displayedStudents = useMemo(
+    () => (searchQuery.trim() ? searchResults : allStudents),
+    [searchQuery, searchResults, allStudents]
+  );
+
   // Filter students based on criteria
-  const filteredStudents = displayedStudents.filter((student) => {
-    // Mock last activity days since it's not in the API yet
-    const mockLastActivityDays = Math.floor(Math.random() * 14);
-    if (filterBy === "active") return mockLastActivityDays <= 7;
-    if (filterBy === "inactive") return mockLastActivityDays > 7;
-    if (filterBy === "high_performers") return (student.position || 999) <= 10;
-    if (filterBy === "needs_attention")
-      return student.stats.quests_completed < 3;
-    return true;
-  });
+  const filteredStudents = useMemo(() => {
+    return displayedStudents.filter((student) => {
+      // Use stable mock activity days based on student ID
+      const mockLastActivityDays = getStableMockActivityDays(student.id);
+      if (filterBy === "active") return mockLastActivityDays <= 7;
+      if (filterBy === "inactive") return mockLastActivityDays > 7;
+      if (filterBy === "high_performers") return (student.position || 999) <= 10;
+      if (filterBy === "needs_attention")
+        return student.stats.quests_completed < 3;
+      return true;
+    });
+  }, [displayedStudents, filterBy]);
 
   // Sort students
-  const sortedStudents = [...filteredStudents].sort((a, b) => {
-    switch (sortBy) {
-      case "rank":
-        return (a.position || 999) - (b.position || 999);
-      case "name":
-        return `${a.first_name} ${a.last_name}`.localeCompare(
-          `${b.first_name} ${b.last_name}`
-        );
-      case "xp":
-        return b.stats.exp_points - a.stats.exp_points;
-      case "quests":
-        return b.stats.quests_completed - a.stats.quests_completed;
-      case "level":
-        return b.level - a.level;
-      default:
-        return 0;
-    }
-  });
+  const sortedStudents = useMemo(() => {
+    // Create a copy to avoid mutating the original array
+    const studentsToSort = [...filteredStudents];
+    
+    // Ensure sortBy has a valid value
+    const currentSort = sortBy || "rank";
+    
+    return studentsToSort.sort((a, b) => {
+      switch (currentSort) {
+        case "rank":
+          const rankA = a.position ?? 999;
+          const rankB = b.position ?? 999;
+          return rankA - rankB;
+          
+        case "name":
+          const nameA = `${a.first_name || ""} ${a.last_name || ""}`.trim() || a.username || "";
+          const nameB = `${b.first_name || ""} ${b.last_name || ""}`.trim() || b.username || "";
+          return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
+          
+        case "xp":
+          const xpA = a.stats?.exp_points ?? 0;
+          const xpB = b.stats?.exp_points ?? 0;
+          return xpB - xpA;
+          
+        case "quests":
+          const questsA = a.stats?.quests_completed ?? 0;
+          const questsB = b.stats?.quests_completed ?? 0;
+          return questsB - questsA;
+          
+        case "level":
+          const levelA = a.level ?? 0;
+          const levelB = b.level ?? 0;
+          return levelB - levelA;
+          
+        default:
+          return 0;
+      }
+    });
+  }, [filteredStudents, sortBy]);
   // Calculate stats
   const stats: StudentStats = {
     totalStudents: allStudents.length,
@@ -264,21 +310,14 @@ export default function TeacherStudentsPage() {
             )}
           </div>
 
-          <Select value={filterBy} onValueChange={setFilterBy}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Students</SelectItem>
-              <SelectItem value="active">Active (7 days)</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="high_performers">Top Performers</SelectItem>
-              <SelectItem value="needs_attention">Needs Attention</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={sortBy} onValueChange={setSortBy}>
+          
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          
+        <Select 
+            value={sortBy} 
+            onValueChange={handleSortChange}
+          >
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -290,17 +329,19 @@ export default function TeacherStudentsPage() {
               <SelectItem value="level">Level</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <Mail className="h-4 w-4 mr-2" />
-            Send Message
-          </Button>
+        <Select value={filterBy} onValueChange={setFilterBy}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Students</SelectItem>
+            <SelectItem value="active">Active (7 days)</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="high_performers">Top Performers</SelectItem>
+            <SelectItem value="needs_attention">Needs Attention</SelectItem>
+          </SelectContent>
+        </Select>
         </div>
       </div>
 
@@ -428,14 +469,7 @@ export default function TeacherStudentsPage() {
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Mail className="h-4 w-4 mr-2" />
-                                Send Message
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Download className="h-4 w-4 mr-2" />
-                                Export Progress
-                              </DropdownMenuItem>
+                             
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

@@ -1058,7 +1058,7 @@ export function VirtualPet() {
                   Accessories
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] dark:bg-background dark:border dark:border-border bg-gray-900">
+              <DialogContent className="sm:max-w-[600px] border border-slate-200 bg-white text-slate-900 dark:border-border dark:bg-background dark:text-slate-50">
                 <DialogHeader>
                   <DialogTitle>Pet Accessories</DialogTitle>
                   <DialogDescription>
