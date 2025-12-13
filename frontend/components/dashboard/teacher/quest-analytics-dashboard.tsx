@@ -370,10 +370,10 @@ export function QuestAnalyticsDashboard({ questId }: QuestAnalyticsDashboardProp
                     <p className="text-base font-semibold">{student.engagement_score}</p>
                     <p className="text-xs text-gray-600">Score</p>
                   </div>
-                  <div className="text-center">
+                  {/* <div className="text-center">
                     <p className="text-base font-semibold">{student.interaction_count}</p>
                     <p className="text-xs text-gray-600">Interactions</p>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Right: progress + stage */}

@@ -424,11 +424,8 @@ export function TeacherDashboard() {
                   <div className="space-y-4">
                     {recentActivity.map((activity, index) => (
                       <div key={index} className="flex items-center justify-between p-2 border-b last:border-b-0">
-                        <div>
-                          <div className="font-medium">{activity.studentName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {activity.action}
-                          </div>
+                        <div className="text-sm text-muted-foreground">
+                          {activity.action}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {activity.timeAgo}
