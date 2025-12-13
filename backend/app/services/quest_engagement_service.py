@@ -51,13 +51,13 @@ class QuestEngagementService:
     # Event point values
     EVENT_POINTS = {
         # Start
-        'assignment_viewed': 5,
-        'quiz_attempt_started': 8,
-        'lesson_viewed': 5,
-        'file_viewed': 3,
-        'book_viewed': 3,
-        'page_viewed': 3,
-        'url_viewed': 3,
+        'assignment_viewed': 50,
+        'quiz_attempt_started': 50,
+        'lesson_viewed': 50,
+        'file_viewed': 50,
+        'book_viewed': 50,
+        'page_viewed': 50,
+        'url_viewed': 50,
         # Progress
         'forum_post_created': 10,
         'forum_discussion_created': 15,
@@ -71,7 +71,7 @@ class QuestEngagementService:
         'assignment_submitted': 50,
         'lesson_completed': 50,
         'feedback_submitted': 50,
-        'assignment_graded': 25,
+        'assignment_graded': 50,
         'module_completion_updated': 25
     }
 
@@ -310,9 +310,12 @@ class QuestEngagementService:
             # First: apply milestone-based progress if we recognize this event
             before = qp.progress_percent or 0
             self._apply_milestone_progress(qp, event_type)
-            # Fallback: if no milestones matched, keep score-based heuristic
+            # Fallback: if no milestones matched, keep current progress
+            # (Don't use engagement_score directly as it's a point value, not a percentage)
             if (qp.progress_percent or 0) == before:
-                qp.progress_percent = min(100, qp.engagement_score)
+                # Keep the existing progress_percent, don't override with score
+                # The milestone system should handle most cases
+                pass
         
         # Record engagement event (store points actually awarded)
         self.record_engagement_event(qp, event_type, data, points)
