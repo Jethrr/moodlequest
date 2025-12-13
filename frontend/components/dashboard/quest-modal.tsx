@@ -33,7 +33,7 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] bg-gray-900">
+      <DialogContent className="sm:max-w-[600px] border border-slate-200 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50">
         {" "}
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
@@ -70,10 +70,12 @@ export function QuestModal({ quest, isOpen, onClose }: QuestModalProps) {
           onValueChange={setActiveTab}
         >
           <TabsList className=" w-full ">
-            <TabsTrigger value="details">Details</TabsTrigger>
+            {/* <TabsTrigger value="details">Details</TabsTrigger> */}
+            <p className="text-sm font-medium">Details</p>
             {/* <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="rewards">Rewards</TabsTrigger> */}
-          </TabsList>{" "}
+          </TabsList>
+          
           <TabsContent value="details" className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
