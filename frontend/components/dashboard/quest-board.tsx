@@ -408,28 +408,7 @@ export function QuestBoard() {
                           </div>
                           {/* Status badge */}
                           <div className="flex justify-between items-center">
-                            {/* <Badge
-                              variant={
-                                quest.status === "completed"
-                                  ? "default"
-                                  : quest.status === "in-progress"
-                                  ? "secondary"
-                                  : "outline"
-                              }
-                              className={`text-xs ${
-                                quest.status === "completed"
-                                  ? "bg-green-100 text-green-800 border-green-200"
-                                  : quest.status === "in-progress"
-                                  ? "bg-blue-100 text-blue-800 border-blue-200"
-                                  : "bg-gray-100 text-gray-800 border-gray-200"
-                              }`}
-                            >
-                              {quest.status === "not-started"
-                                ? "Not Started"
-                                : quest.status === "in-progress"
-                                ? "In Progress"
-                                : "Completed"}
-                            </Badge> */}
+                          
                             {quest.course_title && (
                               <span className="text-xs text-muted-foreground truncate max-w-[100px]">
                                 {quest.course_title}
