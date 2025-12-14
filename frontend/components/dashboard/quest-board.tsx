@@ -415,11 +415,7 @@ export function QuestBoard() {
                               </span>
                             )}
                           </div>
-                          <motion.div
-                            initial={{ scaleX: 0 }}
-                            animate={{ scaleX: quest.progress / 100 }}
-                            transition={{ duration: 0.8, ease: "easeOut" }}
-                          >
+                          <div>
                             <Progress
                               value={quest.progress}
                               className={`h-2 ${
@@ -433,7 +429,7 @@ export function QuestBoard() {
                                 {quest.progress}% complete
                               </span>
                             )}
-                          </motion.div>
+                          </div>
                         </div>
                       </CardContent>
                       <CardFooter className="mt-auto pt-2">
