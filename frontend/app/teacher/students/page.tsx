@@ -121,8 +121,7 @@ export default function TeacherStudentsPage() {
       if (filterBy === "active") return mockLastActivityDays <= 7;
       if (filterBy === "inactive") return mockLastActivityDays > 7;
       if (filterBy === "high_performers") return (student.position || 999) <= 10;
-      if (filterBy === "needs_attention")
-        return student.stats.quests_completed < 3;
+      // For needs attention we do not filter; sorting will handle ordering
       return true;
     });
   }, [displayedStudents, filterBy]);
@@ -131,42 +130,60 @@ export default function TeacherStudentsPage() {
   const sortedStudents = useMemo(() => {
     // Create a copy to avoid mutating the original array
     const studentsToSort = [...filteredStudents];
-    
+
+    // Needs attention: sort by lowest XP, then lowest badges, keep all students
+    if (filterBy === "needs_attention") {
+      return studentsToSort.sort((a, b) => {
+        const xpA = a.stats?.exp_points ?? 0;
+        const xpB = b.stats?.exp_points ?? 0;
+        if (xpA !== xpB) return xpA - xpB;
+
+        const badgesA = a.stats?.badges_earned ?? 0;
+        const badgesB = b.stats?.badges_earned ?? 0;
+        if (badgesA !== badgesB) return badgesA - badgesB;
+
+        // Stable tertiary key to avoid jitter
+        return (a.username || "").localeCompare(b.username || "", undefined, {
+          sensitivity: "base",
+        });
+      });
+    }
+
     // Ensure sortBy has a valid value
     const currentSort = sortBy || "rank";
-    
+
     return studentsToSort.sort((a, b) => {
       switch (currentSort) {
         case "rank":
           const rankA = a.position ?? 999;
           const rankB = b.position ?? 999;
           return rankA - rankB;
-          
+
         case "name":
           const nameA = `${a.first_name || ""} ${a.last_name || ""}`.trim() || a.username || "";
           const nameB = `${b.first_name || ""} ${b.last_name || ""}`.trim() || b.username || "";
           return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
-          
+
         case "xp":
           const xpA = a.stats?.exp_points ?? 0;
           const xpB = b.stats?.exp_points ?? 0;
           return xpB - xpA;
-          
+
         case "quests":
           const questsA = a.stats?.quests_completed ?? 0;
           const questsB = b.stats?.quests_completed ?? 0;
           return questsB - questsA;
-          
+
         case "level":
           const levelA = a.level ?? 0;
           const levelB = b.level ?? 0;
           return levelB - levelA;
-          
+
         default:
           return 0;
       }
     });
-  }, [filteredStudents, sortBy]);
+  }, [filteredStudents, filterBy, sortBy]);
   // Calculate stats
   const stats: StudentStats = {
     totalStudents: allStudents.length,

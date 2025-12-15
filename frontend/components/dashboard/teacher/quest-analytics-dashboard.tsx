@@ -1,12 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { apiClient } from '@/lib/api-client';
 import {
   LineChart,
@@ -74,6 +81,7 @@ export function QuestAnalyticsDashboard({ questId }: QuestAnalyticsDashboardProp
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'not_started' | 'started' | 'completed'>('all');
 
   type TimeSeriesPoint = { date: string; activeParticipants: number; completions: number };
   const [series, setSeries] = useState<TimeSeriesPoint[]>([]);
@@ -155,6 +163,17 @@ export function QuestAnalyticsDashboard({ questId }: QuestAnalyticsDashboardProp
   const getStagePillClasses = (stage: string) => {
     return STAGE_COLORS[stage as keyof typeof STAGE_COLORS]?.pill || 'bg-gray-500 text-white border-gray-500';
   };
+
+  const getProgressStatus = (percent: number) => {
+    if (percent >= 100) return 'completed';
+    if (percent > 0) return 'started';
+    return 'not_started';
+  };
+
+  const filteredStudents = useMemo(() => {
+    if (statusFilter === 'all') return students;
+    return students.filter((s) => getProgressStatus(s.progress_percent) === statusFilter);
+  }, [students, statusFilter]);
 
   if (loading) {
     return (
@@ -349,11 +368,27 @@ export function QuestAnalyticsDashboard({ questId }: QuestAnalyticsDashboardProp
       {/* Student Progress */}
       <Card className="bg-white text-black shadow-sm border border-gray-200 rounded-xl">
         <CardHeader>
-          <CardTitle>Student Progress</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>Student Progress</CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="not_started">Not Started</SelectItem>
+                  <SelectItem value="started">Started</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {students.map((student) => (
+            {filteredStudents.map((student) => (
               <div key={student.user_id} className="grid grid-cols-1 md:grid-cols-12 items-center gap-4 p-4 border rounded-lg hover:shadow-sm transition-shadow">
                 {/* Left: identity */}
                 <div className="md:col-span-5 flex items-center gap-3">
